@@ -37,3 +37,5 @@ rebuild-docker.sh
 */.run/**
 .run/**
 .run
+predictive-maintenance/.venv
+predictive-maintenance/__pycache__
