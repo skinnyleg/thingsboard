@@ -810,6 +810,7 @@
                             <owner>The Thingsboard Authors</owner>
                         </properties>
                         <excludes>
+                            <exclude>predictive-maintenance/**</exclude>
                             <exclude>**/.env</exclude>
                             <exclude>**/*.env</exclude>
                             <exclude>**/.eslintrc</exclude>

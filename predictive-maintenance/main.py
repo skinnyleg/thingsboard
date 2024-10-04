@@ -16,10 +16,25 @@
 
 from typing import Union
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-@app.get("/")
+# origins = [
+#     "http://localhost:8081",
+# ]
+
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["GET"],
+#     allow_headers=["*"],
+# )
+
+@app.get("/api/predictiveMaintenance")
 def read_root():
-    return "Hello, world!"
+    ret = {"Hello": "World"}
+    print("Predictive Maintenance API return", ret)
+    return ret
 
