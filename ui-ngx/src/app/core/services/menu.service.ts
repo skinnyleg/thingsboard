@@ -38,7 +38,7 @@ export class MenuService {
   );
 
   constructor(private store: Store<AppState>,
-              private router: Router) {
+    private router: Router) {
     this.store.pipe(select(selectIsAuthenticated)).subscribe(
       (authenticated: boolean) => {
         if (authenticated) {
@@ -85,8 +85,8 @@ export class MenuService {
     const openedMenuSections = getCurrentOpenedMenuSections(this.store);
     this.currentMenuSections.filter(section => section.type === 'toggle' &&
       (url.startsWith(section.path) || openedMenuSections.includes(section.path))).forEach(
-      section => section.opened = true
-    );
+        section => section.opened = true
+      );
   }
 
   private buildSysAdminMenu(): Array<MenuSection> {
@@ -377,6 +377,13 @@ export class MenuService {
         path: '/home',
         icon: 'home'
       },
+      // {
+      //   id: 'help',
+      //   name: 'help.help',
+      //   type: 'link',
+      //   path: '/help',
+      //   icon: 'help'
+      // },
       {
         id: 'alarms',
         name: 'alarm.alarms',
@@ -457,7 +464,14 @@ export class MenuService {
         type: 'link',
         path: '/ruleChains',
         icon: 'settings_ethernet'
-      }
+      },
+      {
+        id: 'Predictive Maintenance',
+        name: 'Predictive Maintenance',
+        type: 'link',
+        path: '/PM',
+        icon: 'mdi:line-up'
+      },
     );
     if (authState.edgesSupportEnabled) {
       sections.push(
