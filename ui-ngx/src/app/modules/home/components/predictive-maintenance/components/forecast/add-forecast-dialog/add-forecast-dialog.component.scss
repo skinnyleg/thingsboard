@@ -1,0 +1,49 @@
+.dialog-content {
+    display: flex;
+    flex-direction: column;
+    // gap: 15px;
+  }
+  
+  .full-width {
+    margin-top: 10px;
+    width: 100%;
+  }
+  
+  .date-field {
+    width: calc(50% - 10px);
+  }
+  
+  .fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+  }
+  
+  .field {
+    display: flex;
+    align-items: center;
+    justify-items: center;
+    justify-content: center;
+    // background-color: red;
+    gap: 5px; /* Adds some space between the button and input */
+}
+.delete_button {
+    // background-color: red;
+    margin-top: 4px;
+    align-self: flex-start;
+}
+button {
+    margin-right: 10px; /* Adds space on the right of the button */
+}
+
+.input-field {
+    flex-grow: 1; /* Makes the input field take up the remaining space */
+}
+
+  
+
+  .date-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }

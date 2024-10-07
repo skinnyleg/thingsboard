@@ -1,0 +1,51 @@
+<h2 mat-dialog-title>Create Your Model</h2>
+<mat-dialog-content class="dialog-content">
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Model Name</mat-label>
+    <input matInput />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Device Name</mat-label>
+    <mat-select [(ngModel)]="selectedDevice" (selectionChange)="onDeviceSelected($event)">
+      <mat-option *ngFor="let device of devices" [value]="device">{{ device }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <div class="date-container">
+
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>From</mat-label>
+        <input matInput [matDatepicker]="fromPicker">
+        <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+        <mat-datepicker #fromPicker></mat-datepicker>
+      </mat-form-field>
+    
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>To</mat-label>
+        <input matInput [matDatepicker]="toPicker">
+        <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+        <mat-datepicker #toPicker></mat-datepicker>
+      </mat-form-field>
+  </div>
+
+  <div class="fields-container">
+    <div *ngFor="let field of fields; let i = index">
+        <div class="field">
+            <button mat-icon-button (click)="removeField(i)" class="delete_button">
+              <mat-icon>remove_circle</mat-icon>
+            </button>
+            <mat-form-field appearance="outline" class="input-field">
+            <mat-label>Field {{ i + 1 }}</mat-label>
+            <input matInput />
+          </mat-form-field>
+        </div>
+    </div>
+    <button mat-raised-button color="accent" (click)="addField()">
+      <mat-icon>add_circle</mat-icon> Add Field
+    </button>
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onConfirm()">Confirm</button>
+</mat-dialog-actions>
