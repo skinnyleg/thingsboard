@@ -26,7 +26,6 @@ import { HomeModule } from '@home/home.module';
 import { AppComponent } from './app.component';
 import { DashboardRoutingModule } from '@modules/dashboard/dashboard-routing.module';
 import { RouterModule, Routes } from '@angular/router';
-import { HelpModule } from './modules/help/help.module';
 
 const routes: Routes = [
   {
@@ -54,7 +53,6 @@ export class PageNotFoundRoutingModule { }
     CoreModule,
     LoginModule,
     HomeModule,
-    HelpModule,
     DashboardRoutingModule,
     PageNotFoundRoutingModule,
   ],
