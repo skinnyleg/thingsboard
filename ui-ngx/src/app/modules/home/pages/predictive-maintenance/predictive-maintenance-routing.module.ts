@@ -1,3 +1,4 @@
+import { ForecastService } from './../../../../core/http/forecast.service';
 ///
 /// Copyright © 2016-2024 The Thingsboard Authors
 ///
@@ -20,6 +21,7 @@ import { PredictiveMaintenanceComponent } from '@app/modules/home/components/pre
 import { OAuth2Service } from '@core/http/oauth2.service';
 import { Authority } from '@shared/models/authority.enum';
 import { Observable } from 'rxjs';
+import { AnomalyDetectionComponent } from '@home/pages/predictive-maintenance/anomaly-detection-page.module';
 
 @Injectable()
 export class OAuth2LoginProcessingUrlResolver implements Resolve<string> {
@@ -35,17 +37,37 @@ export class OAuth2LoginProcessingUrlResolver implements Resolve<string> {
 const routes: Routes = [
   {
     path: 'PM',
-    component: PredictiveMaintenanceComponent,
     data: {
-      auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
-      title: 'PM.PM',
       breadcrumb: {
         label: 'Predictive Maintenance',
         icon: 'mdi:line-up'
       },
-      isPage: true,
       // alarmsMode: AlarmsMode.ALL
-    }
+    },
+    children: [
+      {
+        path: '',
+        component: PredictiveMaintenanceComponent,
+        data: {
+          auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
+          title: 'predictive-maintenance.predictive-maintenance',
+          isPage: true,
+        }
+      },
+      {
+        path: 'anomaly-detection/:id',
+        component: AnomalyDetectionComponent,
+        data: {
+          auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
+          title: 'predictive-maintenance.anomaly-detection',
+          breadcrumb: {
+            label: 'Anomaly Detection',
+            icon: 'mdi:alert'
+          },
+          isPage: true,
+        }
+      }
+    ]
   }
 ];
 

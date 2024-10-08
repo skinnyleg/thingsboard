@@ -1,0 +1,47 @@
+:host {
+  padding: 0 0.5em;
+
+  .model-select {
+    width: 100%;
+    padding: 0.5em;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.715);
+    outline: none;
+    color: #333;
+  }
+
+  .model-select-label {
+    font-size: 0.7em;
+    color: #333;
+    padding: 0 0.5em;
+  }
+
+  .anomaly-detection-container {
+    padding: 0.5em;
+    width: 100%;
+  }
+
+  .anomaly-detection-content {
+    width: 100%;
+  }
+
+  .anomaly-detection-header {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .anomaly-detection-tabs {
+    display: flex;
+    gap: 1em;
+  }
+
+  .anomaly-detection-tabs p {
+    font-size: 0.85rem;
+  }
+
+  .anomaly-detection-action {
+    display: flex;
+    gap: 1em;
+  }
+}
