@@ -1,32 +1,46 @@
 mat-card {
-    padding: 20px;
-    margin: 0px;
-}
-
-.search-bar {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    // margin-bottom: 20px;
+    flex-direction: column;
+    height: 80vh; /* Full viewport height */
+    padding: 20px;
+    margin: 0;
 }
 
 .container {
     display: flex;
-    justify-items: center;
-    align-items: center;
     justify-content: space-between;
-    flex-direction: row;
-    // background-color: red;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
-.button-container {
+.table-container {
+    flex-grow: 1; /* Allow the table to take up available space */
+    overflow-y: auto; /* Scroll only if table overflows vertically */
     display: flex;
-    justify-content: flex-end;
-    // margin-bottom: 20px; 
+    flex-direction: column;
 }
 
 table {
     width: 100%;
+}
+
+mat-paginator {
+    align-self: flex-end; /* Pagination stays at the bottom */
+}
+
+.custom-form-field {
+    width: 400px;
+}
+
+.custom-input {
+    height: 32px;
+    border-radius: 8px;
+}
+
+mat-form-field {
+    .mat-form-field-outline {
+        border-radius: 8px;
+    }
 }
 
 mat-icon {
@@ -35,19 +49,4 @@ mat-icon {
 
 button {
     margin: 0 5px;
-}
-
-.custom-form-field {
-    width: 400px; /* Set width to 400px */
-}
-
-.custom-input {
-    height: 32px; /* Set height to 32px */
-    border-radius: 8px; /* Rounded corners of 8px */
-}
-
-mat-form-field {
-    .mat-form-field-outline {
-        border-radius: 8px; /* Add border-radius for the outline */
-    }
 }
