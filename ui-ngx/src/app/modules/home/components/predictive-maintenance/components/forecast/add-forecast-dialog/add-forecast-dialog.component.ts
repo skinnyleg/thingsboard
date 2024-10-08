@@ -7,6 +7,7 @@ import { DeviceInfo } from "@shared/models/device.models";
 import { PageLink } from "@shared/models/page/page-link";
 import { Observable } from "rxjs";
 import { map, startWith } from "rxjs/operators";
+import { MatDateRangePicker } from "@angular/material/datepicker";
 
 // Import necessary Angular Material modules
 import { CommonModule } from "@angular/common";
@@ -20,6 +21,12 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { Direction } from "@app/shared/public-api";
+
+interface ForecastField {
+  type: string;
+  start: string;
+  end: string;
+}
 
 @Component({
   selector: "app-add-forecast-dialog",
@@ -44,10 +51,10 @@ import { Direction } from "@app/shared/public-api";
 export class AddForecastDialogComponent implements OnInit {
   devicesDataSource: DevicesDataSource;
   selectedDevice: DeviceInfo | null = null;
-  fields: string[] = [];
+  fields: ForecastField[] = []; // Array for field type, start, and end dates
+  // pickers: MatDateRangePicker<any>[] = []; // Array to hold references to date range pickers
   myControl = new FormControl<string | DeviceInfo>(""); // Control for autocomplete
   filteredDevices: Observable<DeviceInfo[]>; // For filtered options in autocomplete
-
   devicesList: DeviceInfo[] = []; // To store the fetched devices
 
   constructor(
@@ -67,26 +74,6 @@ export class AddForecastDialogComponent implements OnInit {
     this.devicesDataSource.loadDevices(pageLink);
     this.devicesDataSource.devices$.subscribe((devices) => {
       this.devicesList = devices;
-      // Find the device with the name "Thermostat T2"
-      const thermostatT2 = devices.find(
-        (device) => device.name === "Thermostat T2"
-      );
-
-      if (thermostatT2) {
-        console.log("Device ID for Thermostat T2:", thermostatT2.id);
-
-        // Now, you can call the getDevice() method to fetch device details
-        this.deviceService.getDevice(thermostatT2.id.id).subscribe(
-          (deviceDetails) => {
-            console.log("Device Details for Thermostat T2:", deviceDetails);
-          },
-          (error) => {
-            console.error("Error fetching device details:", error);
-          }
-        );
-      } else {
-        console.log("Thermostat T2 not found.");
-      }
     });
 
     // Set up filtered devices observable based on user input
@@ -113,7 +100,8 @@ export class AddForecastDialogComponent implements OnInit {
   }
 
   addField(): void {
-    this.fields.push("");
+    this.fields.push({ type: "", start: "", end: "" });
+    console.log("fields === ", this.fields);
   }
 
   removeField(index: number): void {

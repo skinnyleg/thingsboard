@@ -6,16 +6,7 @@
     <input matInput />
   </mat-form-field>
 
-  <!-- <mat-form-field appearance="outline" class="full-width">
-    <mat-label>Device Name</mat-label>
-    <mat-select [(ngModel)]="selectedDevice" required>
-      <mat-option *ngFor="let device of devicesDataSource.devices$ | async" [value]="device.id">
-        {{ device.name }}
-      </mat-option>
-    </mat-select>
-  </mat-form-field> -->
-
-    <!-- Autocomplete for device selection -->
+  <!-- Autocomplete for device selection -->
   <mat-form-field appearance="outline" class="full-width">
     <mat-label>Device Name</mat-label>
     <input type="text" matInput [formControl]="myControl" [matAutocomplete]="auto" />
@@ -26,35 +17,35 @@
     </mat-autocomplete>
   </mat-form-field>
 
-  <div class="date-container">
-    <mat-form-field appearance="outline" class="date-field">
-      <mat-label>From</mat-label>
-      <input matInput [matDatepicker]="fromPicker">
-      <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
-      <mat-datepicker #fromPicker></mat-datepicker>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="date-field">
-      <mat-label>To</mat-label>
-      <input matInput [matDatepicker]="toPicker">
-      <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
-      <mat-datepicker #toPicker></mat-datepicker>
-    </mat-form-field>
-  </div>
-
+  <!-- Fields with type, start, and end dates -->
   <div class="fields-container">
     <div *ngFor="let field of fields; let i = index">
       <div class="field">
+        <!-- Button to remove the field -->
         <button mat-icon-button (click)="removeField(i)" class="delete_button">
           <mat-icon>remove_circle</mat-icon>
         </button>
+
+        <!-- Type field -->
         <mat-form-field appearance="outline" class="input-field">
-          <mat-label>Field {{ i + 1 }}</mat-label>
-          <input matInput [(ngModel)]="fields[i]" />
+          <mat-label>Field Type {{ i + 1 }}</mat-label>
+          <input matInput [(ngModel)]="field.type" placeholder="Enter field type" />
+        </mat-form-field>
+
+        <!-- Date range picker for start and end dates -->
+        <mat-form-field appearance="outline" class="input-field">
+          <mat-label>Date Range for Field {{ i + 1 }}</mat-label>
+          <mat-date-range-input [rangePicker]="picker">
+            <input matStartDate [(ngModel)]="field.start" placeholder="Start date" />
+            <input matEndDate [(ngModel)]="field.end" placeholder="End date" />
+          </mat-date-range-input>
+          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-date-range-picker #picker></mat-date-range-picker>
         </mat-form-field>
       </div>
     </div>
 
+    <!-- Button to add a new field -->
     <button mat-raised-button color="accent" (click)="addField()">
       <mat-icon>add_circle</mat-icon> Add Field
     </button>
