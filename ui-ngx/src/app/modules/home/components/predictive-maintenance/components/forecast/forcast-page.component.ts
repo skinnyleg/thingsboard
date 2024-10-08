@@ -1,19 +1,19 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { MatTableDataSource } from '@angular/material/table';
-import { MatPaginator } from '@angular/material/paginator';
-import { MatSort } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { CommonModule } from '@angular/common';
-import { MatDialog } from '@angular/material/dialog';
-import { AddForecastDialogComponent } from '../forecast/add-forecast-dialog/add-forecast-dialog.component';
-import { ForecastService } from '@app/core/http/forecast.service';
+import { Component, OnInit, ViewChild } from "@angular/core";
+import { MatTableDataSource } from "@angular/material/table";
+import { MatPaginator } from "@angular/material/paginator";
+import { MatSort } from "@angular/material/sort";
+import { MatTableModule } from "@angular/material/table";
+import { MatPaginatorModule } from "@angular/material/paginator";
+import { MatSortModule } from "@angular/material/sort";
+import { MatInputModule } from "@angular/material/input";
+import { MatIconModule } from "@angular/material/icon";
+import { MatButtonModule } from "@angular/material/button";
+import { MatCardModule } from "@angular/material/card";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { CommonModule } from "@angular/common";
+import { MatDialog } from "@angular/material/dialog";
+import { AddForecastDialogComponent } from "../forecast/add-forecast-dialog/add-forecast-dialog.component";
+import { ForecastService } from "@app/core/http/forecast.service";
 // import { ForecastService } from '../../services/forecast.service'; // Import ForecastService
 
 export interface Order {
@@ -25,9 +25,9 @@ export interface Order {
 }
 
 @Component({
-  selector: 'tb-forcast-page',
-  templateUrl: './forcast-page.component.html',
-  styleUrls: ['./forcast-page.component.scss'],
+  selector: "tb-forcast-page",
+  templateUrl: "./forcast-page.component.html",
+  styleUrls: ["./forcast-page.component.scss"],
   standalone: true,
   imports: [
     CommonModule,
@@ -39,10 +39,17 @@ export interface Order {
     MatButtonModule,
     MatCardModule,
     MatTooltipModule,
-  ]
+  ],
 })
 export class ForcastComponent implements OnInit {
-  displayedColumns: string[] = ['id', 'device', 'user', 'date', 'status', 'action'];
+  displayedColumns: string[] = [
+    "id",
+    "device",
+    "user",
+    "date",
+    "status",
+    "action",
+  ];
   dataSource = new MatTableDataSource<Order>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -54,7 +61,7 @@ export class ForcastComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.fetchForecasts(); // Load data on initialization
+    // this.fetchForecasts(); // Load data on initialization
   }
 
   fetchForecasts(): void {
@@ -66,14 +73,14 @@ export class ForcastComponent implements OnInit {
         this.dataSource.sort = this.sort;
       },
       (error) => {
-        console.error('Error fetching forecasts:', error);
+        console.error("Error fetching forecasts:", error);
       }
     );
   }
 
   openAddForecastDialog(): void {
     const dialogRef = this.dialog.open(AddForecastDialogComponent, {
-      width: '600px',
+      width: "600px",
     });
 
     dialogRef.afterClosed().subscribe((result) => {
@@ -90,7 +97,7 @@ export class ForcastComponent implements OnInit {
         this.fetchForecasts(); // Refresh forecasts after adding a new one
       },
       (error) => {
-        console.error('Error adding forecast:', error);
+        console.error("Error adding forecast:", error);
       }
     );
   }
@@ -98,8 +105,8 @@ export class ForcastComponent implements OnInit {
   editForecast(forecast: Order): void {
     // Open the dialog with the existing forecast data
     const dialogRef = this.dialog.open(AddForecastDialogComponent, {
-      width: '600px',
-      data: forecast // Pass the current forecast data to the dialog
+      width: "600px",
+      data: forecast, // Pass the current forecast data to the dialog
     });
 
     dialogRef.afterClosed().subscribe((updatedForecast) => {
@@ -116,7 +123,7 @@ export class ForcastComponent implements OnInit {
         this.fetchForecasts(); // Refresh forecasts after updating
       },
       (error) => {
-        console.error('Error updating forecast:', error);
+        console.error("Error updating forecast:", error);
       }
     );
   }
@@ -128,7 +135,7 @@ export class ForcastComponent implements OnInit {
         this.fetchForecasts(); // Refresh forecasts after deleting
       },
       (error) => {
-        console.error('Error deleting forecast:', error);
+        console.error("Error deleting forecast:", error);
       }
     );
   }
