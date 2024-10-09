@@ -121,15 +121,6 @@ export class DeviceService {
     );
   }
 
-  public getAllDevices(config?: RequestConfig): Observable<Device[]> {
-    console.log("7");
-    console.log("getAllDevices without ids");
-    return this.http.get<Device[]>(
-      "/api/devices",
-      defaultHttpOptionsFromConfig(config)
-    );
-  }
-
   public getDevices(
     deviceIds: Array<string>,
     config?: RequestConfig
