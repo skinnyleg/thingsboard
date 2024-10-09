@@ -29,11 +29,32 @@
     display: flex;
     width: 100%;
     justify-content: space-between;
+    align-items: baseline;
+    position: relative;
+
+    .anomaly-detection-header-divider {
+      width: 100%;
+      height: 1px;
+      background-color: #3333335e;
+      position: absolute;
+      bottom: 0;
+    }
   }
 
   .anomaly-detection-tabs {
     display: flex;
-    gap: 1em;
+    padding-left: 0.5em;
+    gap: 1.5em;
+    cursor: pointer;
+    color: rgba(51, 51, 51, 0.59);
+
+    :hover {
+      color: #333333;
+    }
+
+    .active {
+      color: #333333;
+    }
   }
 
   .anomaly-detection-tabs p {
@@ -42,6 +63,7 @@
 
   .anomaly-detection-action {
     display: flex;
-    gap: 1em;
+    gap: 1.5em;
+    padding-right: 0.5em;
   }
 }

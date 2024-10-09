@@ -10,36 +10,7 @@ import {
 
 @Component({
   selector: "anomaly-detection",
-  template: `
-    <div>
-        <label class="model-select-label">Anomaly tasks</label>
-        <select (change)="changeModel($event.target.value)" class="model-select">
-        <option
-            *ngFor="let model of models"
-            [value]="model.id"
-            [selected]="model.id === '#' + id"
-        >
-            {{ model.id }} - {{ model.device }} - {{ model.user }} -
-            {{ model.date }} - {{ model.status }}
-        </option>
-        </select>
-        <div class="anomaly-detection-container">
-            <div class="anomaly-detection-content">
-                <div class="anomaly-detection-header">
-                    <div class="anomaly-detection-tabs">
-                        <p>Anomaly Summary</p>
-                        <p>Anomaly Details</p>
-                        <p>Cluster Infos</p>
-                    </div>
-                    <div class="anomaly-detection-action">
-                        <button mat-raised-button color="primary">ReBuild</button>
-                        <button mat-raised-button color="primary">Apply To</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-  `,
+  templateUrl: "./anomaly-detection.component.html",
   styleUrls: ["./anomaly-detection.component.scss"],
 })
 export class AnomalyDetectionComponent extends PageComponent implements Order {
