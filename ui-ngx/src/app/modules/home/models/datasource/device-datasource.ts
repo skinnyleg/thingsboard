@@ -16,7 +16,7 @@ export class DevicesDataSource {
       .getDeviceInfosByQuery(deviceInfoQuery)
       .pipe(
         tap((pageData) => {
-          console.log("Fetched devices:", pageData.data); // Log the fetched data for debugging
+          console.log("Fetched devices:", pageData); // Log the fetched data for debugging
           this.devicesSubject.next(pageData.data); // Push devices data into the subject
         }),
         catchError((error) => {
