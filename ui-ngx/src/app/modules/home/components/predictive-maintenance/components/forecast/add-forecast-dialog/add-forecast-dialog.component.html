@@ -3,7 +3,8 @@
 <mat-dialog-content class="dialog-content">
   <mat-form-field appearance="outline" class="full-width">
     <mat-label>Forecast Name</mat-label>
-    <input matInput />
+    <input matInput [formControl]="forecastNameControl" placeholder="Enter forecast name" />
+    <mat-error *ngIf="forecastNameControl.invalid && forecastNameControl.touched">Forecast name is required.</mat-error>
   </mat-form-field>
 
   <!-- Autocomplete for device selection -->
@@ -15,7 +16,7 @@
       [displayWith]="displayFn" 
       (optionSelected)="onDeviceSelected($event.option.value)">
       <mat-option *ngFor="let device of filteredDevices | async" [value]="device">
-        {{ device.name }} <!-- Display device name -->
+        {{ device.name }}
       </mat-option>
     </mat-autocomplete>
   </mat-form-field>
@@ -42,7 +43,6 @@
           </mat-autocomplete>
         </mat-form-field>
 
-
         <mat-form-field appearance="outline" class="input-field">
           <mat-label>Date Range for Field {{ i + 1 }}</mat-label>
           <mat-date-range-input [rangePicker]="picker">
@@ -56,7 +56,7 @@
     </div>
 
     <!-- Button to add a new field -->
-    <button mat-raised-button color="accent" (click)="addField()">
+    <button *ngIf="canAddField" mat-raised-button color="accent" (click)="addField()" [disabled]="!selectedDevice">
       <mat-icon>add_circle</mat-icon> Add Field
     </button>
   </div>
@@ -64,5 +64,5 @@
 
 <mat-dialog-actions align="end">
   <button mat-button (click)="onCancel()">Cancel</button>
-  <button mat-raised-button color="primary" (click)="onConfirm()">Confirm</button>
+  <button mat-raised-button color="primary" [disabled]="!isFormValid" (click)="onConfirm()">Confirm</button>
 </mat-dialog-actions>

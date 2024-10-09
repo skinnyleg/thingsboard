@@ -1,5 +1,10 @@
 import { Component, OnInit } from "@angular/core";
-import { FormControl, FormsModule, ReactiveFormsModule } from "@angular/forms";
+import {
+  FormControl,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from "@angular/forms";
 import { MatDialogRef } from "@angular/material/dialog";
 import { AttributeService, DeviceService } from "@app/core/public-api";
 import { DevicesDataSource } from "@app/modules/home/models/datasource/device-datasource";
@@ -53,9 +58,11 @@ export class AddForecastDialogComponent implements OnInit {
   selectedDevice: DeviceInfo | null = null;
   fields: ForecastField[] = []; // Array for field type, start, and end dates
   availableTelemetry: string[] = []; // Available telemetry keys as an observable
-  myControl = new FormControl<string | DeviceInfo>(""); // Control for autocomplete
+  myControl = new FormControl<string | DeviceInfo>("", Validators.required); // Control for autocomplete
+  forecastNameControl = new FormControl("", Validators.required);
   filteredDevices: Observable<DeviceInfo[]>; // For filtered options in autocomplete
   devicesList: DeviceInfo[] = []; // To store the fetched devices
+  forecastName: string = "";
 
   constructor(
     public dialogRef: MatDialogRef<AddForecastDialogComponent>,
@@ -66,7 +73,7 @@ export class AddForecastDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const pageLink = new PageLink(10, 0, null, {
+    const pageLink = new PageLink(11, 0, null, {
       property: "createdTime",
       direction: Direction.DESC,
     });
@@ -85,6 +92,15 @@ export class AddForecastDialogComponent implements OnInit {
         name ? this._filterDevices(name) : this.devicesList.slice()
       )
     );
+
+    // Clear fields when device changes
+    this.myControl.valueChanges.subscribe((device) => {
+      this.fields = []; // Clear fields when a new device is selected
+      this.selectedDevice = typeof device === "object" ? device : null;
+      if (this.selectedDevice) {
+        this.onDeviceSelected(this.selectedDevice);
+      }
+    });
   }
 
   // Function to filter devices based on user input
@@ -126,9 +142,30 @@ export class AddForecastDialogComponent implements OnInit {
       );
   }
 
+  get canAddField(): boolean {
+    if (this.availableTelemetry.length === 0) {
+      return true;
+    }
+    return (
+      this.fields.length < this.availableTelemetry.length &&
+      this.selectedDevice != null
+    );
+  }
+
+  get isFormValid(): boolean {
+    return (
+      this.forecastNameControl.valid &&
+      this.selectedDevice != null && // Ensure a device is selected
+      this.fields.length > 0 && // Ensure at least one field is added
+      this.fields.every((field) => field.type && field.start && field.end)
+    );
+  }
+
   // Add a new field with telemetry autocomplete
   addField(): void {
-    this.fields.push({ type: "", start: "", end: "" });
+    if (this.canAddField) {
+      this.fields.push({ type: "", start: "", end: "" });
+    }
   }
 
   // Get telemetry options excluding already selected ones
@@ -148,8 +185,12 @@ export class AddForecastDialogComponent implements OnInit {
   }
 
   onConfirm(): void {
+    if (!this.isFormValid) {
+      console.log("Form is invalid. Please complete all required fields.");
+      return;
+    }
     this.dialogRef.close({
-      name: "Forecast",
+      name: this.forecastNameControl.value,
       device: this.selectedDevice,
       fields: this.fields,
     });

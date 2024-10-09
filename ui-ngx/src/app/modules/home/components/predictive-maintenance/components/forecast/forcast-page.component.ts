@@ -85,6 +85,7 @@ export class ForcastComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
+        console.log("result === ", result);
         this.addForecast(result); // Call addForecast if a result is returned
       }
     });
