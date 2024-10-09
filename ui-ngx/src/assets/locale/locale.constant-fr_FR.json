@@ -1,4 +1,8 @@
 {
+    "predictive-maintenance": {
+        "predictive-maintenance": "Maintenance Prédictive",
+        "anomaly-detection": "Détection d'Anomalies"
+    },
     "access": {
         "access-forbidden": "Accès interdit",
         "access-forbidden-text": "Vous n'avez pas accès à cet emplacement! <br/> Essayez de vous connecter avec un autre utilisateur si vous souhaitez toujours accéder à cet emplacement.",

@@ -18,9 +18,10 @@ import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
 import { SharedModule } from '@shared/shared.module';
 import { PredictiveMaintenanceRoutingModule } from './predictive-maintenance-routing.module';
+import { AnomalyDetectionComponent } from './anomaly-detection-page.module';
 
 @NgModule({
-  declarations: [],
+  declarations: [AnomalyDetectionComponent],
   imports: [
     CommonModule,
     SharedModule,

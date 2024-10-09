@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CommonModule } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 import { AddAnomalyDetectionDialogComponent } from './add-anomaly-detection-dialog/add-anomaly-detection-dialog.component';
+import { Router } from '@angular/router';
 
 export interface Order {
   id: string;
@@ -22,7 +23,7 @@ export interface Order {
   status: string;
 }
 
-const ELEMENT_DATA: Order[] = [
+export const ELEMENT_DATA: Order[] = [
   { id: '#20462', device: 'Hat', user: 'Matt Dickerson', date: '2022-05-13', status: 'Completed' },
   { id: '#18933', device: 'Laptop', user: 'Wiktoria', date: '2022-05-22', status: 'Completed' },
   // Add more data as per your requirement...
@@ -51,7 +52,7 @@ export class AnomalyDetectionComponent implements OnInit {
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
-  constructor(public dialog: MatDialog) {}
+  constructor(public dialog: MatDialog, private router: Router) {}
 
   ngOnInit() {
     this.dataSource.paginator = this.paginator;
@@ -65,6 +66,10 @@ export class AnomalyDetectionComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       console.log('Dialog closed', result);
     });
+  }
+
+  openAnomalyDetectionModel(row: Order) {
+    this.router.navigateByUrl(`/PM/anomaly-detection/${row.id.slice(1)}`);
   }
 
   applyFilter(event: Event) {
