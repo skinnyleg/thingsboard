@@ -1,11 +1,11 @@
 import { Component, OnInit } from "@angular/core";
 import { FormControl, FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { MatDialogRef } from "@angular/material/dialog";
-import { DeviceService } from "@app/core/public-api";
+import { AttributeService, DeviceService } from "@app/core/public-api";
 import { DevicesDataSource } from "@app/modules/home/models/datasource/device-datasource";
 import { DeviceInfo } from "@shared/models/device.models";
 import { PageLink } from "@shared/models/page/page-link";
-import { Observable } from "rxjs";
+import { Observable, of } from "rxjs";
 import { map, startWith } from "rxjs/operators";
 import { MatDateRangePicker } from "@angular/material/datepicker";
 
@@ -20,7 +20,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
-import { Direction } from "@app/shared/public-api";
+import { Direction, EntityType } from "@app/shared/public-api";
 
 interface ForecastField {
   type: string;
@@ -52,14 +52,15 @@ export class AddForecastDialogComponent implements OnInit {
   devicesDataSource: DevicesDataSource;
   selectedDevice: DeviceInfo | null = null;
   fields: ForecastField[] = []; // Array for field type, start, and end dates
-  // pickers: MatDateRangePicker<any>[] = []; // Array to hold references to date range pickers
+  availableTelemetry: string[] = []; // Available telemetry keys as an observable
   myControl = new FormControl<string | DeviceInfo>(""); // Control for autocomplete
   filteredDevices: Observable<DeviceInfo[]>; // For filtered options in autocomplete
   devicesList: DeviceInfo[] = []; // To store the fetched devices
 
   constructor(
     public dialogRef: MatDialogRef<AddForecastDialogComponent>,
-    private deviceService: DeviceService
+    private deviceService: DeviceService,
+    private attributeService: AttributeService
   ) {
     this.devicesDataSource = new DevicesDataSource(this.deviceService);
   }
@@ -99,9 +100,43 @@ export class AddForecastDialogComponent implements OnInit {
     return device && device.name ? device.name : "";
   }
 
+  // When the user selects a device, fetch the telemetry for that device
+  onDeviceSelected(selectedDevice: DeviceInfo): void {
+    this.selectedDevice = selectedDevice;
+
+    this.attributeService
+      .getEntityTimeseriesLatest({
+        entityType: EntityType.DEVICE,
+        id: selectedDevice.id.id,
+      })
+      .subscribe(
+        (telemetryData) => {
+          const telemetryKeys = Object.keys(telemetryData);
+          console.log(
+            "Available telemetry for the selected device:",
+            telemetryKeys
+          );
+
+          // Set available telemetry keys
+          this.availableTelemetry = telemetryKeys;
+        },
+        (error) => {
+          console.error("Error fetching telemetry data:", error);
+        }
+      );
+  }
+
+  // Add a new field with telemetry autocomplete
   addField(): void {
     this.fields.push({ type: "", start: "", end: "" });
-    console.log("fields === ", this.fields);
+  }
+
+  // Get telemetry options excluding already selected ones
+  getFilteredTelemetry(index: number): string[] {
+    return this.availableTelemetry.filter(
+      (telemetry) =>
+        !this.fields.some((field, i) => field.type === telemetry && i !== index)
+    );
   }
 
   removeField(index: number): void {

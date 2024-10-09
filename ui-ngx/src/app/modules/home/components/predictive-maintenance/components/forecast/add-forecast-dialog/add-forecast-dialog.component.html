@@ -10,7 +10,10 @@
   <mat-form-field appearance="outline" class="full-width">
     <mat-label>Device Name</mat-label>
     <input type="text" matInput [formControl]="myControl" [matAutocomplete]="auto" />
-    <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
+    <mat-autocomplete 
+      #auto="matAutocomplete" 
+      [displayWith]="displayFn" 
+      (optionSelected)="onDeviceSelected($event.option.value)">
       <mat-option *ngFor="let device of filteredDevices | async" [value]="device">
         {{ device.name }} <!-- Display device name -->
       </mat-option>
@@ -26,13 +29,20 @@
           <mat-icon>remove_circle</mat-icon>
         </button>
 
-        <!-- Type field -->
+        <!-- Autocomplete for telemetry field types -->
         <mat-form-field appearance="outline" class="input-field">
           <mat-label>Field Type {{ i + 1 }}</mat-label>
-          <input matInput [(ngModel)]="field.type" placeholder="Enter field type" />
+          <input type="text" matInput [(ngModel)]="field.type" [matAutocomplete]="telemetryAuto" />
+          <mat-autocomplete #telemetryAuto="matAutocomplete">
+            <mat-option 
+              *ngFor="let telemetry of getFilteredTelemetry(i)" 
+              [value]="telemetry">
+              {{ telemetry }}
+            </mat-option>
+          </mat-autocomplete>
         </mat-form-field>
 
-        <!-- Date range picker for start and end dates -->
+
         <mat-form-field appearance="outline" class="input-field">
           <mat-label>Date Range for Field {{ i + 1 }}</mat-label>
           <mat-date-range-input [rangePicker]="picker">
