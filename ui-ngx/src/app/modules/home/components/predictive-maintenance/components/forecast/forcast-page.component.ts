@@ -14,6 +14,7 @@ import { CommonModule } from "@angular/common";
 import { MatDialog } from "@angular/material/dialog";
 import { AddForecastDialogComponent } from "../forecast/add-forecast-dialog/add-forecast-dialog.component";
 import { ForecastService } from "@app/core/http/forecast.service";
+import { Direction, PageLink } from "@app/shared/public-api";
 // import { ForecastService } from '../../services/forecast.service'; // Import ForecastService
 
 export interface Order {
@@ -52,6 +53,8 @@ export class ForcastComponent implements OnInit {
   ];
   dataSource = new MatTableDataSource<Order>();
 
+  isLoading = false; // Track the loading state
+  totalElements = 0; // Track the total number of elements for pagination
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -65,15 +68,40 @@ export class ForcastComponent implements OnInit {
   }
 
   fetchForecasts(): void {
+    // Set the loading state (could show a spinner in the UI)
+    this.isLoading = true;
+
+    // Get the current pagination and sorting settings
+    const pageSize = this.paginator?.pageSize || 10;
+    const pageIndex = this.paginator?.pageIndex || 0;
+    const sortProperty = this.sort?.active || "createdTime";
+    const sortDirection: Direction =
+      this.sort?.direction === "asc" ? Direction.ASC : Direction.DESC;
+
+    // Create a new PageLink with pagination and sorting details
+    const pageLink = new PageLink(pageSize, pageIndex, null, {
+      property: sortProperty,
+      direction: sortDirection,
+    });
+
     // Fetch forecasts from the service
-    this.forecastService.getForecasts().subscribe(
+    this.forecastService.getForecastsByPage(pageLink).subscribe(
       (data) => {
-        this.dataSource.data = data; // Assign fetched data to the dataSource
-        this.dataSource.paginator = this.paginator;
-        this.dataSource.sort = this.sort;
+        // Assign fetched data to the dataSource
+        this.dataSource.data = data.data; // Assuming `data.data` holds the forecasts
+        this.dataSource.paginator = this.paginator; // Link paginator
+        this.dataSource.sort = this.sort; // Link sorting
+
+        // Update the total number of elements for pagination
+        this.totalElements = data.totalElements;
+
+        // End the loading state
+        this.isLoading = false;
       },
       (error) => {
+        // Handle errors gracefully
         console.error("Error fetching forecasts:", error);
+        this.isLoading = false;
       }
     );
   }
