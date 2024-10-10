@@ -14,14 +14,6 @@ export class ForecastService {
 
   constructor(private http: HttpClient) {}
 
-  // Fetch all forecasts (optionally with pagination)
-  getForecasts(config?: RequestConfig): Observable<Order[]> {
-    return this.http.get<Order[]>(
-      `${this.baseUrl}`,
-      defaultHttpOptionsFromConfig(config)
-    );
-  }
-
   // Fetch forecasts with pagination (PageLink handling like in DeviceService)
   getForecastsByPage(
     pageLink: PageLink,
@@ -50,6 +42,15 @@ export class ForecastService {
     );
   }
 
+  // Update an existing forecast
+  updateForecast(forecast: any, config?: RequestConfig): Observable<Order> {
+    return this.http.put<Order>(
+      `${this.baseUrl}/${forecast.id}`,
+      forecast,
+      defaultHttpOptionsFromConfig(config)
+    );
+  }
+
   // Delete a forecast by its ID
   deleteForecast(forecastId: string, config?: RequestConfig): Observable<void> {
     return this.http.delete<void>(
@@ -57,6 +58,4 @@ export class ForecastService {
       defaultHttpOptionsFromConfig(config)
     );
   }
-
-  // Helper functions for utility and response transformations can also be added here.
 }
