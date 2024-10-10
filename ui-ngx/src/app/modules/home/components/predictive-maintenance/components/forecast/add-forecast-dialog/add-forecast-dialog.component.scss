@@ -3,6 +3,11 @@
     flex-direction: column;
     // gap: 15px;
   }
+
+  .small-text {
+    font-size: 0.875rem; /* You can adjust this size as needed */
+    color: #d32f2f; /* Optional: you can also change the color for emphasis */
+  }
   
   .full-width {
     margin-top: 10px;

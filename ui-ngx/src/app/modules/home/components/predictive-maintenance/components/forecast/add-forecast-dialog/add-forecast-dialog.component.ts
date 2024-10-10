@@ -62,7 +62,7 @@ export class AddForecastDialogComponent implements OnInit {
   forecastNameControl = new FormControl("", Validators.required);
   filteredDevices: Observable<DeviceInfo[]>; // For filtered options in autocomplete
   devicesList: DeviceInfo[] = []; // To store the fetched devices
-  forecastName: string = "";
+  noTelemetryMessage: string | null = null; // Message to show if no telemetry is available
 
   constructor(
     public dialogRef: MatDialogRef<AddForecastDialogComponent>,
@@ -97,6 +97,7 @@ export class AddForecastDialogComponent implements OnInit {
     this.myControl.valueChanges.subscribe((device) => {
       this.fields = []; // Clear fields when a new device is selected
       this.selectedDevice = typeof device === "object" ? device : null;
+      this.noTelemetryMessage = null; // Reset the message
       if (this.selectedDevice) {
         this.onDeviceSelected(this.selectedDevice);
       }
@@ -135,21 +136,26 @@ export class AddForecastDialogComponent implements OnInit {
 
           // Set available telemetry keys
           this.availableTelemetry = telemetryKeys;
+
+          // If no telemetry available, notify the user
+          if (telemetryKeys.length === 0) {
+            this.noTelemetryMessage =
+              "No telemetry options available for this device. Please choose another device.";
+          } else {
+            this.noTelemetryMessage = null; // Reset if telemetry is available
+          }
         },
         (error) => {
           console.error("Error fetching telemetry data:", error);
         }
       );
   }
-
+  //  && this.selectedDevice != null
   get canAddField(): boolean {
     if (this.availableTelemetry.length === 0) {
-      return true;
+      return true; // Disable adding fields if no telemetry is available
     }
-    return (
-      this.fields.length < this.availableTelemetry.length &&
-      this.selectedDevice != null
-    );
+    return this.fields.length < this.availableTelemetry.length;
   }
 
   get isFormValid(): boolean {

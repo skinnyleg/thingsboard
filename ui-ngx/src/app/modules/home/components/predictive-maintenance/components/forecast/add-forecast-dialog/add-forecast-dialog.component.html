@@ -21,6 +21,9 @@
     </mat-autocomplete>
   </mat-form-field>
 
+  <!-- Message if no telemetry available -->
+  <p *ngIf="noTelemetryMessage" class="no-telemetry-message small-text">{{ noTelemetryMessage }}</p>
+
   <!-- Fields with type, start, and end dates -->
   <div class="fields-container">
     <div *ngFor="let field of fields; let i = index">
@@ -56,7 +59,7 @@
     </div>
 
     <!-- Button to add a new field -->
-    <button *ngIf="canAddField" mat-raised-button color="accent" (click)="addField()" [disabled]="!selectedDevice">
+    <button *ngIf="canAddField" mat-raised-button color="accent" (click)="addField()" [disabled]="!selectedDevice || noTelemetryMessage">
       <mat-icon>add_circle</mat-icon> Add Field
     </button>
   </div>
