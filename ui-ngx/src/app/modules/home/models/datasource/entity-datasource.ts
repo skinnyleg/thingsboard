@@ -14,20 +14,32 @@
 /// limitations under the License.
 ///
 
-import { PageLink } from '@shared/models/page/page-link';
-import { BehaviorSubject, Observable, of, ReplaySubject } from 'rxjs';
-import { emptyPageData, PageData } from '@shared/models/page/page-data';
-import { BaseData, HasId } from '@shared/models/base-data';
-import { CollectionViewer, DataSource, SelectionModel } from '@angular/cdk/collections';
-import { catchError, map, share, take, tap } from 'rxjs/operators';
-import { EntityBooleanFunction } from '@home/models/entity/entities-table-config.models';
+import { PageLink } from "@shared/models/page/page-link";
+import { BehaviorSubject, Observable, of, ReplaySubject } from "rxjs";
+import { emptyPageData, PageData } from "@shared/models/page/page-data";
+import { BaseData, HasId } from "@shared/models/base-data";
+import {
+  CollectionViewer,
+  DataSource,
+  SelectionModel,
+} from "@angular/cdk/collections";
+import { catchError, map, share, take, tap } from "rxjs/operators";
+import { EntityBooleanFunction } from "@home/models/entity/entities-table-config.models";
 
-export type EntitiesFetchFunction<T extends BaseData<HasId>, P extends PageLink> = (pageLink: P) => Observable<PageData<T>>;
+export type EntitiesFetchFunction<
+  T extends BaseData<HasId>,
+  P extends PageLink
+> = (pageLink: P) => Observable<PageData<T>>;
 
-export class EntitiesDataSource<T extends BaseData<HasId>, P extends PageLink = PageLink> implements DataSource<T> {
-
+export class EntitiesDataSource<
+  T extends BaseData<HasId>,
+  P extends PageLink = PageLink
+> implements DataSource<T>
+{
   private entitiesSubject = new BehaviorSubject<T[]>([]);
-  private pageDataSubject = new BehaviorSubject<PageData<T>>(emptyPageData<T>());
+  private pageDataSubject = new BehaviorSubject<PageData<T>>(
+    emptyPageData<T>()
+  );
 
   public pageData$ = this.pageDataSubject.asObservable();
 
@@ -37,11 +49,15 @@ export class EntitiesDataSource<T extends BaseData<HasId>, P extends PageLink = 
 
   public dataLoading = true;
 
-  constructor(private fetchFunction: EntitiesFetchFunction<T, P>,
-              protected selectionEnabledFunction: EntityBooleanFunction<T>,
-              protected dataLoadedFunction: (col?: number, row?: number) => void) {}
+  constructor(
+    private fetchFunction: EntitiesFetchFunction<T, P>,
+    protected selectionEnabledFunction: EntityBooleanFunction<T>,
+    protected dataLoadedFunction: (col?: number, row?: number) => void
+  ) {}
 
-  connect(collectionViewer: CollectionViewer): Observable<T[] | ReadonlyArray<T>> {
+  connect(
+    collectionViewer: CollectionViewer
+  ): Observable<T[] | ReadonlyArray<T>> {
     return this.entitiesSubject.asObservable();
   }
 
@@ -60,20 +76,20 @@ export class EntitiesDataSource<T extends BaseData<HasId>, P extends PageLink = 
   loadEntities(pageLink: P): Observable<PageData<T>> {
     this.dataLoading = true;
     const result = new ReplaySubject<PageData<T>>();
-    this.fetchFunction(pageLink).pipe(
-      tap(() => {
-        this.selection.clear();
-      }),
-      catchError(() => of(emptyPageData<T>())),
-    ).subscribe(
-      (pageData) => {
+    this.fetchFunction(pageLink)
+      .pipe(
+        tap(() => {
+          this.selection.clear();
+        }),
+        catchError(() => of(emptyPageData<T>()))
+      )
+      .subscribe((pageData) => {
         this.onEntities(pageData.data);
         this.pageDataSubject.next(pageData);
         result.next(pageData);
         this.dataLoadedFunction();
         this.dataLoading = false;
-      }
-    );
+      });
     return result;
   }
 
@@ -113,29 +129,37 @@ export class EntitiesDataSource<T extends BaseData<HasId>, P extends PageLink = 
   }
 
   isCurrentEntity(entity: T): boolean {
-    return (this.currentEntity && entity && this.currentEntity.id && entity.id) &&
-      (this.currentEntity.id.id === entity.id.id);
+    return (
+      this.currentEntity &&
+      entity &&
+      this.currentEntity.id &&
+      entity.id &&
+      this.currentEntity.id.id === entity.id.id
+    );
   }
 
   masterToggle() {
-    this.entitiesSubject.pipe(
-      tap((entities) => {
-        const numSelected = this.selection.selected.length;
-        if (numSelected === this.selectableEntitiesCount(entities)) {
-          this.selection.clear();
-        } else {
-          entities.forEach(row => {
-            if (this.selectionEnabledFunction(row)) {
-              this.selection.select(row);
-            }
-          });
-        }
-      }),
-      take(1)
-    ).subscribe();
+    this.entitiesSubject
+      .pipe(
+        tap((entities) => {
+          const numSelected = this.selection.selected.length;
+          if (numSelected === this.selectableEntitiesCount(entities)) {
+            this.selection.clear();
+          } else {
+            entities.forEach((row) => {
+              if (this.selectionEnabledFunction(row)) {
+                this.selection.select(row);
+              }
+            });
+          }
+        }),
+        take(1)
+      )
+      .subscribe();
   }
 
   private selectableEntitiesCount(entities: Array<T>): number {
-    return entities.filter((entity) => this.selectionEnabledFunction(entity)).length;
+    return entities.filter((entity) => this.selectionEnabledFunction(entity))
+      .length;
   }
 }

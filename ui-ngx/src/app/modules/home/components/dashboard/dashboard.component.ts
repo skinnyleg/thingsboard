@@ -128,7 +128,7 @@ export class DashboardComponent extends PageComponent implements IDashboardCompo
   disableWidgetInteraction = false;
 
   @Input()
-  dashboardStyle: {[klass: string]: any};
+  dashboardStyle: { [klass: string]: any };
 
   @Input()
   backgroundImage: SafeStyle | string;
@@ -161,15 +161,15 @@ export class DashboardComponent extends PageComponent implements IDashboardCompo
   isWidgetExpanded = false;
   isMobileSize = false;
 
-  @ViewChild('gridster', {static: true}) gridster: GridsterComponent;
+  @ViewChild('gridster', { static: true }) gridster: GridsterComponent;
 
-  @ViewChild('dashboardMenuTrigger', {static: true}) dashboardMenuTrigger: MatMenuTrigger;
+  @ViewChild('dashboardMenuTrigger', { static: true }) dashboardMenuTrigger: MatMenuTrigger;
 
   dashboardMenuPosition = { x: '0px', y: '0px' };
 
   dashboardContextMenuEvent: MouseEvent;
 
-  @ViewChild('widgetMenuTrigger', {static: true}) widgetMenuTrigger: MatMenuTrigger;
+  @ViewChild('widgetMenuTrigger', { static: true }) widgetMenuTrigger: MatMenuTrigger;
 
   widgetMenuPosition = { x: '0px', y: '0px' };
 
@@ -189,19 +189,20 @@ export class DashboardComponent extends PageComponent implements IDashboardCompo
   private gridsterResize$: ResizeObserver;
 
   constructor(protected store: Store<AppState>,
-              public utils: UtilsService,
-              private timeService: TimeService,
-              private dialogService: DialogService,
-              private breakpointObserver: BreakpointObserver,
-              private differs: IterableDiffers,
-              private kvDiffers: KeyValueDiffers,
-              private cd: ChangeDetectorRef,
-              private ngZone: NgZone) {
+    public utils: UtilsService,
+    private timeService: TimeService,
+    private dialogService: DialogService,
+    private breakpointObserver: BreakpointObserver,
+    private differs: IterableDiffers,
+    private kvDiffers: KeyValueDiffers,
+    private cd: ChangeDetectorRef,
+    private ngZone: NgZone) {
     super(store);
     this.authUser = getCurrentAuthUser(store);
   }
 
   ngOnInit(): void {
+    console.log("here in dashbiard")
     this.dashboardWidgets.parentDashboard = this.parentDashboard;
     this.dashboardWidgets.popoverComponent = this.popoverComponent;
     if (!this.dashboardTimewindow) {
@@ -226,8 +227,8 @@ export class DashboardComponent extends PageComponent implements IDashboardCompo
       minItemRows: 1,
       defaultItemCols: 8,
       defaultItemRows: 6,
-      resizable: {enabled: this.isEdit},
-      draggable: {enabled: this.isEdit},
+      resizable: { enabled: this.isEdit },
+      draggable: { enabled: this.isEdit },
       itemChangeCallback: item => this.dashboardWidgets.sortWidgets(),
       itemInitCallback: (item, itemComponent) => {
         (itemComponent.item as DashboardWidget).gridsterItemComponent = itemComponent;
@@ -238,11 +239,11 @@ export class DashboardComponent extends PageComponent implements IDashboardCompo
 
     this.breakpointObserverSubscription = this.breakpointObserver
       .observe(MediaBreakpoints['gt-sm']).subscribe(
-      () => {
-        this.updateMobileOpts();
-        this.notifyGridsterOptionsChanged();
-      }
-    );
+        () => {
+          this.updateMobileOpts();
+          this.notifyGridsterOptionsChanged();
+        }
+      );
 
     this.updateWidgets();
   }
@@ -597,8 +598,8 @@ export class DashboardComponent extends PageComponent implements IDashboardCompo
         for (const widget of this.dashboardWidgets.activeDashboardWidgets) {
           totalRows += widget.rows;
         }
-        rowHeight = ( parentHeight - this.gridsterOpts.margin *
-          ( totalRows + (this.gridsterOpts.outerMargin ? 1 : -1) ) ) / totalRows;
+        rowHeight = (parentHeight - this.gridsterOpts.margin *
+          (totalRows + (this.gridsterOpts.outerMargin ? 1 : -1))) / totalRows;
       }
     }
     return rowHeight;

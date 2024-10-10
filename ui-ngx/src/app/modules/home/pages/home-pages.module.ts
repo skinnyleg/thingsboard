@@ -43,6 +43,7 @@ import { EntitiesModule } from '@home/pages/entities/entities.module';
 import { FeaturesModule } from '@home/pages/features/features.module';
 import { NotificationModule } from '@home/pages/notification/notification.module';
 import { AccountModule } from '@home/pages/account/account.module';
+import { PredictiveMaintenanceModule } from './predictive-maintenance/predictive-maintenance.module';
 
 @NgModule({
   exports: [
@@ -61,6 +62,7 @@ import { AccountModule } from '@home/pages/account/account.module';
     DeviceModule,
     AssetModule,
     AlarmModule,
+    PredictiveMaintenanceModule,
     EdgeModule,
     EntityViewModule,
     CustomerModule,

@@ -1,4 +1,8 @@
 {
+    "predictive-maintenance": {
+        "predictive-maintenance": "Predictive Maintenance",
+        "anomaly-detection": "Anomaly Detection"
+    },
     "access": {
         "unauthorized": "Unauthorized",
         "unauthorized-access": "Unauthorized Access",

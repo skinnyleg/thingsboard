@@ -171,6 +171,7 @@ import {
 import { WidgetConfigComponentsModule } from '@home/components/widget/config/widget-config-components.module';
 import { BasicWidgetConfigModule } from '@home/components/widget/config/basic/basic-widget-config.module';
 import { DeleteTimeseriesPanelComponent } from '@home/components/attribute/delete-timeseries-panel.component';
+import { PredictiveMaintenanceComponent } from './predictive-maintenance/predictive-maintenance.component';
 
 @NgModule({
   declarations:
@@ -320,7 +321,8 @@ import { DeleteTimeseriesPanelComponent } from '@home/components/attribute/delet
     SnmpDeviceProfileTransportModule,
     StatesControllerModule,
     DeviceCredentialsModule,
-    DeviceProfileCommonModule
+    DeviceProfileCommonModule,
+    PredictiveMaintenanceComponent,
   ],
   exports: [
     RouterTabsComponent,
@@ -444,11 +446,11 @@ import { DeleteTimeseriesPanelComponent } from '@home/components/attribute/delet
   providers: [
     WidgetComponentService,
     CustomDialogService,
-    {provide: EMBED_DASHBOARD_DIALOG_TOKEN, useValue: EmbedDashboardDialogComponent},
-    {provide: COMPLEX_FILTER_PREDICATE_DIALOG_COMPONENT_TOKEN, useValue: ComplexFilterPredicateDialogComponent},
-    {provide: DASHBOARD_PAGE_COMPONENT_TOKEN, useValue: DashboardPageComponent},
-    {provide: HOME_COMPONENTS_MODULE_TOKEN, useValue: HomeComponentsModule },
-    {provide: MODULES_MAP, useValue: modulesMap}
+    { provide: EMBED_DASHBOARD_DIALOG_TOKEN, useValue: EmbedDashboardDialogComponent },
+    { provide: COMPLEX_FILTER_PREDICATE_DIALOG_COMPONENT_TOKEN, useValue: ComplexFilterPredicateDialogComponent },
+    { provide: DASHBOARD_PAGE_COMPONENT_TOKEN, useValue: DashboardPageComponent },
+    { provide: HOME_COMPONENTS_MODULE_TOKEN, useValue: HomeComponentsModule },
+    { provide: MODULES_MAP, useValue: modulesMap }
   ]
 })
 export class HomeComponentsModule { }

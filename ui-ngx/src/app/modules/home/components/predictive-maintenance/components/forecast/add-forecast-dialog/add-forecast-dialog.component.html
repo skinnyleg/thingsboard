@@ -1,0 +1,68 @@
+<h2 mat-dialog-title>Create Your Forecast</h2>
+
+<mat-dialog-content class="dialog-content">
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Forecast Name</mat-label>
+    <input matInput />
+  </mat-form-field>
+
+  <!-- Autocomplete for device selection -->
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Device Name</mat-label>
+    <input type="text" matInput [formControl]="myControl" [matAutocomplete]="auto" />
+    <mat-autocomplete 
+      #auto="matAutocomplete" 
+      [displayWith]="displayFn" 
+      (optionSelected)="onDeviceSelected($event.option.value)">
+      <mat-option *ngFor="let device of filteredDevices | async" [value]="device">
+        {{ device.name }} <!-- Display device name -->
+      </mat-option>
+    </mat-autocomplete>
+  </mat-form-field>
+
+  <!-- Fields with type, start, and end dates -->
+  <div class="fields-container">
+    <div *ngFor="let field of fields; let i = index">
+      <div class="field">
+        <!-- Button to remove the field -->
+        <button mat-icon-button (click)="removeField(i)" class="delete_button">
+          <mat-icon>remove_circle</mat-icon>
+        </button>
+
+        <!-- Autocomplete for telemetry field types -->
+        <mat-form-field appearance="outline" class="input-field">
+          <mat-label>Field Type {{ i + 1 }}</mat-label>
+          <input type="text" matInput [(ngModel)]="field.type" [matAutocomplete]="telemetryAuto" />
+          <mat-autocomplete #telemetryAuto="matAutocomplete">
+            <mat-option 
+              *ngFor="let telemetry of getFilteredTelemetry(i)" 
+              [value]="telemetry">
+              {{ telemetry }}
+            </mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+
+
+        <mat-form-field appearance="outline" class="input-field">
+          <mat-label>Date Range for Field {{ i + 1 }}</mat-label>
+          <mat-date-range-input [rangePicker]="picker">
+            <input matStartDate [(ngModel)]="field.start" placeholder="Start date" />
+            <input matEndDate [(ngModel)]="field.end" placeholder="End date" />
+          </mat-date-range-input>
+          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-date-range-picker #picker></mat-date-range-picker>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <!-- Button to add a new field -->
+    <button mat-raised-button color="accent" (click)="addField()">
+      <mat-icon>add_circle</mat-icon> Add Field
+    </button>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onConfirm()">Confirm</button>
+</mat-dialog-actions>

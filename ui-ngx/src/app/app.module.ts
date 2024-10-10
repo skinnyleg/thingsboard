@@ -28,7 +28,8 @@ import { DashboardRoutingModule } from '@modules/dashboard/dashboard-routing.mod
 import { RouterModule, Routes } from '@angular/router';
 
 const routes: Routes = [
-  { path: '**',
+  {
+    path: '**',
     redirectTo: 'home'
   }
 ];
@@ -53,7 +54,7 @@ export class PageNotFoundRoutingModule { }
     LoginModule,
     HomeModule,
     DashboardRoutingModule,
-    PageNotFoundRoutingModule
+    PageNotFoundRoutingModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

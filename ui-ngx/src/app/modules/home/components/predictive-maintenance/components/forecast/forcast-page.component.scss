@@ -1,0 +1,52 @@
+mat-card {
+    display: flex;
+    flex-direction: column;
+    height: 80vh; /* Full viewport height */
+    padding: 20px;
+    margin: 0;
+}
+
+.container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.table-container {
+    flex-grow: 1; /* Allow the table to take up available space */
+    overflow-y: auto; /* Scroll only if table overflows vertically */
+    display: flex;
+    flex-direction: column;
+}
+
+table {
+    width: 100%;
+}
+
+mat-paginator {
+    align-self: flex-end; /* Pagination stays at the bottom */
+}
+
+.custom-form-field {
+    width: 400px;
+}
+
+.custom-input {
+    height: 32px;
+    border-radius: 8px;
+}
+
+mat-form-field {
+    .mat-form-field-outline {
+        border-radius: 8px;
+    }
+}
+
+mat-icon {
+    cursor: pointer;
+}
+
+button {
+    margin: 0 5px;
+}

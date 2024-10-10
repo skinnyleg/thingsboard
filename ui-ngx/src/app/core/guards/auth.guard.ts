@@ -37,13 +37,13 @@ import { MobileService } from '@core/services/mobile.service';
 export class AuthGuard implements CanActivate, CanActivateChild {
 
   constructor(private store: Store<AppState>,
-              private router: Router,
-              private authService: AuthService,
-              private dialogService: DialogService,
-              private utils: UtilsService,
-              private translate: TranslateService,
-              private mobileService: MobileService,
-              private zone: NgZone) {}
+    private router: Router,
+    private authService: AuthService,
+    private dialogService: DialogService,
+    private utils: UtilsService,
+    private translate: TranslateService,
+    private mobileService: MobileService,
+    private zone: NgZone) { }
 
   getAuthState(): Observable<AuthState> {
     return this.store.pipe(
@@ -55,17 +55,20 @@ export class AuthGuard implements CanActivate, CanActivateChild {
   }
 
   canActivate(next: ActivatedRouteSnapshot,
-              state: RouterStateSnapshot) {
+    state: RouterStateSnapshot) {
 
     return this.getAuthState().pipe(
       mergeMap((authState) => {
         const url: string = state.url;
-
+        // console.log("url === ", url);
         let lastChild = state.root;
+        // console.log("lastChild === ", lastChild);
+        // console.log("lastChild.url === ", lastChild.url);
         const urlSegments: string[] = [];
         if (lastChild.url) {
           urlSegments.push(...lastChild.url.map(segment => segment.path));
         }
+        // console.log("urlSegments === ", urlSegments);
         while (lastChild.children.length) {
           lastChild = lastChild.children[0];
           if (lastChild.url) {
@@ -73,22 +76,31 @@ export class AuthGuard implements CanActivate, CanActivateChild {
           }
         }
         const path = urlSegments.join('.');
+        // console.log("path === ", path);
         const publicId = this.utils.getQueryParam('publicId');
+        // console.log("publicId === ", publicId);
         const data = lastChild.data || {};
         const params = lastChild.params || {};
         const isPublic = data.module === 'public';
-
+        // console.log("data === ", data);
+        // console.log("params === ", params);
+        // console.log("data.module === ", data.module);
+        // console.log("authState.isAuthenticated === ", authState.isAuthenticated);
         if (!authState.isAuthenticated || isPublic) {
+          // console.log("here is auth/isPublic")
           if (publicId && publicId.length > 0) {
+            // console.log("here publicId")
             this.authService.setUserFromJwtToken(null, null, false);
             this.authService.reloadUser();
             return of(false);
           } else if (!isPublic) {
+            // console.log("here is not public")
             this.authService.redirectUrl = url;
             // this.authService.gotoDefaultPlace(false);
             return of(this.authService.defaultUrl(false));
           } else {
             if (path === 'login') {
+              // console.log("path is login")
               return forkJoin([this.authService.loadOAuth2Clients()]).pipe(
                 map(() => {
                   return true;
@@ -105,6 +117,7 @@ export class AuthGuard implements CanActivate, CanActivateChild {
               this.authService.logout();
               return of(this.authService.defaultUrl(false));
             } else {
+              // console.log("return true");
               return of(true);
             }
           }
@@ -151,7 +164,7 @@ export class AuthGuard implements CanActivate, CanActivateChild {
           }
         }
       }),
-      catchError((err => { console.error(err); return of(false); } ))
+      catchError((err => { console.error(err); return of(false); }))
     );
   }
 
