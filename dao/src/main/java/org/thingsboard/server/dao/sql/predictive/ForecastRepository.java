@@ -19,7 +19,16 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.thingsboard.server.dao.model.sql.ForecastEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ForecastRepository extends JpaRepository<ForecastEntity, UUID> {
-
+    @Query("SELECT f FROM ForecastEntity f WHERE f.tenantId = :tenantId " +
+            "AND (:textSearch IS NULL OR ilike(f.name, CONCAT('%', :textSearch, '%')) = true)")
+    Page<ForecastEntity> findForecasts(
+            @Param("tenantId") UUID tenantId,
+            @Param("textSearch") String textSearch,
+            Pageable pageable);
 }

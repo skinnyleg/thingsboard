@@ -13,8 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.thingsboard.server.common.data.predictive;
+package org.thingsboard.server.common.data.id;
 
-public class Forecast {
+import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class ForecastId extends UUIDBased {
+    @JsonCreator
+    public ForecastId(@JsonProperty("id") UUID id) {
+        super(id);
+    }
+
+    public ForecastId() {
+        super();
+    }
 }

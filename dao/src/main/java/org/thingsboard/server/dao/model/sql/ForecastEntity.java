@@ -25,7 +25,16 @@ import org.thingsboard.server.dao.model.BaseSqlEntity;
 
 import java.util.UUID;
 
+import jakarta.persistence.Convert;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLJsonPGObjectJsonbType;
+import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.data.Forecast;
+import org.thingsboard.server.common.data.forecast.ForecastAttribute;
+import org.thingsboard.server.common.data.id.EntityViewId;
+import org.thingsboard.server.common.data.id.ForecastId;
+import org.thingsboard.server.common.data.id.TenantId;
+import org.thingsboard.server.dao.util.mapping.JsonConverter;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -38,21 +47,30 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
     @Column(name = "entity_id")
     private UUID entityId;
 
-    @Column(name = "jsonb")
-    private JsonNode jsonb;
+    @Column(name = "name")
+    private String name;
 
-    @Column(name = "label")
-    private String label;
+    @Convert(converter = JsonConverter.class)
+    @JdbcType(PostgreSQLJsonPGObjectJsonbType.class)
+    @Column(name = "attributes", columnDefinition = "jsonb")
+    private JsonNode attributes;
 
-    @Column(name = "created_time")
-    private long createdTime;
-
-    @Column(name = "id")
-    private UUID id;
+    public ForecastEntity() {
+        super();
+    }
 
     @Override
     public Forecast toData() {
-        Forecast forecast = new Forecast();
+        Forecast forecast = new Forecast(new ForecastId(this.getId()));
+        forecast.setCreatedTime(createdTime);
+        if (tenantId != null) {
+            forecast.setTenantId(TenantId.fromUUID(tenantId));
+        }
+        if (entityId != null) {
+            forecast.setEntityId(new EntityViewId(entityId));
+        }
+        forecast.setName(name);
+        forecast.setAttributes(JacksonUtil.convertValue(attributes, ForecastAttribute[].class));
         return forecast;
     }
 }

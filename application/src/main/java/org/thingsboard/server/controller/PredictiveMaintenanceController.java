@@ -32,7 +32,7 @@ import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
-import org.thingsboard.server.common.data.predictive.Forecast;
+import org.thingsboard.server.common.data.Forecast;
 import org.thingsboard.server.config.annotations.ApiOperation;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -71,9 +71,9 @@ public class PredictiveMaintenanceController extends BaseController {
     public PageData<Forecast> getForcasts(
             @Parameter(description = "The number of items to return", required = true) @RequestParam int pageSize,
             @Parameter(description = "The page number", required = true) @RequestParam int page,
-            @Parameter(description = "The sort property", required = true) @RequestParam String sortProperty,
-            @Parameter(description = "The sort order", required = true) @RequestParam String sortOrder,
-            @Parameter(description = "The text search", required = true) @RequestParam String textSearch)
+            @Parameter(description = "The sort property", required = false) @RequestParam String sortProperty,
+            @Parameter(description = "The sort order", required = false) @RequestParam String sortOrder,
+            @Parameter(description = "The text search", required = false) @RequestParam String textSearch)
             throws ThingsboardException {
         TenantId tenantId = getCurrentUser().getTenantId();
         PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);

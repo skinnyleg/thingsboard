@@ -15,10 +15,10 @@
  */
 package org.thingsboard.server.service.predictive;
 
+import org.thingsboard.server.common.data.Forecast;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
-import org.thingsboard.server.common.data.predictive.Forecast;
 import org.thingsboard.server.dao.predictive.ForecastsService;
 
 import lombok.RequiredArgsConstructor;

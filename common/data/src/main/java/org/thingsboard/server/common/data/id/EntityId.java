@@ -43,7 +43,7 @@ public interface EntityId extends HasUUID, Serializable { //NOSONAR, the constan
 
     @JsonIgnore
     default boolean isNullUid() {
-        return NULL_UUID.equals(getId());
+        return NULL_UUID.equals(getId());   
     }
 
 }

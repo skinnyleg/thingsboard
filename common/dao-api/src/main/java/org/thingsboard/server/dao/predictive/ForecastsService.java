@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 package org.thingsboard.server.dao.predictive;
+
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
-import org.thingsboard.server.common.data.predictive.Forecast;
-
+import org.thingsboard.server.common.data.Forecast;
 
 public interface ForecastsService {
     PageData<Forecast> findTenantForcasts(TenantId tenantId, PageLink pageLink);

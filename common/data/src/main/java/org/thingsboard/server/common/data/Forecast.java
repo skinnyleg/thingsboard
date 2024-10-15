@@ -16,26 +16,35 @@
 package org.thingsboard.server.common.data;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.thingsboard.server.common.data.id.TenantId;
+import org.thingsboard.server.common.data.validation.Length;
+import org.thingsboard.server.common.data.validation.NoXss;
+import org.thingsboard.server.common.data.id.ForecastId;
+import org.thingsboard.server.common.data.forecast.ForecastAttribute;
 import org.thingsboard.server.common.data.id.EntityId;
+import jakarta.validation.Valid;
 
 @Schema
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Slf4j
-public class Forecast implements HasTenantId {
-    // @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON
-    // object with Entity Id.", accessMode = Schema.AccessMode.READ_ONLY)
-    // private EntityId id;
+public class Forecast extends BaseData<ForecastId> implements HasTenantId, HasName {
 
-    // @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON
-    // object with Entity Id.", accessMode = Schema.AccessMode.READ_ONLY)
-    // private EntityId label;
+    public Forecast() {
+        super();
+    }
 
-    // @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON
-    // object with Entity Id.", accessMode = Schema.AccessMode.READ_ONLY)
-    // private EntityId createdTime;
+    public Forecast(ForecastId id) {
+        super(id);
+    }
+
+    @NoXss
+    @Length(fieldName = "name")
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Unique Forecast Name", accessMode = Schema.AccessMode.READ_ONLY)
+    private String name;
 
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Tenant Id.", accessMode = Schema.AccessMode.READ_ONLY)
     private TenantId tenantId;
@@ -43,7 +52,7 @@ public class Forecast implements HasTenantId {
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Entity Id.", accessMode = Schema.AccessMode.READ_ONLY)
     private EntityId entityId;
 
-    // @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON
-    // object with Entity Id.", accessMode = Schema.AccessMode.READ_ONLY)
-    // private EntityId jsonb;
+    @Valid
+    @Schema(description = "JSON array of attributes")
+    private transient ForecastAttribute[] attributes;
 }
