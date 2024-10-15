@@ -24,6 +24,7 @@ import org.thingsboard.server.service.predictive.TbForecastsService;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -64,16 +65,16 @@ public class PredictiveMaintenanceController extends BaseController {
 
     @ApiOperation(value = "Get predictiveMaintenance forecasts", notes = "access the forecasts in predictive maintenance route directive")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @GetMapping(value = "/forecasts", params = {
-            "pageSize", "page", "sortProperty", "sortOrder", "textSearch"
-    })
+    @GetMapping(value = "/forecasts", params = { "pageSize", "page" })
     @ResponseBody
     public PageData<Forecast> getForcasts(
             @Parameter(description = "The number of items to return", required = true) @RequestParam int pageSize,
             @Parameter(description = "The page number", required = true) @RequestParam int page,
-            @Parameter(description = "The sort property", required = false) @RequestParam String sortProperty,
-            @Parameter(description = "The sort order", required = false) @RequestParam String sortOrder,
-            @Parameter(description = "The text search", required = false) @RequestParam String textSearch)
+            @Parameter(description = "The sort property", schema = @Schema(allowableValues = { "name", "createdTime",
+                    "entityId" })) @RequestParam(required = false) String sortProperty,
+            @Parameter(description = "The sort order", schema = @Schema(allowableValues = { "ASC",
+                    "DESC" })) @RequestParam(required = false) String sortOrder,
+            @Parameter(description = "The text search") @RequestParam(required = false) String textSearch)
             throws ThingsboardException {
         TenantId tenantId = getCurrentUser().getTenantId();
         PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);
