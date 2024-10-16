@@ -13,26 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-.tab-content {
-    padding: 16px;
+package org.thingsboard.server.common.data.id;
 
-    img {
-        // max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 16px 0;
+import java.util.UUID;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class ForecastId extends UUIDBased {
+    @JsonCreator
+    public ForecastId(@JsonProperty("id") UUID id) {
+        super(id);
     }
 
-    h2 {
-        margin-top: 0;
-    }
-
-    p {
-        margin: 16px 0;
-    }
-
-    ul {
-        list-style-type: disc;
-        padding-left: 20px;
+    public ForecastId() {
+        super();
     }
 }

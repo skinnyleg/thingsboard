@@ -13,26 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-.tab-content {
-    padding: 16px;
+package org.thingsboard.server.dao.predictive;
 
-    img {
-        // max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 16px 0;
-    }
+import org.thingsboard.server.common.data.id.TenantId;
+import org.thingsboard.server.common.data.page.PageData;
+import org.thingsboard.server.common.data.page.PageLink;
+import org.thingsboard.server.common.data.Forecast;
 
-    h2 {
-        margin-top: 0;
-    }
-
-    p {
-        margin: 16px 0;
-    }
-
-    ul {
-        list-style-type: disc;
-        padding-left: 20px;
-    }
+public interface ForecastsService {
+    PageData<Forecast> findTenantForcasts(TenantId tenantId, PageLink pageLink);
 }

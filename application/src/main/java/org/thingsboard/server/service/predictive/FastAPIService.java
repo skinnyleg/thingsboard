@@ -13,26 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-.tab-content {
-    padding: 16px;
+package org.thingsboard.server.service.predictive;
 
-    img {
-        // max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 16px 0;
-    }
+import com.fasterxml.jackson.databind.JsonNode;
 
-    h2 {
-        margin-top: 0;
-    }
-
-    p {
-        margin: 16px 0;
-    }
-
-    ul {
-        list-style-type: disc;
-        padding-left: 20px;
-    }
+public interface FastAPIService {
+    public JsonNode getHelloWorld();
 }
