@@ -1,19 +1,19 @@
 import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { AppState } from "@app/core/core.state";
+import {
+  ELEMENT_DATA,
+  Order,
+} from "@app/modules/home/models/predictive-maintenance.models";
 import { PageComponent } from "@app/shared/public-api";
 import { Store } from "@ngrx/store";
-import {
-  Order,
-  ELEMENT_DATA,
-} from "@home/components/predictive-maintenance/components/anomaly-detection/anomaly-detection.component";
 
 @Component({
-  selector: "anomaly-detection",
-  templateUrl: "./anomaly-detection.component.html",
-  styleUrls: ["./anomaly-detection.component.scss"],
+  selector: "forcast",
+  templateUrl: "./forcast.component.html",
+  styleUrls: ["./forcast.component.scss"],
 })
-export class AnomalyDetectionComponent extends PageComponent implements Order {
+export class ForcastComponent extends PageComponent implements Order {
   constructor(
     protected store: Store<AppState>,
     protected route: ActivatedRoute,
@@ -24,7 +24,7 @@ export class AnomalyDetectionComponent extends PageComponent implements Order {
   }
 
   changeModel(value: any) {
-    this.router.navigateByUrl("/PM/anomaly-detection/" + value.slice(1));
+    this.router.navigateByUrl("/PM/forcast/" + value.slice(1));
   }
 
   models: Order[];

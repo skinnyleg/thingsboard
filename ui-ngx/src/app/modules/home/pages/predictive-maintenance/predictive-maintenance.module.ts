@@ -14,18 +14,14 @@
 /// limitations under the License.
 ///
 
-import { CommonModule } from '@angular/common';
-import { NgModule } from '@angular/core';
-import { SharedModule } from '@shared/shared.module';
-import { PredictiveMaintenanceRoutingModule } from './predictive-maintenance-routing.module';
-import { AnomalyDetectionComponent } from './anomaly-detection-page.module';
+import { CommonModule } from "@angular/common";
+import { NgModule } from "@angular/core";
+import { SharedModule } from "@shared/shared.module";
+import { PredictiveMaintenanceRoutingModule } from "./predictive-maintenance-routing.module";
+import { AnomalyDetectionComponent } from "./anomaly-detection/anomaly-detection-page.module";
 
 @NgModule({
   declarations: [AnomalyDetectionComponent],
-  imports: [
-    CommonModule,
-    SharedModule,
-    PredictiveMaintenanceRoutingModule
-  ]
+  imports: [CommonModule, SharedModule, PredictiveMaintenanceRoutingModule],
 })
-export class PredictiveMaintenanceModule { }
+export class PredictiveMaintenanceModule {}

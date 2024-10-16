@@ -1,38 +1,28 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { MatTableDataSource } from '@angular/material/table';
-import { MatPaginator } from '@angular/material/paginator';
-import { MatSort } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { CommonModule } from '@angular/common';
-import { MatDialog } from '@angular/material/dialog';
-import { AddAnomalyDetectionDialogComponent } from './add-anomaly-detection-dialog/add-anomaly-detection-dialog.component';
-import { Router } from '@angular/router';
-
-export interface Order {
-  id: string;
-  device: string;
-  user: string;
-  date: string;
-  status: string;
-}
-
-export const ELEMENT_DATA: Order[] = [
-  { id: '#20462', device: 'Hat', user: 'Matt Dickerson', date: '2022-05-13', status: 'Completed' },
-  { id: '#18933', device: 'Laptop', user: 'Wiktoria', date: '2022-05-22', status: 'Completed' },
-  // Add more data as per your requirement...
-];
+import { Component, OnInit, ViewChild } from "@angular/core";
+import { MatTableDataSource } from "@angular/material/table";
+import { MatPaginator } from "@angular/material/paginator";
+import { MatSort } from "@angular/material/sort";
+import { MatTableModule } from "@angular/material/table";
+import { MatPaginatorModule } from "@angular/material/paginator";
+import { MatSortModule } from "@angular/material/sort";
+import { MatInputModule } from "@angular/material/input";
+import { MatIconModule } from "@angular/material/icon";
+import { MatButtonModule } from "@angular/material/button";
+import { MatCardModule } from "@angular/material/card";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { CommonModule } from "@angular/common";
+import { MatDialog } from "@angular/material/dialog";
+import { AddAnomalyDetectionDialogComponent } from "./add-anomaly-detection-dialog/add-anomaly-detection-dialog.component";
+import { Router } from "@angular/router";
+import {
+  ELEMENT_DATA,
+  Order,
+} from "@app/modules/home/models/predictive-maintenance.models";
 
 @Component({
-  selector: 'tb-anomaly-detection',
-  templateUrl: './anomaly-detection.component.html',
-  styleUrls: ['./anomaly-detection.component.scss'],
+  selector: "tb-anomaly-detection",
+  templateUrl: "./anomaly-detection.component.html",
+  styleUrls: ["./anomaly-detection.component.scss"],
   standalone: true,
   imports: [
     CommonModule,
@@ -44,10 +34,17 @@ export const ELEMENT_DATA: Order[] = [
     MatButtonModule,
     MatCardModule,
     MatTooltipModule,
-  ]
+  ],
 })
 export class AnomalyDetectionComponent implements OnInit {
-  displayedColumns: string[] = ['id', 'device', 'user', 'date', 'status', 'action'];
+  displayedColumns: string[] = [
+    "id",
+    "device",
+    "user",
+    "date",
+    "status",
+    "action",
+  ];
   dataSource = new MatTableDataSource(ELEMENT_DATA);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -60,11 +57,11 @@ export class AnomalyDetectionComponent implements OnInit {
   }
   openAddAnomalyDetectionDialog(): void {
     const dialogRef = this.dialog.open(AddAnomalyDetectionDialogComponent, {
-      width: '600px',
+      width: "600px",
     });
 
-    dialogRef.afterClosed().subscribe(result => {
-      console.log('Dialog closed', result);
+    dialogRef.afterClosed().subscribe((result) => {
+      console.log("Dialog closed", result);
     });
   }
 

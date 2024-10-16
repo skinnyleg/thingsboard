@@ -73,6 +73,8 @@ export class AddForecastDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // TODO fetch all devices rather than with a pagination system
+    // use the page data the comes back with the devices it has the total amount of the devices
     const pageLink = new PageLink(11, 0, null, {
       property: "createdTime",
       direction: Direction.DESC,

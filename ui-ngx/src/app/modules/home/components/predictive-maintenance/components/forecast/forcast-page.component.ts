@@ -1,29 +1,26 @@
 import { Component, OnInit, ViewChild } from "@angular/core";
-import { MatTableDataSource } from "@angular/material/table";
-import { MatPaginator } from "@angular/material/paginator";
-import { MatSort } from "@angular/material/sort";
-import { MatTableModule } from "@angular/material/table";
-import { MatPaginatorModule } from "@angular/material/paginator";
-import { MatSortModule } from "@angular/material/sort";
+import { MatTableDataSource, MatTableModule } from "@angular/material/table";
+import { MatPaginator, MatPaginatorModule } from "@angular/material/paginator";
+import { MatSort, MatSortModule } from "@angular/material/sort";
+import { MatDialog } from "@angular/material/dialog";
+import { ForecastService } from "@app/core/http/forecast.service";
+import { Direction, PageLink } from "@app/shared/public-api";
+import { TranslateModule } from "@ngx-translate/core";
+import { FormControl } from "@angular/forms";
+import { CommonModule } from "@angular/common";
 import { MatInputModule } from "@angular/material/input";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { CommonModule } from "@angular/common";
-import { MatDialog } from "@angular/material/dialog";
-import { AddForecastDialogComponent } from "../forecast/add-forecast-dialog/add-forecast-dialog.component";
-import { ForecastService } from "@app/core/http/forecast.service";
-import { Direction, PageLink } from "@app/shared/public-api";
-// import { ForecastService } from '../../services/forecast.service'; // Import ForecastService
-
-export interface Order {
-  id: string;
-  device: string;
-  user: string;
-  date: string;
-  status: string;
-}
+import { MatToolbarModule } from "@angular/material/toolbar";
+import { MatSidenavModule } from "@angular/material/sidenav";
+import { MatDividerModule } from "@angular/material/divider";
+import { AddForecastDialogComponent } from "./add-forecast-dialog/add-forecast-dialog.component";
+import { SelectionModel } from "@angular/cdk/collections";
+import { TranslateService } from "@ngx-translate/core";
+import { ReactiveFormsModule } from "@angular/forms";
+import { Order } from "@app/modules/home/models/predictive-maintenance.models";
 
 @Component({
   selector: "tb-forcast-page",
@@ -40,6 +37,12 @@ export interface Order {
     MatButtonModule,
     MatCardModule,
     MatTooltipModule,
+    MatToolbarModule, // Add MatToolbarModule
+    MatSidenavModule,
+    MatDividerModule,
+    TranslateModule,
+    ReactiveFormsModule,
+    // Add other necessary modules here
   ],
 })
 export class ForcastComponent implements OnInit {
@@ -51,55 +54,77 @@ export class ForcastComponent implements OnInit {
     "status",
     "action",
   ];
-  dataSource = new MatTableDataSource<Order>();
+  entityColumns = [
+    { key: "id", title: "ID" },
+    { key: "device", title: "Device" },
+    { key: "user", title: "User" },
+    { key: "date", title: "Date" },
+    { key: "status", title: "Status" },
+  ];
 
-  isLoading = false; // Track the loading state
-  totalElements = 0; // Track the total number of elements for pagination
+  dataSource = new MatTableDataSource<Order>();
+  textSearch = new FormControl();
+  selection = new SelectionModel<Order>(true, []);
+  isLoading = false;
+  totalElements = 0;
+  textSearchMode: boolean = false;
+  pageLink: PageLink = new PageLink(10, 0, null, {
+    property: "createdTime",
+    direction: Direction.DESC,
+  });
+
+  translations: any;
+  pageSizeOptions = [5, 10, 25, 100];
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
     public dialog: MatDialog,
-    private forecastService: ForecastService // Inject ForecastService
-  ) {}
+    private forecastService: ForecastService,
+    private translate: TranslateService
+  ) {
+    this.translations = {
+      search: this.translate.instant("search"),
+      close: this.translate.instant("action.close"),
+    };
+  }
 
   ngOnInit() {
-    // this.fetchForecasts(); // Load data on initialization
+    // Initialization logic
+  }
+
+  trackByEntityId(index: number, entity: Order): string {
+    return entity.id; // Ensure id exists
+  }
+
+  trackByColumnKey(index: number, column: any): string {
+    return column.key; // Ensure key exists
+  }
+
+  cellContent(entity: Order, column: any): string {
+    return entity[column.key]; // Replace with your logic
   }
 
   fetchForecasts(): void {
-    // Set the loading state (could show a spinner in the UI)
     this.isLoading = true;
-
-    // Get the current pagination and sorting settings
-    const pageSize = this.paginator?.pageSize || 10;
-    const pageIndex = this.paginator?.pageIndex || 0;
-    const sortProperty = this.sort?.active || "createdTime";
+    const pageSize = this.paginator.pageSize || 10;
+    const pageIndex = this.paginator.pageIndex || 0;
+    const sortProperty = this.sort.active || "createdTime";
     const sortDirection: Direction =
-      this.sort?.direction === "asc" ? Direction.ASC : Direction.DESC;
+      this.sort.direction === "asc" ? Direction.ASC : Direction.DESC;
 
-    // Create a new PageLink with pagination and sorting details
     const pageLink = new PageLink(pageSize, pageIndex, null, {
       property: sortProperty,
       direction: sortDirection,
     });
 
-    // Fetch forecasts from the service
     this.forecastService.getForecastsByPage(pageLink).subscribe(
       (data) => {
-        // Assign fetched data to the dataSource
-        this.dataSource.data = data.data; // Assuming `data.data` holds the forecasts
-        this.dataSource.paginator = this.paginator; // Link paginator
-        this.dataSource.sort = this.sort; // Link sorting
-
-        // Update the total number of elements for pagination
+        this.dataSource.data = data.data;
         this.totalElements = data.totalElements;
-
-        // End the loading state
         this.isLoading = false;
       },
       (error) => {
-        // Handle errors gracefully
         console.error("Error fetching forecasts:", error);
         this.isLoading = false;
       }
@@ -177,4 +202,10 @@ export class ForcastComponent implements OnInit {
       this.dataSource.paginator.firstPage();
     }
   }
+
+  exitFilterMode() {
+    this.textSearchMode = false; // Example logic to exit search mode
+  }
+
+  // Rest of the methods (add, edit, delete, etc.)
 }

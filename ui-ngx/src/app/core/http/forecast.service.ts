@@ -2,8 +2,8 @@ import { Injectable } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 import { defaultHttpOptionsFromConfig, RequestConfig } from "./http-utils"; // Import utility functions if available
-import { Order } from "@app/modules/home/components/predictive-maintenance/components/forecast/forcast-page.component";
 import { PageData, PageLink } from "@app/shared/public-api";
+import { Order } from "@app/modules/home/models/predictive-maintenance.models";
 // import { Order } from '../components/forecast/forcast-page.component'; // Adjust import path as needed
 
 @Injectable({

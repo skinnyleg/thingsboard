@@ -1,4 +1,4 @@
-import { ForecastService } from './../../../../core/http/forecast.service';
+import { ForecastService } from "./../../../../core/http/forecast.service";
 ///
 /// Copyright © 2016-2024 The Thingsboard Authors
 ///
@@ -15,19 +15,19 @@ import { ForecastService } from './../../../../core/http/forecast.service';
 /// limitations under the License.
 ///
 
-import { Injectable, NgModule } from '@angular/core';
-import { Resolve, RouterModule, Routes } from '@angular/router';
-import { PredictiveMaintenanceComponent } from '@app/modules/home/components/predictive-maintenance/predictive-maintenance.component';
-import { OAuth2Service } from '@core/http/oauth2.service';
-import { Authority } from '@shared/models/authority.enum';
-import { Observable } from 'rxjs';
-import { AnomalyDetectionComponent } from '@home/pages/predictive-maintenance/anomaly-detection-page.module';
+import { Injectable, NgModule } from "@angular/core";
+import { Resolve, RouterModule, Routes } from "@angular/router";
+import { PredictiveMaintenanceComponent } from "@app/modules/home/components/predictive-maintenance/predictive-maintenance.component";
+import { OAuth2Service } from "@core/http/oauth2.service";
+import { Authority } from "@shared/models/authority.enum";
+import { Observable } from "rxjs";
+import { AnomalyDetectionComponent } from "@app/modules/home/pages/predictive-maintenance/anomaly-detection/anomaly-detection-page.module";
+import { RouterTabsComponent } from "../../components/router-tabs.component";
+import { ForcastComponent } from "./forcast/forcast.module";
 
 @Injectable()
 export class OAuth2LoginProcessingUrlResolver implements Resolve<string> {
-
-  constructor(private oauth2Service: OAuth2Service) {
-  }
+  constructor(private oauth2Service: OAuth2Service) {}
 
   resolve(): Observable<string> {
     return this.oauth2Service.getLoginProcessingUrl();
@@ -36,44 +36,57 @@ export class OAuth2LoginProcessingUrlResolver implements Resolve<string> {
 
 const routes: Routes = [
   {
-    path: 'PM',
+    path: "PM",
     data: {
       breadcrumb: {
-        label: 'Predictive Maintenance',
-        icon: 'mdi:line-up'
+        label: "Predictive Maintenance",
+        icon: "mdi:line-up",
       },
       // alarmsMode: AlarmsMode.ALL
     },
     children: [
       {
-        path: '',
+        path: "",
         component: PredictiveMaintenanceComponent,
         data: {
           auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
-          title: 'predictive-maintenance.predictive-maintenance',
+          title: "predictive-maintenance.predictive-maintenance",
           isPage: true,
-        }
+        },
       },
       {
-        path: 'anomaly-detection/:id',
+        path: "anomaly-detection/:id",
         component: AnomalyDetectionComponent,
         data: {
           auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
-          title: 'predictive-maintenance.anomaly-detection',
+          title: "predictive-maintenance.anomaly-detection",
           breadcrumb: {
-            label: 'Anomaly Detection',
-            icon: 'mdi:alert'
+            label: "Anomaly Detection",
+            icon: "mdi:alert",
           },
           isPage: true,
-        }
-      }
-    ]
-  }
+        },
+      },
+      {
+        path: "forcast/:id",
+        component: ForcastComponent,
+        data: {
+          auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
+          title: "predictive-maintenance.forcast",
+          breadcrumb: {
+            label: "Forcast",
+            icon: "mdi:alert",
+          },
+          isPage: true,
+        },
+      },
+    ],
+  },
 ];
 
 @NgModule({
   imports: [RouterModule.forChild(routes)],
   exports: [RouterModule],
-  providers: []
+  providers: [],
 })
-export class PredictiveMaintenanceRoutingModule { }
+export class PredictiveMaintenanceRoutingModule {}
