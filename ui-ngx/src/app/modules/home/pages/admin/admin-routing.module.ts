@@ -15,7 +15,7 @@
 ///
 
 import { Injectable, NgModule } from '@angular/core';
-import { Resolve, RouterModule, Routes } from '@angular/router';
+import { RouterModule, Routes } from '@angular/router';
 
 import { MailServerComponent } from '@modules/home/pages/admin/mail-server.component';
 import { ConfirmOnExitGuard } from '@core/guards/confirm-on-exit.guard';
@@ -43,7 +43,7 @@ import { ImageGalleryComponent } from '@shared/components/image/image-gallery.co
 import { MobileAppSettingsComponent } from '@home/pages/admin/mobile-app-settings.component';
 
 @Injectable()
-export class OAuth2LoginProcessingUrlResolver implements Resolve<string> {
+export class OAuth2LoginProcessingUrlResolver  {
 
   constructor(private oauth2Service: OAuth2Service) {
   }

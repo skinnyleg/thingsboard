@@ -16,7 +16,7 @@ import { ForecastService } from "./../../../../core/http/forecast.service";
 ///
 
 import { Injectable, NgModule } from "@angular/core";
-import { Resolve, RouterModule, Routes } from "@angular/router";
+import { RouterModule, Routes } from "@angular/router";
 import { PredictiveMaintenanceComponent } from "@app/modules/home/components/predictive-maintenance/predictive-maintenance.component";
 import { OAuth2Service } from "@core/http/oauth2.service";
 import { Authority } from "@shared/models/authority.enum";
@@ -26,7 +26,7 @@ import { RouterTabsComponent } from "../../components/router-tabs.component";
 import { ForcastComponent } from "./forcast/forcast.module";
 
 @Injectable()
-export class OAuth2LoginProcessingUrlResolver implements Resolve<string> {
+export class OAuth2LoginProcessingUrlResolver  {
   constructor(private oauth2Service: OAuth2Service) {}
 
   resolve(): Observable<string> {
