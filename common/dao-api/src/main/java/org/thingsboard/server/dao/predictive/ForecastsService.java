@@ -22,4 +22,6 @@ import org.thingsboard.server.common.data.Forecast;
 
 public interface ForecastsService {
     PageData<Forecast> findTenantForcasts(TenantId tenantId, PageLink pageLink);
+
+    Forecast saveForecast(Forecast forecast);
 }

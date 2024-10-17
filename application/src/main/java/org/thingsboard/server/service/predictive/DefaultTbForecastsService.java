@@ -15,11 +15,15 @@
  */
 package org.thingsboard.server.service.predictive;
 
+import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.Forecast;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
+import org.thingsboard.server.common.data.User;
+import org.thingsboard.server.common.data.audit.ActionType;
 import org.thingsboard.server.dao.predictive.ForecastsService;
+import org.thingsboard.server.service.entitiy.AbstractTbEntityService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -30,7 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Service
 @Slf4j
-public class DefaultTbForecastsService implements TbForecastsService {
+public class DefaultTbForecastsService extends AbstractTbEntityService implements TbForecastsService {
 
     @Autowired
     private ForecastsService forecastsService;
@@ -39,4 +43,21 @@ public class DefaultTbForecastsService implements TbForecastsService {
         return this.forecastsService.findTenantForcasts(tenantId, pageLink);
     }
 
+    @Override
+    public Forecast save(Forecast forecast, User user) throws Exception {
+        Forecast savedForecast = this.forecastsService.saveForecast(forecast);
+        try {
+            autoCommit(user, savedForecast.getId());
+        } catch (Exception e) {
+            logEntityActionService.logEntityAction(savedForecast.getTenantId(), emptyId(EntityType.FORECAST), forecast,
+                    ActionType.ADDED, user, e);
+            throw e;
+        }
+        return savedForecast;
+    }
+
+    @Override
+    public void delete(Forecast entity, User user) {
+
+    }
 }

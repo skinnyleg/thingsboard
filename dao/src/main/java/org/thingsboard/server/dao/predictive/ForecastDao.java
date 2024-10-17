@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.thingsboard.server.service.predictive;
+package org.thingsboard.server.dao.predictive;
 
-import org.thingsboard.server.common.data.id.TenantId;
+import org.thingsboard.server.common.data.Forecast;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
-import org.thingsboard.server.service.entitiy.SimpleTbEntityService;
-import org.thingsboard.server.common.data.Forecast;
+import org.thingsboard.server.dao.Dao;
+import org.thingsboard.server.common.data.id.TenantId;
 
-public interface TbForecastsService extends SimpleTbEntityService<Forecast> {
-    PageData<Forecast> findTenantForcasts(TenantId tenantId, PageLink pageLink);
+public interface ForecastDao extends Dao<Forecast> {
+    PageData<Forecast> findTenantForecasts(TenantId tenantId, PageLink pageLink);
+
+    Forecast saveAndFlush(TenantId tenantId, Forecast forecast);
 }

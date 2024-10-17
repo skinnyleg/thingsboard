@@ -19,8 +19,12 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
+import org.thingsboard.server.common.data.EntityType;
 
-public class ForecastId extends UUIDBased {
+@Schema(accessMode = Schema.AccessMode.READ_ONLY)
+public class ForecastId extends UUIDBased implements EntityId {
+
     @JsonCreator
     public ForecastId(@JsonProperty("id") UUID id) {
         super(id);
@@ -28,5 +32,11 @@ public class ForecastId extends UUIDBased {
 
     public ForecastId() {
         super();
+    }
+
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "string", example = "FORECAST", allowableValues = "FORECAST")
+    @Override
+    public EntityType getEntityType() {
+        return EntityType.FORECAST;
     }
 }
