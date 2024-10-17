@@ -21,8 +21,6 @@ import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.Forecast;
-import org.thingsboard.server.dao.DaoUtil;
-import org.thingsboard.server.dao.sql.predictive.ForecastRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,14 +29,15 @@ import lombok.extern.slf4j.Slf4j;
 public class BaseForcastService implements ForecastsService {
 
     @Autowired
-    private ForecastRepository forecastRepository;
+    private ForecastDao forecastDao;
 
     @Override
     public PageData<Forecast> findTenantForcasts(TenantId tenantId, PageLink pageLink) {
-        return DaoUtil.toPageData(
-                forecastRepository.findForecasts(
-                        tenantId.getId(),
-                        pageLink.getTextSearch(),
-                        DaoUtil.toPageable(pageLink)));
+        return forecastDao.findTenantForecasts(tenantId, pageLink);
+    }
+
+    @Override
+    public Forecast saveForecast(Forecast forecast) {
+        return forecastDao.saveAndFlush(forecast.getTenantId(), forecast);
     }
 }

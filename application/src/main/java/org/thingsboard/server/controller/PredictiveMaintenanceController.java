@@ -27,8 +27,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
@@ -79,5 +81,16 @@ public class PredictiveMaintenanceController extends BaseController {
         TenantId tenantId = getCurrentUser().getTenantId();
         PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);
         return checkNotNull(forecastsService.findTenantForcasts(tenantId, pageLink));
+    }
+
+    @ApiOperation(value = "Post predictiveMaintenance forecast", notes = "access the forecasts in predictive maintenance route directive")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @PostMapping(value = "/forecasts", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Forecast saveForecast(@RequestBody Forecast forecast) throws Exception {
+        TenantId tenantId = getCurrentUser().getTenantId();
+        forecast.setId(null);
+        forecast.setTenantId(tenantId);
+        return checkNotNull(forecastsService.save(forecast, getCurrentUser()));
     }
 }

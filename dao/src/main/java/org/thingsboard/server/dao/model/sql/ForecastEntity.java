@@ -31,7 +31,7 @@ import org.hibernate.dialect.PostgreSQLJsonPGObjectJsonbType;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.data.Forecast;
 import org.thingsboard.server.common.data.forecast.ForecastAttribute;
-import org.thingsboard.server.common.data.id.EntityViewId;
+import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.dao.util.mapping.JsonConverter;
@@ -44,8 +44,8 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
     @Column(name = "tenant_id")
     private UUID tenantId;
 
-    @Column(name = "entity_id")
-    private UUID entityId;
+    @Column(name = "device_id")
+    private UUID deviceId;
 
     @Column(name = "name")
     private String name;
@@ -59,6 +59,21 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
         super();
     }
 
+    public ForecastEntity(Forecast forecast) {
+        if (forecast.getId() != null) {
+            this.setId(forecast.getId().getId());
+        }
+        this.createdTime = forecast.getCreatedTime();
+        if (forecast.getTenantId() != null) {
+            this.tenantId = forecast.getTenantId().getId();
+        }
+        if (forecast.getDeviceId() != null) {
+            this.deviceId = forecast.getDeviceId().getId();
+        }
+        this.name = forecast.getName();
+        this.attributes = JacksonUtil.valueToTree(forecast.getAttributes());
+    }
+
     @Override
     public Forecast toData() {
         Forecast forecast = new Forecast(new ForecastId(this.getId()));
@@ -66,8 +81,8 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
         if (tenantId != null) {
             forecast.setTenantId(TenantId.fromUUID(tenantId));
         }
-        if (entityId != null) {
-            forecast.setEntityId(new EntityViewId(entityId));
+        if (deviceId != null) {
+            forecast.setDeviceId(new DeviceId(deviceId));
         }
         forecast.setName(name);
         forecast.setAttributes(JacksonUtil.convertValue(attributes, ForecastAttribute[].class));

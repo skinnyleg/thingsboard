@@ -24,7 +24,7 @@ import org.thingsboard.server.common.data.validation.Length;
 import org.thingsboard.server.common.data.validation.NoXss;
 import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.forecast.ForecastAttribute;
-import org.thingsboard.server.common.data.id.EntityId;
+import org.thingsboard.server.common.data.id.DeviceId;
 import jakarta.validation.Valid;
 
 @Schema
@@ -41,16 +41,24 @@ public class Forecast extends BaseData<ForecastId> implements HasTenantId, HasNa
         super(id);
     }
 
+    public Forecast(Forecast forecast) {
+        super(forecast);
+        this.tenantId = forecast.getTenantId();
+        this.deviceId = forecast.getDeviceId();
+        this.name = forecast.getName();
+        this.attributes = forecast.getAttributes();
+    }
+
     @NoXss
     @Length(fieldName = "name")
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Unique Forecast Name", accessMode = Schema.AccessMode.READ_ONLY)
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Unique Forecast Name")
     private String name;
 
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Tenant Id.", accessMode = Schema.AccessMode.READ_ONLY)
     private TenantId tenantId;
 
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Entity Id.", accessMode = Schema.AccessMode.READ_ONLY)
-    private EntityId entityId;
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Device Id.")
+    private DeviceId deviceId;
 
     @Valid
     @Schema(description = "JSON array of attributes")
