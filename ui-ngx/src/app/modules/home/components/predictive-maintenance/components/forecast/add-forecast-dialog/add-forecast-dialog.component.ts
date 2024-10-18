@@ -42,12 +42,10 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { Direction, EntityType } from "@app/shared/public-api";
-
-interface ForecastField {
-  type: string;
-  start: string;
-  end: string;
-}
+import {
+  ForecastField,
+  ForecastFieldRequest,
+} from "@app/modules/home/models/predictive-maintenance.models";
 
 @Component({
   selector: "app-add-forecast-dialog",
@@ -181,14 +179,16 @@ export class AddForecastDialogComponent implements OnInit {
       this.forecastNameControl.valid &&
       this.selectedDevice != null && // Ensure a device is selected
       this.fields.length > 0 && // Ensure at least one field is added
-      this.fields.every((field) => field.type && field.start && field.end)
+      this.fields.every(
+        (field) => field.key && field.startDate && field.endDate
+      )
     );
   }
 
   // Add a new field with telemetry autocomplete
   addField(): void {
     if (this.canAddField) {
-      this.fields.push({ type: "", start: "", end: "" });
+      this.fields.push({ key: "", startDate: null, endDate: null });
     }
   }
 
@@ -196,7 +196,7 @@ export class AddForecastDialogComponent implements OnInit {
   getFilteredTelemetry(index: number): string[] {
     return this.availableTelemetry.filter(
       (telemetry) =>
-        !this.fields.some((field, i) => field.type === telemetry && i !== index)
+        !this.fields.some((field, i) => field.key === telemetry && i !== index)
     );
   }
 
@@ -213,10 +213,16 @@ export class AddForecastDialogComponent implements OnInit {
       console.log("Form is invalid. Please complete all required fields.");
       return;
     }
+    const deviceId = this.selectedDevice.id;
+    const attributes: ForecastFieldRequest[] = this.fields.map((el) => ({
+      key: el.key,
+      startDate: el.startDate.toISOString().slice(0, 10),
+      endDate: el.endDate.toISOString().slice(0, 10),
+    }));
     this.dialogRef.close({
       name: this.forecastNameControl.value,
-      device: this.selectedDevice,
-      fields: this.fields,
+      deviceId: deviceId,
+      attributes: attributes,
     });
   }
 }
