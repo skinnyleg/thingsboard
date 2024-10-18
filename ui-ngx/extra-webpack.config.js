@@ -80,7 +80,7 @@ module.exports = (config, options) => {
     config.optimization.minimizer.unshift(new JavaScriptOptimizerPlugin(javascriptOptimizerOptions));
   }
 
-  addTransformerToAngularWebpackPlugin(angularWebpackPlugin, keysTransformer);
+  // addTransformerToAngularWebpackPlugin(angularWebpackPlugin, keysTransformer);
 
   return config;
 };
