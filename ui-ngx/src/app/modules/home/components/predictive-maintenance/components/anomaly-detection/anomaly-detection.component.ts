@@ -40,7 +40,7 @@ export class AnomalyDetectionComponent implements OnInit {
   displayedColumns: string[] = [
     "id",
     "device",
-    "user",
+    // "user",
     "date",
     "status",
     "action",
@@ -66,7 +66,7 @@ export class AnomalyDetectionComponent implements OnInit {
   }
 
   openAnomalyDetectionModel(row: Order) {
-    this.router.navigateByUrl(`/PM/anomaly-detection/${row.id.slice(1)}`);
+    this.router.navigateByUrl(`/PM/anomaly-detection/${row.id}`);
   }
 
   applyFilter(event: Event) {
