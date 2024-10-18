@@ -36,7 +36,12 @@ import { AddForecastDialogComponent } from "./add-forecast-dialog/add-forecast-d
 import { SelectionModel } from "@angular/cdk/collections";
 import { TranslateService } from "@ngx-translate/core";
 import { ReactiveFormsModule } from "@angular/forms";
-import { Order } from "@app/modules/home/models/predictive-maintenance.models";
+import {
+  ForecastData,
+  Order,
+} from "@app/modules/home/models/predictive-maintenance.models";
+import { date } from "date-fns/locale/af";
+import { Router } from "@angular/router";
 
 @Component({
   selector: "tb-forcast-page",
@@ -65,17 +70,10 @@ export class ForcastComponent implements OnInit {
   displayedColumns: string[] = [
     "id",
     "device",
-    "user",
+    // "user",
     "date",
     "status",
     "action",
-  ];
-  entityColumns = [
-    { key: "id", title: "ID" },
-    { key: "device", title: "Device" },
-    { key: "user", title: "User" },
-    { key: "date", title: "Date" },
-    { key: "status", title: "Status" },
   ];
 
   dataSource = new MatTableDataSource<Order>();
@@ -97,7 +95,8 @@ export class ForcastComponent implements OnInit {
   constructor(
     public dialog: MatDialog,
     private forecastService: ForecastService,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private router: Router
   ) {
     this.translations = {
       search: this.translate.instant("search"),
@@ -107,6 +106,10 @@ export class ForcastComponent implements OnInit {
 
   ngOnInit() {
     // Initialization logic
+  }
+  ngAfterViewInit() {
+    console.log("here");
+    this.fetchForecasts();
   }
 
   trackByEntityId(index: number, entity: Order): string {
@@ -119,6 +122,15 @@ export class ForcastComponent implements OnInit {
 
   cellContent(entity: Order, column: any): string {
     return entity[column.key]; // Replace with your logic
+  }
+
+  structureDate(fetchedData: any[]): Order[] {
+    return fetchedData.map((item) => ({
+      id: item.id.id.split("-")[0], // Getting the id from the nested object
+      device: item.deviceId.id.split("-")[0], // Getting the device id
+      date: new Date(item.createdTime).toISOString().split("T")[0], // Formatting the createdTime to yyyy-mm-dd
+      status: "Completed", // Default status as Completed
+    }));
   }
 
   fetchForecasts(): void {
@@ -136,7 +148,8 @@ export class ForcastComponent implements OnInit {
 
     this.forecastService.getForecastsByPage(pageLink).subscribe(
       (data) => {
-        this.dataSource.data = data.data;
+        console.log("data === ", data);
+        this.dataSource.data = this.structureDate(data.data);
         this.totalElements = data.totalElements;
         this.isLoading = false;
       },
@@ -222,6 +235,8 @@ export class ForcastComponent implements OnInit {
   exitFilterMode() {
     this.textSearchMode = false; // Example logic to exit search mode
   }
-
+  openForcastModel(row: Order) {
+    this.router.navigateByUrl(`/PM/anomaly-detection/${row.id}`);
+  }
   // Rest of the methods (add, edit, delete, etc.)
 }
