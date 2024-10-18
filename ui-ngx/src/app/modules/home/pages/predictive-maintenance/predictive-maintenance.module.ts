@@ -19,9 +19,18 @@ import { NgModule } from "@angular/core";
 import { SharedModule } from "@shared/shared.module";
 import { PredictiveMaintenanceRoutingModule } from "./predictive-maintenance-routing.module";
 import { AnomalyDetectionComponent } from "./anomaly-detection/anomaly-detection-page.module";
+import { NgApexchartsModule } from "ng-apexcharts";
+import { ForcastChartComponent } from "../../components/predictive-maintenance/components/forcast-chart/forcast-chart.component";
+import { ForcastComponent } from "./forcast/forcast.module";
 
 @NgModule({
-  declarations: [AnomalyDetectionComponent],
-  imports: [CommonModule, SharedModule, PredictiveMaintenanceRoutingModule],
+  declarations: [AnomalyDetectionComponent, ForcastComponent],
+  imports: [
+    CommonModule,
+    SharedModule,
+    PredictiveMaintenanceRoutingModule,
+    NgApexchartsModule,
+    ForcastChartComponent,
+  ],
 })
 export class PredictiveMaintenanceModule {}

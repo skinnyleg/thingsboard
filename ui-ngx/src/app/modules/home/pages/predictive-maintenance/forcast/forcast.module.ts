@@ -30,10 +30,11 @@ export class ForcastComponent extends PageComponent implements Order {
   models: Order[];
 
   id: string;
+  trueId: string;
 
   device: string;
 
-  user: string;
+  // user: string;
 
   date: string;
 

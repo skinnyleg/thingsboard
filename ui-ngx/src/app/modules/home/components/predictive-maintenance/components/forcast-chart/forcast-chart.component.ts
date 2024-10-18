@@ -18,6 +18,8 @@ import {
   selector: "tb-forcast-chart",
   templateUrl: "./forcast-chart.component.html",
   styleUrls: ["./forcast-chart.component.scss"],
+  standalone: true, // Make sure this is marked as standalone
+  imports: [CommonModule, NgApexchartsModule],
 })
 export class ForcastChartComponent {
   public series: ApexAxisChartSeries;

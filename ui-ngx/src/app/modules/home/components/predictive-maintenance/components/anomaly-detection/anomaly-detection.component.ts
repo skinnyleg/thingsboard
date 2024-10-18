@@ -45,7 +45,7 @@ export class AnomalyDetectionComponent implements OnInit {
     "status",
     "action",
   ];
-  dataSource = new MatTableDataSource(ELEMENT_DATA);
+  dataSource = new MatTableDataSource();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;

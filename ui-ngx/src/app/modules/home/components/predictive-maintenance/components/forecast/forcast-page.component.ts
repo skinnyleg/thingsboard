@@ -127,6 +127,7 @@ export class ForcastComponent implements OnInit {
   structureDate(fetchedData: any[]): Order[] {
     return fetchedData.map((item) => ({
       id: item.id.id.split("-")[0], // Getting the id from the nested object
+      trueId: item.id.id,
       device: item.deviceId.id.split("-")[0], // Getting the device id
       date: new Date(item.createdTime).toISOString().split("T")[0], // Formatting the createdTime to yyyy-mm-dd
       status: "Completed", // Default status as Completed
@@ -236,7 +237,7 @@ export class ForcastComponent implements OnInit {
     this.textSearchMode = false; // Example logic to exit search mode
   }
   openForcastModel(row: Order) {
-    this.router.navigateByUrl(`/PM/anomaly-detection/${row.id}`);
+    this.router.navigateByUrl(`/PM/forcast/${row.trueId}`);
   }
   // Rest of the methods (add, edit, delete, etc.)
 }

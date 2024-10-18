@@ -46,6 +46,7 @@ export class AnomalyDetectionComponent extends PageComponent implements Order {
   models: Order[];
 
   id: string;
+  trueId: string;
 
   device: string;
 
