@@ -44,10 +44,10 @@
             <td mat-cell *matCellDef="let element">{{ element.device }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="user">
+        <!-- <ng-container matColumnDef="user">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>User</th>
             <td mat-cell *matCellDef="let element">{{ element.user }}</td>
-        </ng-container>
+        </ng-container> -->
 
         <ng-container matColumnDef="date">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
@@ -62,9 +62,9 @@
         <ng-container matColumnDef="action">
             <th mat-header-cell *matHeaderCellDef>Action</th>
             <td mat-cell *matCellDef="let element">
-                <button mat-icon-button color="primary" aria-label="Edit">
+                <!-- <button mat-icon-button color="primary" aria-label="Edit">
                     <mat-icon>edit</mat-icon>
-                </button>
+                </button> -->
                 <button mat-icon-button color="warn" aria-label="Delete">
                     <mat-icon>delete</mat-icon>
                 </button>
