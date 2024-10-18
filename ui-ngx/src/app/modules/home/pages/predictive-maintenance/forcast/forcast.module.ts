@@ -24,7 +24,7 @@ export class ForcastComponent extends PageComponent implements Order {
   }
 
   changeModel(value: any) {
-    this.router.navigateByUrl("/PM/forcast/" + value.slice(1));
+    this.router.navigateByUrl("/PM/forcast/" + value);
   }
 
   models: Order[];
@@ -45,12 +45,12 @@ export class ForcastComponent extends PageComponent implements Order {
         this.id = params.id;
       }
     });
-    this.models = ELEMENT_DATA;
-    const anomaly = this.models.find((element) => element.id === "#" + this.id);
-    if (!anomaly) return this.router.navigateByUrl("");
-    this.device = anomaly.device;
-    this.user = anomaly.user;
-    this.date = anomaly.date;
-    this.status = anomaly.status;
+    // this.models = ELEMENT_DATA;
+    // const anomaly = this.models.find((element) => element.id === "#" + this.id);
+    // if (!anomaly) return this.router.navigateByUrl("");
+    // this.device = anomaly.device;
+    // // this.user = anomaly.user;
+    // this.date = anomaly.date;
+    // this.status = anomaly.status;
   }
 }
