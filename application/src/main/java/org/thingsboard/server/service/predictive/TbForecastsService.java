@@ -15,6 +15,7 @@
  */
 package org.thingsboard.server.service.predictive;
 
+import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
@@ -23,4 +24,6 @@ import org.thingsboard.server.common.data.Forecast;
 
 public interface TbForecastsService extends SimpleTbEntityService<Forecast> {
     PageData<Forecast> findTenantForcasts(TenantId tenantId, PageLink pageLink);
+
+    Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId);
 }

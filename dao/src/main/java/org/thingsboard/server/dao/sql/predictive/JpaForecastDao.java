@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.Forecast;
+import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
@@ -61,6 +62,13 @@ public class JpaForecastDao extends JpaAbstractDao<ForecastEntity, Forecast> imp
                         tenantId.getId(),
                         pageLink.getTextSearch(),
                         DaoUtil.toPageable(pageLink)));
+    }
+
+    @Override
+    public Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId) {
+        return forecastRepository.findForecast(
+                tenantId.getId(),
+                forecastId.getId()).toData();
     }
 
     @Transactional

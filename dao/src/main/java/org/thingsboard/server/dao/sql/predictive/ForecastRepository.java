@@ -31,4 +31,10 @@ public interface ForecastRepository extends JpaRepository<ForecastEntity, UUID> 
                         @Param("tenantId") UUID tenantId,
                         @Param("textSearch") String textSearch,
                         Pageable pageable);
+
+        @Query("SELECT f FROM ForecastEntity f WHERE f.tenantId = :tenantId " +
+                        "AND f.id = :forecastId")
+        ForecastEntity findForecast(
+                        @Param("tenantId") UUID tenantId,
+                        @Param("forecastId") UUID forecastId);
 }

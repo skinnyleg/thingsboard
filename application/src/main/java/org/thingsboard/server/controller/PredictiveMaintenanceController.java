@@ -27,11 +27,13 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
+import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
@@ -81,6 +83,18 @@ public class PredictiveMaintenanceController extends BaseController {
         TenantId tenantId = getCurrentUser().getTenantId();
         PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);
         return checkNotNull(forecastsService.findTenantForcasts(tenantId, pageLink));
+    }
+
+    @ApiOperation(value = "Get predictiveMaintenance forecast by id", notes = "access the forecast by id")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @GetMapping(value = "/forecasts/{forecastId}")
+    @ResponseBody
+    public Forecast getForecast(
+            @Parameter(description = "Forecast Id") @PathVariable("forecastId") String strForecastId)
+            throws ThingsboardException {
+        checkParameter("forecastId", strForecastId);
+        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
+        return checkNotNull(forecastsService.findTenantForecast(getTenantId(), forecastId));
     }
 
     @ApiOperation(value = "Post predictiveMaintenance forecast", notes = "access the forecasts in predictive maintenance route directive")

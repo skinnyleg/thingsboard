@@ -17,6 +17,7 @@ package org.thingsboard.server.dao.predictive;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
@@ -34,6 +35,11 @@ public class BaseForcastService implements ForecastsService {
     @Override
     public PageData<Forecast> findTenantForcasts(TenantId tenantId, PageLink pageLink) {
         return forecastDao.findTenantForecasts(tenantId, pageLink);
+    }
+
+    @Override
+    public Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId) {
+        return forecastDao.findTenantForecast(tenantId, forecastId);
     }
 
     @Override

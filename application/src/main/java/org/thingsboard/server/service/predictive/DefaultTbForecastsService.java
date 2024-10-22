@@ -17,6 +17,7 @@ package org.thingsboard.server.service.predictive;
 
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.Forecast;
+import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
@@ -41,6 +42,10 @@ public class DefaultTbForecastsService extends AbstractTbEntityService implement
 
     public PageData<Forecast> findTenantForcasts(TenantId tenantId, PageLink pageLink) {
         return this.forecastsService.findTenantForcasts(tenantId, pageLink);
+    }
+
+    public Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId) {
+        return this.forecastsService.findTenantForecast(tenantId, forecastId);
     }
 
     @Override

@@ -19,10 +19,13 @@ import org.thingsboard.server.common.data.Forecast;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.dao.Dao;
+import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.id.TenantId;
 
 public interface ForecastDao extends Dao<Forecast> {
     PageData<Forecast> findTenantForecasts(TenantId tenantId, PageLink pageLink);
+
+    Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId);
 
     Forecast saveAndFlush(TenantId tenantId, Forecast forecast);
 }
