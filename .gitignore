@@ -39,3 +39,4 @@ rebuild-docker.sh
 .run
 predictive-maintenance/.venv
 predictive-maintenance/__pycache__
+predictive-maintenance/src/forecast/.jupyter
