@@ -27,7 +27,7 @@
   <!-- Autocomplete for device selection -->
   <mat-form-field appearance="outline" class="full-width">
     <mat-label>Device Name</mat-label>
-    <input type="text" matInput [formControl]="myControl" [matAutocomplete]="auto" />
+    <input type="text" matInput [formControl]="myControl" [matAutocomplete]="auto"/>
     <mat-autocomplete 
       #auto="matAutocomplete" 
       [displayWith]="displayFn" 

@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, OnInit } from "@angular/core";
+import { Component, OnInit, ViewChild } from "@angular/core";
 import {
   FormControl,
   FormsModule,
@@ -28,7 +28,6 @@ import { DeviceInfo } from "@shared/models/device.models";
 import { PageLink } from "@shared/models/page/page-link";
 import { Observable, of } from "rxjs";
 import { map, startWith } from "rxjs/operators";
-import { MatDateRangePicker } from "@angular/material/datepicker";
 
 // Import necessary Angular Material modules
 import { CommonModule } from "@angular/common";
@@ -87,15 +86,30 @@ export class AddForecastDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // TODO fetch all devices rather than with a pagination system
-    // use the page data the comes back with the devices it has the total amount of the devices
-    const pageLink = new PageLink(11, 0, null, {
+    // Load the first page with only one device to get the total count
+    const firstPageLink = new PageLink(1, 0, null, {
       property: "createdTime",
       direction: Direction.DESC,
     });
 
+    // Load the first page of devices
+    this.devicesDataSource.fetchTotalElements(firstPageLink);
+
+    // Subscribe to the total number of devices once the first request completes
+    this.devicesDataSource.totalElements$.subscribe((totalElements) => {
+      console.log("Total number of devices:", totalElements);
+
+      // Once we know the total number of devices, fetch all of them
+      const fullPageLink = new PageLink(totalElements, 0, null, {
+        property: "createdTime",
+        direction: Direction.DESC,
+      });
+
+      // Fetch the full list of devices
+      this.devicesDataSource.loadDevices(fullPageLink);
+    });
+
     // Subscribe to the devices$ observable to populate devicesList
-    this.devicesDataSource.loadDevices(pageLink);
     this.devicesDataSource.devices$.subscribe((devices) => {
       this.devicesList = devices;
     });
