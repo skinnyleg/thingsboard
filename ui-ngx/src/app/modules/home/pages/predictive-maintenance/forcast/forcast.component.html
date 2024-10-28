@@ -21,7 +21,10 @@
                 <div class="anomaly-detection-header-divider"> </div>
             </div>
             <div class="chart-container">
-                <tb-forcast-chart></tb-forcast-chart>
+                <tb-forcast-chart
+                [deviceId]="deviceId"
+                [Attributes]="Attributes"
+                ></tb-forcast-chart>
             </div>
         </div>
     </div>
