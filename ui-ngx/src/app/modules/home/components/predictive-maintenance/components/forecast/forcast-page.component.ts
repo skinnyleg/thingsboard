@@ -14,34 +14,37 @@
 /// limitations under the License.
 ///
 
-import { Component, OnInit, ViewChild } from "@angular/core";
-import { MatTableDataSource, MatTableModule } from "@angular/material/table";
-import { MatPaginator, MatPaginatorModule } from "@angular/material/paginator";
-import { MatSort, MatSortModule } from "@angular/material/sort";
-import { MatDialog } from "@angular/material/dialog";
-import { ForecastService } from "@app/core/http/forecast.service";
-import { Direction, PageLink } from "@app/shared/public-api";
-import { TranslateModule } from "@ngx-translate/core";
-import { FormControl } from "@angular/forms";
+import { SelectionModel } from "@angular/cdk/collections";
 import { CommonModule } from "@angular/common";
-import { MatInputModule } from "@angular/material/input";
-import { MatIconModule } from "@angular/material/icon";
+import { Component, OnInit, ViewChild } from "@angular/core";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { MatToolbarModule } from "@angular/material/toolbar";
-import { MatSidenavModule } from "@angular/material/sidenav";
+import { MatDialog } from "@angular/material/dialog";
 import { MatDividerModule } from "@angular/material/divider";
-import { AddForecastDialogComponent } from "./add-forecast-dialog/add-forecast-dialog.component";
-import { SelectionModel } from "@angular/cdk/collections";
-import { TranslateService } from "@ngx-translate/core";
-import { ReactiveFormsModule } from "@angular/forms";
+import { MatIconModule } from "@angular/material/icon";
+import { MatInputModule } from "@angular/material/input";
 import {
-  ForecastData,
+  MatPaginator,
+  MatPaginatorModule,
+  PageEvent,
+} from "@angular/material/paginator";
+import { MatSidenavModule } from "@angular/material/sidenav";
+import { MatSort, MatSortModule } from "@angular/material/sort";
+import { MatTableDataSource, MatTableModule } from "@angular/material/table";
+import { MatToolbarModule } from "@angular/material/toolbar";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { Router } from "@angular/router";
+import { ForecastService } from "@app/core/http/forecast.service";
+import { DeviceService } from "@app/core/public-api";
+import {
+  ELEMENT_DATA,
   Order,
 } from "@app/modules/home/models/predictive-maintenance.models";
-import { date } from "date-fns/locale/af";
-import { Router } from "@angular/router";
+import { Direction, PageLink } from "@app/shared/public-api";
+import { TranslateModule, TranslateService } from "@ngx-translate/core";
+import { catchError, forkJoin, of, tap } from "rxjs";
+import { AddForecastDialogComponent } from "./add-forecast-dialog/add-forecast-dialog.component";
 
 @Component({
   selector: "tb-forcast-page",
@@ -58,23 +61,15 @@ import { Router } from "@angular/router";
     MatButtonModule,
     MatCardModule,
     MatTooltipModule,
-    MatToolbarModule, // Add MatToolbarModule
+    MatToolbarModule,
     MatSidenavModule,
     MatDividerModule,
     TranslateModule,
     ReactiveFormsModule,
-    // Add other necessary modules here
   ],
 })
 export class ForcastComponent implements OnInit {
-  displayedColumns: string[] = [
-    "id",
-    "device",
-    // "user",
-    "date",
-    "status",
-    "action",
-  ];
+  displayedColumns: string[] = ["id", "device", "date", "status", "action"];
 
   dataSource = new MatTableDataSource<Order>();
   textSearch = new FormControl();
@@ -95,6 +90,7 @@ export class ForcastComponent implements OnInit {
   constructor(
     public dialog: MatDialog,
     private forecastService: ForecastService,
+    private deviceService: DeviceService,
     private translate: TranslateService,
     private router: Router
   ) {
@@ -105,54 +101,87 @@ export class ForcastComponent implements OnInit {
   }
 
   ngOnInit() {
+    // this.fetchForecasts(0, 10);
     // Initialization logic
   }
   ngAfterViewInit() {
-    console.log("here");
-    this.fetchForecasts();
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
+    // this.paginator.page.subscribe(() => {
+    //   this.fetchForecasts(); // Fetch new data when page changes
+    // });
+    // this.fetchForecasts(false);
+    this.fetchForecasts(this.paginator.pageIndex, this.paginator.pageSize);
+    this.paginator.page.subscribe(() => {
+      console.log("paginator ==== ", this.paginator);
+      this.fetchForecasts(this.paginator.pageIndex, this.paginator.pageSize);
+    });
   }
 
-  trackByEntityId(index: number, entity: Order): string {
-    return entity.id; // Ensure id exists
-  }
-
-  trackByColumnKey(index: number, column: any): string {
-    return column.key; // Ensure key exists
-  }
-
-  cellContent(entity: Order, column: any): string {
-    return entity[column.key]; // Replace with your logic
-  }
-
-  structureDate(fetchedData: any[]): Order[] {
+  structureDate(
+    fetchedData: any[],
+    deviceNameMap: Map<string, string>
+  ): Order[] {
     return fetchedData.map((item) => ({
       id: item.id.id.split("-")[0], // Getting the id from the nested object
       trueId: item.id.id,
-      device: item.deviceId.id.split("-")[0], // Getting the device id
+      device:
+        deviceNameMap.get(item.deviceId.id) || item.deviceId.id.split("-")[0],
       date: new Date(item.createdTime).toISOString().split("T")[0], // Formatting the createdTime to yyyy-mm-dd
       status: "Completed", // Default status as Completed
     }));
   }
 
-  fetchForecasts(): void {
+  fetchForecasts(pageIndex: number, pageSize: number): void {
     this.isLoading = true;
-    const pageSize = this.paginator.pageSize || 10;
-    const pageIndex = this.paginator.pageIndex || 0;
-    const sortProperty = this.sort.active || "createdTime";
-    const sortDirection: Direction =
+    let size = pageSize || 10;
+    let index = pageIndex || 0;
+    let sortPro = this.sort.active || "createdTime";
+    let sortDir: Direction =
       this.sort.direction === "asc" ? Direction.ASC : Direction.DESC;
 
-    const pageLink = new PageLink(pageSize, pageIndex, null, {
-      property: sortProperty,
-      direction: sortDirection,
+    const pageLink = new PageLink(size, index, null, {
+      property: sortPro,
+      direction: sortDir,
     });
 
     this.forecastService.getForecastsByPage(pageLink).subscribe(
       (data) => {
+        const deviceNameMap = new Map<string, string>();
+        const forecastData = data.data;
         console.log("data === ", data);
-        this.dataSource.data = this.structureDate(data.data);
-        this.totalElements = data.totalElements;
-        this.isLoading = false;
+
+        const deviceRequests = forecastData.map((forecast) => {
+          const deviceId = forecast.deviceId.id;
+          return this.deviceService.getDevice(deviceId).pipe(
+            // Store the device name in the map when fetched
+            tap((deviceInfo) => deviceNameMap.set(deviceId, deviceInfo.name)),
+            catchError((error) => {
+              console.error("Error fetching device info:", error);
+              return of(null); // Return a null observable if there's an error
+            })
+          );
+        });
+
+        forkJoin(deviceRequests).subscribe(() => {
+          // Structure the new data
+          const newData = this.structureDate(forecastData, deviceNameMap);
+
+          // Filter out duplicate items based on `id`
+          const existingData = this.dataSource.data;
+          const uniqueNewData = newData.filter(
+            (newItem) =>
+              !existingData.some(
+                (existingItem) => existingItem.id === newItem.id
+              )
+          );
+
+          // Append unique new data to the existing data
+          this.dataSource.data = [...existingData, ...uniqueNewData];
+          console.log("datasource === ", this.dataSource);
+          this.totalElements = data.totalElements;
+          this.isLoading = false;
+        });
       },
       (error) => {
         console.error("Error fetching forecasts:", error);
@@ -168,7 +197,6 @@ export class ForcastComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
-        console.log("result === ", result);
         this.addForecast(result); // Call addForecast if a result is returned
       }
     });
@@ -178,7 +206,7 @@ export class ForcastComponent implements OnInit {
     // Call the service to add a forecast
     this.forecastService.addForecast(forecast).subscribe(
       () => {
-        this.fetchForecasts(); // Refresh forecasts after adding a new one
+        this.fetchForecasts(this.paginator.pageIndex, this.paginator.pageSize); // Refresh forecasts after adding a new one
       },
       (error) => {
         console.error("Error adding forecast:", error);
@@ -204,7 +232,7 @@ export class ForcastComponent implements OnInit {
     // Call the service to update the forecast
     this.forecastService.updateForecast(forecast).subscribe(
       () => {
-        this.fetchForecasts(); // Refresh forecasts after updating
+        this.fetchForecasts(this.paginator.pageIndex, this.paginator.pageSize); // Refresh forecasts after updating
       },
       (error) => {
         console.error("Error updating forecast:", error);
@@ -216,7 +244,7 @@ export class ForcastComponent implements OnInit {
     // Call the service to delete the forecast
     this.forecastService.deleteForecast(forecastId).subscribe(
       () => {
-        this.fetchForecasts(); // Refresh forecasts after deleting
+        this.fetchForecasts(this.paginator.pageIndex, this.paginator.pageSize); // Refresh forecasts after deleting
       },
       (error) => {
         console.error("Error deleting forecast:", error);
