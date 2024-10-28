@@ -14,12 +14,12 @@
 /// limitations under the License.
 ///
 
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { defaultHttpOptionsFromConfig, RequestConfig } from './http-utils'; // Import utility functions if available
-import { PageData, PageLink } from '@app/shared/public-api';
-import { Order } from '@app/modules/home/models/predictive-maintenance.models';
+import { Injectable } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { Observable } from "rxjs";
+import { defaultHttpOptionsFromConfig, RequestConfig } from "./http-utils"; // Import utility functions if available
+import { PageData, PageLink } from "@app/shared/public-api";
+import { Order } from "@app/modules/home/models/predictive-maintenance.models";
 // import { Order } from '../components/forecast/forcast-page.component'; // Adjust import path as needed
 
 @Injectable({
@@ -34,7 +34,7 @@ export class ForecastService {
   getForecastsByPage(
     pageLink: PageLink,
     config?: RequestConfig
-  ): Observable<PageData<Order>> {
+  ): Observable<PageData<any>> {
     return this.http.get<PageData<Order>>(
       `${this.baseUrl}${pageLink.toQuery()}`,
       defaultHttpOptionsFromConfig(config)
@@ -42,8 +42,8 @@ export class ForecastService {
   }
 
   // Fetch a specific forecast by its ID
-  getForecast(forecastId: string, config?: RequestConfig): Observable<Order> {
-    return this.http.get<Order>(
+  getForecast(forecastId: string, config?: RequestConfig): Observable<any> {
+    return this.http.get<any>(
       `${this.baseUrl}/${forecastId}`,
       defaultHttpOptionsFromConfig(config)
     );
