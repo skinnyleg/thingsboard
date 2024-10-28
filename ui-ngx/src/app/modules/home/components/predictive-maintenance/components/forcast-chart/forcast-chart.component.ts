@@ -1,4 +1,12 @@
-import { Component, NgZone, OnInit, OnDestroy } from "@angular/core";
+import {
+  Component,
+  NgZone,
+  OnInit,
+  OnDestroy,
+  Input,
+  OnChanges,
+  SimpleChanges,
+} from "@angular/core";
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -34,7 +42,7 @@ import { chartSeries } from "@app/modules/home/models/predictive-maintenance.mod
   standalone: true,
   imports: [CommonModule, NgApexchartsModule],
 })
-export class ForcastChartComponent implements OnInit, OnDestroy {
+export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   // ApexChart configuration
 
   public series: ApexAxisChartSeries = [];
@@ -48,16 +56,13 @@ export class ForcastChartComponent implements OnInit, OnDestroy {
   public tooltip: ApexTooltip;
 
   // Attribute data source
-  public attributes: any[] = []; // To store the telemetry data
+  public telemetryData: any[] = []; // To store the telemetry data
   private destroy$ = new Subject<void>();
-
+  @Input() deviceId: string;
+  @Input() Attributes: string[];
   // Device and telemetry configurations
-  entityId: EntityId = {
-    entityType: EntityType.DEVICE,
-    id: "40478490-8588-11ef-a140-1f0970035087", // Replace with your actual device ID
-  };
-  attributeScope: TelemetryType = LatestTelemetry.LATEST_TELEMETRY;
-
+  entityId: EntityId;
+  attributeScope: TelemetryType;
   dataSource: AttributeDatasource;
 
   constructor(
@@ -78,10 +83,40 @@ export class ForcastChartComponent implements OnInit, OnDestroy {
     this.initChartData();
   }
 
-  ngOnInit(): void {
-    // Load attributes (telemetry) on component initialization
-    this.loadAttributes();
+  ngOnChanges(changes: SimpleChanges): void {
+    // Check if deviceId and Attributes have been set
+    if (
+      changes.deviceId &&
+      this.deviceId &&
+      changes.Attributes &&
+      this.Attributes
+    ) {
+      console.log("deviceId received: ", this.deviceId);
+      console.log("Attributes received: ", this.Attributes);
+
+      this.entityId = {
+        entityType: EntityType.DEVICE,
+        id: this.deviceId, // Use the passed deviceId
+      };
+      this.attributeScope = LatestTelemetry.LATEST_TELEMETRY;
+
+      // Now that deviceId and Attributes are set, we can load attributes
+      this.loadAttributes();
+    }
   }
+  ngOnInit(): void {}
+
+  // ngOnInit(): void {
+  //   // Load attributes (telemetry) on component initialization
+  //   this.entityId = {
+  //     entityType: EntityType.DEVICE,
+  //     id: this.deviceId, // Replace with your actual device ID
+  //   };
+  //   this.attributeScope = LatestTelemetry.LATEST_TELEMETRY;
+  //   console.log("entity === ", this.entityId);
+  //   console.log("attributeScope === ", this.attributeScope);
+  //   this.loadAttributes();
+  // }
 
   // Load telemetry (attributes) from the device
   loadAttributes() {
@@ -90,50 +125,62 @@ export class ForcastChartComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe((data) => {
         // Store the loaded attributes and update the chart
-        this.attributes = data.data;
+        this.telemetryData = data.data;
         // console.log("attributes ==== ", this.attributes);
         this.processEntityData();
       });
   }
 
   processEntityData() {
-    // Assuming the data contains temperature readings in 'attributes'
-    console.log("series === ", this.series[0]);
-    const newChartData = this.attributes
-      .filter((attribute) => attribute.key === "temperature") // Only take temperature data
-      .map((attribute) => {
-        const timestamp = attribute.lastUpdateTs; // Timestamp from telemetry data
-        const value = parseFloat(attribute.value); // Assuming 'value' holds the telemetry (temperature)
-        return { x: new Date(timestamp).getTime(), y: value }; // Ensure it's in {x, y} format
-      });
+    // Array of attribute keys that you want to track (e.g., "temperature", "humidity")
+    const colors = ["#FF5733", "#33FF57"]; // Add more colors as needed or generate them dynamically
 
-    // Check if the series exists and append the new data to it
-    if (
-      this.series &&
-      this.series.length > 0 &&
-      Array.isArray(this.series[0].data)
-    ) {
-      // Append the new data to the existing chart data
-      const newSeries = [
-        ...(this.series[0].data as { x: Date; y: number }[]), // Ensure the existing data is in the correct format
-        ...newChartData,
-      ];
+    // Initialize an empty array for the series
+    const seriesArray = [];
 
-      this.series = [
-        {
-          name: "Temperature Data",
-          data: newSeries,
-        },
-      ];
-    } else {
-      // Initialize series if it doesn't exist
-      this.series = [
-        {
-          name: "Temperature Data",
+    // Loop through each attribute you want to track (e.g., temperature, humidity)
+    this.Attributes.forEach((attributeKey, index) => {
+      const newChartData = this.telemetryData
+        .filter((attribute) => attribute.key === attributeKey) // Filter the data based on the attribute key
+        .map((attribute) => {
+          const timestamp = attribute.lastUpdateTs; // Timestamp from telemetry data
+          const value = parseFloat(attribute.value); // Assuming 'value' holds the telemetry data
+          return { x: new Date(timestamp).getTime(), y: value }; // Ensure it's in {x, y} format
+        });
+
+      // Check if the series exists and append the new data to it
+      const existingSeriesIndex = this.series.findIndex((series) =>
+        series.name.includes(attributeKey)
+      );
+
+      if (existingSeriesIndex !== -1) {
+        // Append new data to the existing series
+        const existingData = this.series[existingSeriesIndex].data as {
+          x: Date;
+          y: number;
+        }[];
+        const updatedSeriesData = [...existingData, ...newChartData];
+
+        this.series[existingSeriesIndex] = {
+          ...this.series[existingSeriesIndex],
+          data: updatedSeriesData,
+        };
+      } else {
+        // Create a new series if it doesn't exist
+        const newSeries = {
+          name: `${attributeKey} Data`, // Capitalize the attribute name for the chart
           data: newChartData,
-        },
-      ];
-    }
+          color: colors[index % colors.length], // Assign color based on the index (loops if more attributes than colors)
+        };
+
+        // Add the new series to the series array
+        seriesArray.push(newSeries);
+      }
+    });
+
+    // If new series were created, merge them into the existing series
+    this.series = [...this.series, ...seriesArray];
+    console.log("series === ", this.series);
   }
 
   // Initialize chart configuration
@@ -142,11 +189,11 @@ export class ForcastChartComponent implements OnInit, OnDestroy {
       type: "area",
       stacked: false,
       height: 350,
-      zoom: {
-        type: "x",
-        enabled: true,
-        autoScaleYaxis: true,
-      },
+      // zoom: {
+      //   type: "x",
+      //   enabled: true,
+      //   autoScaleYaxis: true,
+      // },
       toolbar: {
         autoSelected: "zoom",
       },
@@ -161,7 +208,7 @@ export class ForcastChartComponent implements OnInit, OnDestroy {
     };
 
     this.title = {
-      text: "Temperature Over Time",
+      text: "Forcast Over Time",
       align: "left",
     };
 
@@ -183,7 +230,7 @@ export class ForcastChartComponent implements OnInit, OnDestroy {
         },
       },
       title: {
-        text: "Temperature (°C)",
+        text: "Values",
       },
     };
 
