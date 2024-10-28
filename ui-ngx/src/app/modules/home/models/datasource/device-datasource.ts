@@ -24,6 +24,8 @@ export class DevicesDataSource {
   private devicesSubject = new ReplaySubject<DeviceInfo[]>(1); // Stores the devices
   devices$ = this.devicesSubject.asObservable(); // Exposes devices$ observable
 
+  private totalElementsSubject = new ReplaySubject<number>(1); // Stores total elements
+  totalElements$ = this.totalElementsSubject.asObservable();
   constructor(private deviceService: DeviceService) {}
 
   loadDevices(pageLink: PageLink): void {
@@ -34,10 +36,32 @@ export class DevicesDataSource {
         tap((pageData) => {
           console.log("Fetched devices:", pageData); // Log the fetched data for debugging
           this.devicesSubject.next(pageData.data); // Push devices data into the subject
+          // this.totalElementsSubject.next(pageData.totalElements);
         }),
         catchError((error) => {
           console.error("Error fetching devices:", error); // Log errors
           this.devicesSubject.next([]); // Push empty array in case of error
+          // this.totalElementsSubject.next(0);
+          return [];
+        })
+      )
+      .subscribe();
+  }
+
+  fetchTotalElements(pageLink: PageLink): void {
+    const deviceInfoQuery = new DeviceInfoQuery(pageLink, {}); // You can customize the filter object here
+    this.deviceService
+      .getDeviceInfosByQuery(deviceInfoQuery)
+      .pipe(
+        tap((pageData) => {
+          console.log("Fetched devices:", pageData); // Log the fetched data for debugging
+          // this.devicesSubject.next(pageData.data); // Push devices data into the subject
+          this.totalElementsSubject.next(pageData.totalElements);
+        }),
+        catchError((error) => {
+          console.error("Error fetching devices:", error); // Log errors
+          // this.devicesSubject.next([]); // Push empty array in case of error
+          this.totalElementsSubject.next(0);
           return [];
         })
       )

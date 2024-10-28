@@ -2,7 +2,6 @@ export interface Order {
   id: string;
   trueId: string;
   device: string;
-  // user: string;
   date: string;
   status: string;
 }
