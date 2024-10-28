@@ -50,6 +50,9 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
     @Column(name = "name")
     private String name;
 
+    @Column(name = "active")
+    private boolean active;
+
     @Convert(converter = JsonConverter.class)
     @JdbcType(PostgreSQLJsonPGObjectJsonbType.class)
     @Column(name = "attributes", columnDefinition = "jsonb")
@@ -71,6 +74,7 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
             this.deviceId = forecast.getDeviceId().getId();
         }
         this.name = forecast.getName();
+        this.active = forecast.isActive();
         this.attributes = JacksonUtil.valueToTree(forecast.getAttributes());
     }
 
@@ -85,6 +89,7 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
             forecast.setDeviceId(new DeviceId(deviceId));
         }
         forecast.setName(name);
+        forecast.setActive(active);
         forecast.setAttributes(JacksonUtil.convertValue(attributes, ForecastAttribute[].class));
         return forecast;
     }

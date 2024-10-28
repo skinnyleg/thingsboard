@@ -15,8 +15,13 @@
  */
 package org.thingsboard.server.service.predictive;
 
+import org.thingsboard.server.common.data.exception.ThingsboardException;
+import org.thingsboard.server.common.data.id.ForecastId;
+
 import com.fasterxml.jackson.databind.JsonNode;
 
 public interface FastAPIService {
     public JsonNode getHelloWorld();
+
+    public void activateForecast(ForecastId forecastId) throws ThingsboardException;
 }

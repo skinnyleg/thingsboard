@@ -21,9 +21,15 @@ import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.service.entitiy.SimpleTbEntityService;
 import org.thingsboard.server.common.data.Forecast;
+import org.thingsboard.server.common.data.User;
+import org.thingsboard.server.common.data.exception.ThingsboardException;
 
 public interface TbForecastsService extends SimpleTbEntityService<Forecast> {
     PageData<Forecast> findTenantForcasts(TenantId tenantId, PageLink pageLink);
 
     Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId);
+
+    void deleteForecast(Forecast entity, User user);
+
+    void activate(Forecast entity, User user) throws ThingsboardException;
 }

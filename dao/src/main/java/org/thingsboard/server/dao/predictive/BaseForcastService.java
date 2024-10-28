@@ -21,6 +21,7 @@ import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
+import org.thingsboard.server.dao.model.sql.ForecastEntity;
 import org.thingsboard.server.common.data.Forecast;
 
 import lombok.extern.slf4j.Slf4j;
@@ -45,5 +46,24 @@ public class BaseForcastService implements ForecastsService {
     @Override
     public Forecast saveForecast(Forecast forecast) {
         return forecastDao.saveAndFlush(forecast.getTenantId(), forecast);
+    }
+
+    @Override
+    public void deleteForecast(TenantId tenantId, ForecastId forecastId) {
+        try {
+            forecastDao.removeById(tenantId, forecastId.getId());
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+
+    @Override
+    public void activateForecast(TenantId tenantId, ForecastId forecastId) {
+        try {
+            Forecast result = forecastDao.activateForecast(tenantId, forecastId);
+            log.info("Activated forecast: [{}]", result);
+        } catch (Exception e) {
+            throw e;
+        }
     }
 }

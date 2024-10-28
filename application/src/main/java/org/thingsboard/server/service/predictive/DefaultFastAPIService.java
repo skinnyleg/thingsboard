@@ -21,13 +21,16 @@ import java.time.temporal.ChronoUnit;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
+import org.thingsboard.server.common.data.exception.ThingsboardErrorCode;
+import org.thingsboard.server.common.data.exception.ThingsboardException;
+import org.thingsboard.server.common.data.id.ForecastId;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 
 @Service
 public class DefaultFastAPIService implements FastAPIService {
-    private final static String baseUrl = "http://0.0.0.0:8000/api/";
+    private final static String baseUrl = "http://0.0.0.0:8000/api/v1/";
 
     private final RestTemplate restTemplate = new RestTemplateBuilder()
             .uriTemplateHandler(new DefaultUriBuilderFactory(baseUrl))
@@ -37,5 +40,13 @@ public class DefaultFastAPIService implements FastAPIService {
 
     public JsonNode getHelloWorld() {
         return this.restTemplate.getForObject("predictiveMaintenance", JsonNode.class);
+    }
+
+    public void activateForecast(ForecastId forecastId) throws ThingsboardException {
+        try {
+            this.restTemplate.patchForObject("forecast/{forecastId}/activate", null, JsonNode.class, forecastId);
+        } catch (Exception e) {
+            throw new ThingsboardException("Failed to activate forecast", e, ThingsboardErrorCode.GENERAL);
+        }
     }
 }

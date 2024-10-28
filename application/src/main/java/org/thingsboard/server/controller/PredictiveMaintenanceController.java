@@ -26,12 +26,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.thingsboard.server.common.data.exception.ThingsboardErrorCode;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.id.TenantId;
@@ -107,4 +110,30 @@ public class PredictiveMaintenanceController extends BaseController {
         forecast.setTenantId(tenantId);
         return checkNotNull(forecastsService.save(forecast, getCurrentUser()));
     }
+
+    @ApiOperation(value = "Delete predictiveMaintenance forecast", notes = "access the forecasts in predictive maintenance route directive")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @DeleteMapping(value = "/forecasts/{forecastId}")
+    @ResponseBody
+    public void deleteForecast(@PathVariable("forecastId") String strForecastId) throws ThingsboardException {
+        checkParameter("forecastId", strForecastId);
+        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
+        forecastsService.delete(new Forecast(forecastId), getCurrentUser());
+    }
+
+    @ApiOperation(value = "Activate predictiveMaintenance forecast", notes = "access the forecasts in predictive maintenance route directive")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @PatchMapping(value = "/forecasts/{forecastId}/activate")
+    @ResponseBody
+    public void activateForecast(@PathVariable("forecastId") String strForecastId) throws Exception {
+        checkParameter("forecastId", strForecastId);
+        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
+        try {
+            fastAPIService.activateForecast(forecastId);
+            forecastsService.activate(new Forecast(forecastId), getCurrentUser());
+        } catch (Exception e) {
+            throw new ThingsboardException("Failed to activate forecast", e, ThingsboardErrorCode.GENERAL);
+        }
+    }
+
 }
