@@ -14,27 +14,17 @@
 # limitations under the License.
 #
 
-from typing import Union
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from src.forecast.forecast import router as forecast_router
 
-app = FastAPI()
+app = FastAPI(
+    root_path="/api/v1",
+)
 
-# origins = [
-#     "http://localhost:8081",
-# ]
-
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
-#     allow_methods=["GET"],
-#     allow_headers=["*"],
-# )
+app.include_router(forecast_router, prefix="/forecast")
 
 @app.get("/api/predictiveMaintenance")
 def read_root():
     ret = {"Hello": "World"}
     print("Predictive Maintenance API return", ret)
     return ret
-
