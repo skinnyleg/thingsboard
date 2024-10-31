@@ -123,7 +123,12 @@ async def websocket_endpoint(
                     for key in attribute_keys:
                         tm_data[key].extend(response_data[key])
                     forecast_data = predict(tm_data, forecastWindow)
-                    await client.send_text(json.dumps(forecast_data))
+                    await client.send_text(
+                        {
+                            "forecast": json.dumps(forecast_data),
+                            "data": json.dumps(response_data),
+                        }
+                    )
                 except asyncio.exceptions.TimeoutError:
                     print("Timeout")
                     if client.application_state == WebSocketState.CONNECTED:
