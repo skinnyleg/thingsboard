@@ -137,3 +137,4 @@ async def websocket_endpoint(
     except Exception as e:
         print("Error", e)
         await client.close()
+    
