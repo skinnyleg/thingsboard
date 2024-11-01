@@ -1,39 +1,42 @@
+import { CommonModule } from "@angular/common";
 import {
   Component,
-  NgZone,
-  OnInit,
-  OnDestroy,
   Input,
+  NgZone,
   OnChanges,
+  OnDestroy,
+  OnInit,
   SimpleChanges,
+  ViewChild,
 } from "@angular/core";
-import {
-  ApexAxisChartSeries,
-  ApexChart,
-  ApexTitleSubtitle,
-  ApexDataLabels,
-  ApexFill,
-  ApexMarkers,
-  ApexYAxis,
-  ApexXAxis,
-  ApexTooltip,
-  NgApexchartsModule,
-} from "ng-apexcharts";
-import { AttributeDatasource } from "@home/models/datasource/attribute-datasource";
+import { EntityType } from "@app/shared/public-api";
 import { AttributeService } from "@core/http/attribute.service";
 import { TelemetryWebsocketService } from "@core/ws/telemetry-websocket.service";
+import { AttributeDatasource } from "@home/models/datasource/attribute-datasource";
 import { TranslateService } from "@ngx-translate/core";
 import { EntityId } from "@shared/models/id/entity-id";
 import { PageLink } from "@shared/models/page/page-link";
+import {
+  LatestTelemetry,
+  TelemetryType,
+} from "@shared/models/telemetry/telemetry.models";
+import {
+  ApexAxisChartSeries,
+  ApexChart,
+  ApexDataLabels,
+  ApexFill,
+  ApexLegend,
+  ApexMarkers,
+  ApexStroke,
+  ApexTitleSubtitle,
+  ApexTooltip,
+  ApexXAxis,
+  ApexYAxis,
+  ChartComponent,
+  NgApexchartsModule,
+} from "ng-apexcharts";
 import { Subject } from "rxjs";
 import { takeUntil } from "rxjs/operators";
-import {
-  TelemetryType,
-  LatestTelemetry,
-} from "@shared/models/telemetry/telemetry.models";
-import { EntityType } from "@app/shared/public-api";
-import { CommonModule } from "@angular/common";
-import { chartSeries } from "@app/modules/home/models/predictive-maintenance.models";
 
 @Component({
   selector: "tb-forcast-chart",
@@ -54,16 +57,22 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   public yaxis: ApexYAxis;
   public xaxis: ApexXAxis;
   public tooltip: ApexTooltip;
+  public legend: ApexLegend;
+  public stroke: ApexStroke;
 
   // Attribute data source
   public telemetryData: any[] = []; // To store the telemetry data
+  public seriesHidden: number[] = []; // To store the telemetry data
+  private originalSeriesData: { [key: number]: any[] } = {};
   private destroy$ = new Subject<void>();
   @Input() deviceId: string;
   @Input() Attributes: string[];
-  // Device and telemetry configurations
+  i: number = 1;
+
   entityId: EntityId;
   attributeScope: TelemetryType;
   dataSource: AttributeDatasource;
+  displayData: boolean = true;
 
   constructor(
     private attributeService: AttributeService,
@@ -106,18 +115,6 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   }
   ngOnInit(): void {}
 
-  // ngOnInit(): void {
-  //   // Load attributes (telemetry) on component initialization
-  //   this.entityId = {
-  //     entityType: EntityType.DEVICE,
-  //     id: this.deviceId, // Replace with your actual device ID
-  //   };
-  //   this.attributeScope = LatestTelemetry.LATEST_TELEMETRY;
-  //   console.log("entity === ", this.entityId);
-  //   console.log("attributeScope === ", this.attributeScope);
-  //   this.loadAttributes();
-  // }
-
   // Load telemetry (attributes) from the device
   loadAttributes() {
     this.dataSource
@@ -127,84 +124,289 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
         // Store the loaded attributes and update the chart
         this.telemetryData = data.data;
         // console.log("attributes ==== ", this.attributes);
+        this.updateXAxisFormatter();
+        // this.condenseDataByMinute();
         this.processEntityData();
+        this.addForecastModelData();
       });
   }
 
   processEntityData() {
-    // Array of attribute keys that you want to track (e.g., "temperature", "humidity")
-    const colors = ["#FF5733", "#33FF57"]; // Add more colors as needed or generate them dynamically
-
-    // Initialize an empty array for the series
+    const colors = ["#FF5733", "#33FF57"];
     const seriesArray = [];
 
-    // Loop through each attribute you want to track (e.g., temperature, humidity)
     this.Attributes.forEach((attributeKey, index) => {
       const newChartData = this.telemetryData
-        .filter((attribute) => attribute.key === attributeKey) // Filter the data based on the attribute key
-        .map((attribute) => {
-          const timestamp = attribute.lastUpdateTs; // Timestamp from telemetry data
-          const value = parseFloat(attribute.value); // Assuming 'value' holds the telemetry data
-          return { x: new Date(timestamp).getTime(), y: value }; // Ensure it's in {x, y} format
-        });
+        .filter((attribute) => attribute.key === attributeKey)
+        .map((attribute) => ({
+          x: new Date(attribute.lastUpdateTs).getTime(),
+          y: parseFloat(attribute.value),
+        }));
 
-      // Check if the series exists and append the new data to it
+      // const existingSeriesIndex = this.series.findIndex((series) =>
+      //   series.name.includes(attributeKey)
+      // );
       const existingSeriesIndex = this.series.findIndex((series) =>
         series.name.includes(attributeKey)
       );
-
       if (existingSeriesIndex !== -1) {
-        // Append new data to the existing series
-        const existingData = this.series[existingSeriesIndex].data as {
-          x: Date;
-          y: number;
-        }[];
-        const updatedSeriesData = [...existingData, ...newChartData];
-
-        this.series[existingSeriesIndex] = {
-          ...this.series[existingSeriesIndex],
-          data: updatedSeriesData,
-        };
+        // Append new data to existing series while maintaining the zoom level
+        if (this.seriesHidden.includes(existingSeriesIndex)) {
+          console.log("series is hidden updating backup");
+          this.originalSeriesData[existingSeriesIndex] = [
+            ...(this.originalSeriesData[existingSeriesIndex] as {
+              x: number;
+              y: number;
+            }[]),
+            ...newChartData,
+          ];
+          return;
+        }
+        this.series[existingSeriesIndex].data = [
+          ...(this.series[existingSeriesIndex].data as {
+            x: number;
+            y: number;
+          }[]),
+          ...newChartData,
+        ];
       } else {
-        // Create a new series if it doesn't exist
-        const newSeries = {
-          name: `${attributeKey} Data`, // Capitalize the attribute name for the chart
+        // Create new series if it doesn’t exist
+        seriesArray.push({
+          name: `${attributeKey} Data`,
           data: newChartData,
-          color: colors[index % colors.length], // Assign color based on the index (loops if more attributes than colors)
-        };
+          color: colors[index % colors.length],
+        });
+      }
+    });
+    // this.chart.updateSeries([...this.series, ...seriesArray]);
+    if (this.displayData === true) {
+      this.series = [...this.series, ...seriesArray];
+    }
+    // console.log("series === ", this.series);
+    // console.log("hidden === ", this.seriesHidden);
+  }
 
-        // Add the new series to the series array
-        seriesArray.push(newSeries);
+  // Add a method to generate forecast model data
+  addForecastModelData() {
+    const forecastSeries = {
+      name: "Forecast Model",
+      data: this.generateRandomForecastData(),
+      color: "#6A0DAD",
+      dashArray: 10, // Makes the line dotted
+    };
+
+    const existingSeriesIndex = this.series.findIndex((series) =>
+      series.name.includes("Forecast Model")
+    );
+    if (existingSeriesIndex !== -1) {
+      return;
+    }
+    this.series.push(forecastSeries);
+    // this.chart.updateSeries(this.series); // Update the chart with the new series
+  }
+
+  // Generate random forecast data points
+  generateRandomForecastData() {
+    const forecastData = [];
+    const currentTime = new Date().getTime();
+    for (let i = 0; i < 60; i++) {
+      forecastData.push({
+        x: currentTime + i * 1000, // 1-minute intervals
+        y: Math.random() * 100, // Random y values
+      });
+    }
+    return forecastData;
+  }
+
+  condenseDataByMinute() {
+    // Calculate min and max timestamps from your data
+    const timestamps = this.series.flatMap((series) =>
+      series.data.map((point) => point.x)
+    );
+    const minX = Math.min(...timestamps);
+    const maxX = Math.max(...timestamps);
+    const diffInSeconds = (maxX - minX) / 1000;
+
+    if (diffInSeconds > 60) {
+      // If data covers more than 1 minute
+      // Map over each series and condense data by minute
+      this.series = this.series.map((series) => {
+        const condensedData = this.groupDataByMinute(series.data);
+        return { ...series, data: condensedData };
+      });
+
+      // Update x-axis labels to show condensed time
+      this.xaxis.labels.formatter = (value, timestamp) =>
+        new Date(timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+    } else {
+      // Use default second-by-second formatter if data spans less than a minute
+      this.xaxis.labels.formatter = (value, timestamp) =>
+        new Date(timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+    }
+  }
+
+  // Helper function to group data by minute
+  groupDataByMinute(data) {
+    const groupedData = [];
+    let currentMinute = null;
+    let minuteGroup = [];
+
+    data.forEach((point) => {
+      const pointMinute = new Date(point.x).getMinutes();
+      if (pointMinute === currentMinute) {
+        // Add data to the current minute group
+        minuteGroup.push(point);
+      } else {
+        // Condense the current minute group (e.g., take average) and reset
+        if (minuteGroup.length > 0) {
+          groupedData.push(this.condenseMinuteGroup(minuteGroup));
+        }
+        currentMinute = pointMinute;
+        minuteGroup = [point];
       }
     });
 
-    // If new series were created, merge them into the existing series
-    this.series = [...this.series, ...seriesArray];
-    console.log("series === ", this.series);
+    // Condense the final minute group and add it
+    if (minuteGroup.length > 0) {
+      groupedData.push(this.condenseMinuteGroup(minuteGroup));
+    }
+
+    return groupedData;
+  }
+
+  // Condense minute data (here, calculating the average for illustration)
+  condenseMinuteGroup(dataGroup) {
+    const averageY =
+      dataGroup.reduce((sum, point) => sum + point.y, 0) / dataGroup.length;
+    return { x: dataGroup[0].x, y: averageY }; // Use the first timestamp in the group
+  }
+
+  updateXAxisFormatter() {
+    // Calculate min and max timestamps from your data
+    const timestamps = this.series.flatMap((series) =>
+      series.data.map((point) => point.x)
+    );
+    const minX = Math.min(...timestamps);
+    const maxX = Math.max(...timestamps);
+    const diff = maxX - minX;
+
+    // Define your x-axis format based on the range difference
+    if (diff > 365 * 24 * 60 * 60 * 1000) {
+      // Over a year
+      this.xaxis.labels.formatter = (value, timestamp) =>
+        new Date(timestamp).toLocaleDateString([], { year: "numeric" });
+    } else if (diff > 30 * 24 * 60 * 60 * 1000) {
+      // Over a month
+      this.xaxis.labels.formatter = (value, timestamp) =>
+        new Date(timestamp).toLocaleDateString([], {
+          month: "short",
+          year: "numeric",
+        });
+    } else if (diff > 24 * 60 * 60 * 1000) {
+      // Over a day
+      this.xaxis.labels.formatter = (value, timestamp) =>
+        new Date(timestamp).toLocaleDateString([], {
+          day: "2-digit",
+          month: "short",
+        });
+    } else if (diff > 60 * 60 * 1000) {
+      // Over an hour
+      this.xaxis.labels.formatter = (value, timestamp) =>
+        new Date(timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+    } else {
+      // Less than an hour, show seconds
+      this.xaxis.labels.formatter = (value, timestamp) =>
+        new Date(timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+    }
   }
 
   // Initialize chart configuration
   initChartData(): void {
     this.chart = {
+      id: "realtime",
       type: "area",
       stacked: false,
       height: 350,
-      // zoom: {
-      //   type: "x",
-      //   enabled: true,
-      //   autoScaleYaxis: true,
-      // },
+      zoom: {
+        type: "x",
+        enabled: true,
+        autoScaleYaxis: true,
+      },
       toolbar: {
-        autoSelected: "zoom",
+        show: true,
+        tools: {
+          download: false,
+          selection: true,
+          zoom: true,
+          zoomin: false,
+          zoomout: false,
+          pan: false,
+        },
+        // autoSelected: "zoom",
+      },
+      events: {
+        beforeZoom: (chart, options) => {
+          this.displayData = false;
+        },
+
+        beforeResetZoom: (chart, options) => {
+          this.displayData = true;
+          // console.log("home clicked");
+        },
+        legendClick: (chart, seriesIndex, options) => {
+          console.log("chart === ", chart);
+          console.log("options === ", options);
+          if (this.seriesHidden.includes(seriesIndex)) {
+            // Series was hidden, so remove from hidden list and restore original data
+            this.seriesHidden = this.seriesHidden.filter(
+              (i) => i !== seriesIndex
+            );
+            this.series[seriesIndex].data =
+              this.originalSeriesData[seriesIndex]; // Restore original data
+          } else {
+            // Series is visible, so hide it and clear its data
+            this.seriesHidden.push(seriesIndex);
+            this.originalSeriesData[seriesIndex] = [
+              ...this.series[seriesIndex].data,
+            ]; // Backup original data
+            this.series[seriesIndex].data = []; // Clear data to hide it
+          }
+        },
+      },
+      animations: {
+        enabled: false, // Disables re-zooming upon new data points
       },
     };
-
+    this.stroke = {
+      curve: "smooth",
+      dashArray: [0, 0, 8],
+    };
     this.dataLabels = {
       enabled: false,
     };
 
     this.markers = {
       size: 0,
+    };
+    this.legend = {
+      show: true,
+      showForSingleSeries: true,
+      showForNullSeries: true,
+      showForZeroSeries: true,
     };
 
     this.title = {
@@ -226,6 +428,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
     this.yaxis = {
       labels: {
         formatter: function (val) {
+          if (val === undefined) return;
           return val.toFixed(2); // Adjust this to display temperature values
         },
       },
@@ -236,12 +439,29 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
 
     this.xaxis = {
       type: "datetime",
+      labels: {
+        datetimeFormatter: {
+          year: "yyyy",
+          month: "MMM 'yy",
+          day: "dd MMM",
+          hour: "HH:mm",
+          minute: "HH:mm:ss", // For real-time updates at minute level
+        },
+        formatter: (value: string, timestamp: number) => {
+          return new Date(timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }); // Format as hh:mm:ss
+        },
+      },
     };
 
     this.tooltip = {
       shared: false,
       y: {
         formatter: function (val) {
+          if (val === undefined) return;
           return `${val.toFixed(2)} °C`;
         },
       },

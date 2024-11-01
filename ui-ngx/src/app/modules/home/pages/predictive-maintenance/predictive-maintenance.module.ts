@@ -22,7 +22,6 @@ import { AnomalyDetectionComponent } from "./anomaly-detection/anomaly-detection
 import { NgApexchartsModule } from "ng-apexcharts";
 import { ForcastChartComponent } from "../../components/predictive-maintenance/components/forcast-chart/forcast-chart.component";
 import { ForcastComponent } from "./forcast/forcast.module";
-
 @NgModule({
   declarations: [AnomalyDetectionComponent, ForcastComponent],
   imports: [

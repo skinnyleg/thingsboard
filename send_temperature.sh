@@ -11,5 +11,5 @@ while true; do
     --data "{\"temperature\":$temperature, \"humidity\":$humidity}"
 
   # Sleep for 5 seconds before sending the next request
-  sleep 5
+  sleep 1
 done
