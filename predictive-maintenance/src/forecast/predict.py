@@ -1,9 +1,71 @@
 from typing import Dict, List, NewType, Union
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import load_model
+import pandas as pd
+import numpy as np
+from copy import deepcopy
 
 Data = NewType("Data", Dict[str, List[Union[int, str]]])
+MODEL_PATH = "../../data/model.h5"
+
+model = load_model(MODEL_PATH)
+scaler = MinMaxScaler()
+
+
+def create_feature(df: pd.DataFrame):
+    # create features from the selected machine
+    pressure = df.loc[:, "pressure"]
+    timestamp = pd.to_datetime(df.loc[:, "datetime"], unit="ms")
+    timestamp_hour = timestamp.map(lambda x: x.hour)
+
+    # apply one-hot encode for timestamp data
+    timestamp_hour_onehot = pd.get_dummies(timestamp_hour).to_numpy()
+
+    # apply min-max scaler to numerical data
+    scaler = MinMaxScaler()
+    pressure = scaler.fit_transform(np.array(pressure).reshape(-1, 1))
+
+    # combine features into one
+    feature = np.concatenate([pressure, timestamp_hour_onehot], axis=1)
+
+    X = feature[:-1]
+    y = np.array(feature[5:, 0]).reshape(-1, 1)
+
+    return X, y, scaler
+
+
+def shape_sequence(arr, step, start):
+    out = list()
+    for i in range(start, arr.shape[0]):
+        low_lim = i
+        up_lim = low_lim + step
+        out.append(arr[low_lim:up_lim])
+
+        if up_lim == arr.shape[0]:
+            # print(i)
+            break
+
+    out_seq = np.array(out)
+    return out_seq
 
 
 def predict(tm_data: Data, forecastWindow: int) -> Data:
-    # TODO: Implement forecast prediction
-    # send back to the client forecast prediction of {forecastWindow} data points
-    return tm_data
+    tm_data = {"pressure": tm_data.get("pressure", [])}
+    df = pd.DataFrame(tm_data.get("pressure"), columns=["datetime", "pressure"])
+    X_seq, _, _ = create_feature(df)
+    X_seq = shape_sequence(X_seq, 5, 0)
+    y_pred_future = deepcopy(X_seq[-5, :])
+    recursive_pred = {"pressure": []}
+    for i in range(0, forecastWindow):
+        next_x = y_pred_future[0, -1, 1:].argmax()
+        if next_x == 23:
+            next_x = 0
+        else:
+            next_x += 1
+        x = np.zeros(24)
+        x[next_x] = 1
+        val = model.predict(y_pred_future, verbose=0)
+        recursive_pred["pressure"].append(val[0])
+        val = np.concatenate([val[0], x])
+        y_pred_future[0] = np.concatenate([y_pred_future[0][1], [val]])
+    return recursive_pred

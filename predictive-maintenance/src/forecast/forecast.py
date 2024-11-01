@@ -20,7 +20,7 @@ THINGSBOARD_WS_URL = f"ws://{THINGSBOARD_WS_HOST_ADDR}:{THINGSBOARD_WS_PORT}/api
 SCRIPTS_PATH = "/usr/share/thingsboard/data/predictive-maintenance/forecasts/"
 TRAIN_SCRIPT = Path(SCRIPTS_PATH + "train.py")
 DB_URL = SessionLocal.kw["bind"].url
-FORECAST_WINDOW = 60 * 60
+FORECAST_WINDOW = 20
 FORECAST_HISTORY_WINDOW = 10 * 24 * 60 * 60
 
 
@@ -119,7 +119,9 @@ async def websocket_endpoint(
                     response = json.loads(response)
                     if response["errorCode"] != 0:
                         raise Exception("Error in response")
-                    response_data = response["data"]
+                    response_data = response.get("data", None)
+                    if not response_data or not response_data.get("pressure", None):
+                        continue
                     for key in attribute_keys:
                         tm_data[key].extend(response_data[key])
                     forecast_data = predict(tm_data, forecastWindow)
@@ -142,4 +144,3 @@ async def websocket_endpoint(
     except Exception as e:
         print("Error", e)
         await client.close()
-    
