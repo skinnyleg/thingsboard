@@ -23,8 +23,10 @@ import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.User;
 import org.thingsboard.server.common.data.audit.ActionType;
+import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.dao.predictive.ForecastsService;
 import org.thingsboard.server.service.entitiy.AbstractTbEntityService;
+import org.thingsboard.server.common.data.exception.ThingsboardErrorCode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -63,6 +65,23 @@ public class DefaultTbForecastsService extends AbstractTbEntityService implement
 
     @Override
     public void delete(Forecast entity, User user) {
+        deleteForecast(entity, user);
+    }
 
+    public void deleteForecast(Forecast entity, User user) {
+        ActionType actionType = ActionType.DELETED;
+        TenantId tenantId = user.getTenantId();
+        ForecastId forecastId = entity.getId();
+        try {
+            this.forecastsService.deleteForecast(tenantId, forecastId);
+            logEntityActionService.logEntityAction(tenantId, forecastId, actionType, user, null);
+        } catch (Exception e) {
+            logEntityActionService.logEntityAction(tenantId, forecastId, actionType, user, e);
+            throw e;
+        }
+    }
+
+    public void activate(Forecast forecast, User user) throws ThingsboardException {
+        this.forecastsService.activateForecast(user.getTenantId(), forecast.getId());
     }
 }

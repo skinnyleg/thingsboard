@@ -28,4 +28,6 @@ public interface ForecastDao extends Dao<Forecast> {
     Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId);
 
     Forecast saveAndFlush(TenantId tenantId, Forecast forecast);
+
+    Forecast activateForecast(TenantId tenantId, ForecastId forecastId);
 }

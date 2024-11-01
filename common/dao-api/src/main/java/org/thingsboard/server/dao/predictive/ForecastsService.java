@@ -27,4 +27,8 @@ public interface ForecastsService {
     Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId);
 
     Forecast saveForecast(Forecast forecast);
+
+    void deleteForecast(TenantId tenantId, ForecastId forecastId);
+
+    void activateForecast(TenantId tenantId, ForecastId forecastId);
 }

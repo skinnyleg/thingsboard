@@ -51,7 +51,7 @@ public class Forecast extends BaseData<ForecastId> implements HasTenantId, HasNa
 
     @NoXss
     @Length(fieldName = "name")
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Unique Forecast Name")
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Unique Forecast Name", defaultValue = "[device] Forecast")
     private String name;
 
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Tenant Id.", accessMode = Schema.AccessMode.READ_ONLY)
@@ -59,6 +59,9 @@ public class Forecast extends BaseData<ForecastId> implements HasTenantId, HasNa
 
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Device Id.")
     private DeviceId deviceId;
+
+    @Schema(description = "Active status of the forecast", accessMode = Schema.AccessMode.READ_ONLY, defaultValue = "false")
+    private boolean active;
 
     @Valid
     @Schema(description = "JSON array of attributes")
