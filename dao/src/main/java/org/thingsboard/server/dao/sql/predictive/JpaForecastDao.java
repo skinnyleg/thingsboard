@@ -66,9 +66,10 @@ public class JpaForecastDao extends JpaAbstractDao<ForecastEntity, Forecast> imp
 
     @Override
     public Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId) {
-        return forecastRepository.findForecast(
+        ForecastEntity forecast = forecastRepository.findForecast(
                 tenantId.getId(),
-                forecastId.getId()).toData();
+                forecastId.getId());
+        return forecast != null ? forecast.toData() : null;
     }
 
     @Transactional
