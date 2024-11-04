@@ -14,6 +14,14 @@ import { Store } from "@ngrx/store";
 export class ForcastComponent extends PageComponent implements Order {
   deviceId: string; // To pass to the chart
   Attributes: string[]; // To store the temperature data
+  forecastData: Order[];
+
+  models: Order[];
+  id: string;
+  trueId: string;
+  device: string;
+  date: string;
+  status: string;
 
   constructor(
     protected store: Store<AppState>,
@@ -26,28 +34,40 @@ export class ForcastComponent extends PageComponent implements Order {
 
   changeModel(value: any) {
     this.router.navigateByUrl("/PM/forcast/" + value);
+
+    this.deviceId = "";
+    this.Attributes = [];
+    this.fetchForcast(value);
   }
   ngOnInit(): void {
+    // Check if data was passed via the router's state
+    if (history.state && history.state.forecastData) {
+      this.forecastData = history.state.forecastData;
+      // console.log("Forecast data received:", this.forecastData);
+    } else {
+      // Optionally, handle the case when data is not passed
+      console.error("No forecast data passed.");
+    }
     this.init();
   }
-
-  models: Order[];
-
-  id: string;
-
-  trueId: string;
-
-  device: string;
-
-  date: string;
-
-  status: string;
 
   private init() {
     this.route.params.subscribe((params) => {
       if (params.id) {
         this.id = params.id;
         this.fetchForcast(params.id);
+        this.models = this.forecastData;
+        // console.log("models === ", this.models);
+        if (this.models === undefined || this.models.length === 0) {
+          return this.router.navigateByUrl("/PM");
+        }
+        const forecast = this.models.find(
+          (element) => element.trueId === this.id
+        );
+        if (!forecast) return this.router.navigateByUrl("");
+        this.device = forecast.device;
+        this.date = forecast.date;
+        this.status = forecast.status;
       }
     });
   }
