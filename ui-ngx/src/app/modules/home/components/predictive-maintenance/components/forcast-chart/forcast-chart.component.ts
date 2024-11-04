@@ -67,7 +67,6 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   private destroy$ = new Subject<void>();
   @Input() deviceId: string;
   @Input() Attributes: string[];
-  i: number = 1;
 
   entityId: EntityId;
   attributeScope: TelemetryType;
@@ -100,15 +99,20 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       changes.Attributes &&
       this.Attributes
     ) {
-      console.log("deviceId received: ", this.deviceId);
-      console.log("Attributes received: ", this.Attributes);
+      // console.log("deviceId received: ", this.deviceId);
+      // console.log("Attributes received: ", this.Attributes);
 
       this.entityId = {
         entityType: EntityType.DEVICE,
         id: this.deviceId, // Use the passed deviceId
       };
       this.attributeScope = LatestTelemetry.LATEST_TELEMETRY;
-
+      console.log("series begin === ", this.series);
+      this.series = [];
+      this.telemetryData = [];
+      this.seriesHidden = [];
+      this.displayData = true;
+      this.originalSeriesData = {};
       // Now that deviceId and Attributes are set, we can load attributes
       this.loadAttributes();
     }
@@ -132,6 +136,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   processEntityData() {
+    // TODO create as many colors as telemtry data
     const colors = ["#FF5733", "#33FF57"];
     const seriesArray = [];
 
@@ -181,6 +186,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
     // this.chart.updateSeries([...this.series, ...seriesArray]);
     if (this.displayData === true) {
       this.series = [...this.series, ...seriesArray];
+      this.updateDashArray();
     }
     // console.log("series === ", this.series);
     // console.log("hidden === ", this.seriesHidden);
@@ -202,6 +208,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
     this.series.push(forecastSeries);
+    this.updateDashArray();
     // this.chart.updateSeries(this.series); // Update the chart with the new series
   }
 
@@ -334,6 +341,14 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
+  updateDashArray() {
+    // Set all values to 0, except the last one which is set to 8
+    this.stroke.dashArray = Array(this.series.length).fill(0);
+    if (this.stroke.dashArray.length > 0) {
+      this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
+    }
+  }
+
   // Initialize chart configuration
   initChartData(): void {
     this.chart = {
@@ -368,8 +383,6 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
           // console.log("home clicked");
         },
         legendClick: (chart, seriesIndex, options) => {
-          console.log("chart === ", chart);
-          console.log("options === ", options);
           if (this.seriesHidden.includes(seriesIndex)) {
             // Series was hidden, so remove from hidden list and restore original data
             this.seriesHidden = this.seriesHidden.filter(
@@ -393,7 +406,8 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
     };
     this.stroke = {
       curve: "smooth",
-      dashArray: [0, 0, 8],
+      // TODO generate the dashed array for only the forecast part
+      dashArray: [],
     };
     this.dataLabels = {
       enabled: false,
