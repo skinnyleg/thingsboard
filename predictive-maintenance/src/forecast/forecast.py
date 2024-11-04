@@ -64,7 +64,7 @@ def to_timeseries_ws_cmd(
                 "cmdId": 10,
                 "entityType": "DEVICE",
                 "entityId": device_id,
-                "keys": ",".join(attribute_keys),
+                # "keys": ",".join(attribute_keys),
                 "startTs": startTs,
                 "timeWindow": timeWindow,
                 "scope": "LATEST_TELEMETRY",
@@ -97,6 +97,7 @@ async def websocket_endpoint(
         result = result.fetchone()
         device_id = str(result[0])
         attributes = result[1]
+        attributes.append({"key": "datetime"})
         attribute_keys = [attr["key"] for attr in attributes]
         await client.accept()
         await client.send_text(f"Connected to forecast {forecast_id}")
@@ -122,15 +123,18 @@ async def websocket_endpoint(
                     response_data = response.get("data", None)
                     if not response_data or not response_data.get("pressure", None):
                         continue
-                    for key in attribute_keys:
+                    for key in response_data.keys():
                         tm_data[key].extend(response_data[key])
-                    forecast_data = predict(tm_data, forecastWindow)
-                    await client.send_text(
-                        {
-                            "forecast": json.dumps(forecast_data),
-                            "data": json.dumps(response_data),
-                        }
-                    )
+                    if len(tm_data["pressure"]) >= 24:
+                        forecast_data = predict(tm_data, forecastWindow)
+                        await client.send_text(
+                            json.dumps(
+                                {
+                                    "forecast": forecast_data,
+                                    "data": response_data,
+                                }
+                            )
+                        )
                 except asyncio.exceptions.TimeoutError:
                     print("Timeout")
                     if client.application_state == WebSocketState.CONNECTED:
