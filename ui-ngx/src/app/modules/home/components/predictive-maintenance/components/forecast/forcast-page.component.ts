@@ -105,7 +105,8 @@ export class ForcastComponent implements OnInit {
     // Initialization logic
   }
   ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
+    // console.log("pageLink === ", this.pageLink);
+    // this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
     // this.paginator.page.subscribe(() => {
     //   this.fetchForecasts(); // Fetch new data when page changes
@@ -144,12 +145,18 @@ export class ForcastComponent implements OnInit {
       property: sortPro,
       direction: sortDir,
     });
-
+    // console.log("pageIndex === ", pageIndex);
+    // console.log("pageSize === ", pageSize);
     this.forecastService.getForecastsByPage(pageLink).subscribe(
       (data) => {
         const deviceNameMap = new Map<string, string>();
         const forecastData = data.data;
-        console.log("data === ", data);
+        // console.log("data === ", data);
+        if (forecastData.length === 0) {
+          this.dataSource.data = [];
+          this.totalElements = data.totalElements;
+          this.isLoading = false;
+        }
 
         const deviceRequests = forecastData.map((forecast) => {
           const deviceId = forecast.deviceId.id;
@@ -162,23 +169,9 @@ export class ForcastComponent implements OnInit {
             })
           );
         });
-
         forkJoin(deviceRequests).subscribe(() => {
-          // Structure the new data
           const newData = this.structureDate(forecastData, deviceNameMap);
-
-          // Filter out duplicate items based on `id`
-          const existingData = this.dataSource.data;
-          const uniqueNewData = newData.filter(
-            (newItem) =>
-              !existingData.some(
-                (existingItem) => existingItem.id === newItem.id
-              )
-          );
-
-          // Append unique new data to the existing data
-          this.dataSource.data = [...existingData, ...uniqueNewData];
-          console.log("datasource === ", this.dataSource);
+          this.dataSource.data = newData;
           this.totalElements = data.totalElements;
           this.isLoading = false;
         });
@@ -244,6 +237,7 @@ export class ForcastComponent implements OnInit {
     // Call the service to delete the forecast
     this.forecastService.deleteForecast(forecastId).subscribe(
       () => {
+        console.log("pageIndex === ", this.paginator.pageIndex);
         this.fetchForecasts(this.paginator.pageIndex, this.paginator.pageSize); // Refresh forecasts after deleting
       },
       (error) => {
@@ -265,7 +259,9 @@ export class ForcastComponent implements OnInit {
     this.textSearchMode = false; // Example logic to exit search mode
   }
   openForcastModel(row: Order) {
-    this.router.navigateByUrl(`/PM/forcast/${row.trueId}`);
+    this.router.navigateByUrl(`/PM/forcast/${row.trueId}`, {
+      state: { forecastData: this.dataSource.data },
+    });
   }
   // Rest of the methods (add, edit, delete, etc.)
 }
