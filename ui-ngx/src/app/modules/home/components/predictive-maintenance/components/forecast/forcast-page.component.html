@@ -65,7 +65,7 @@
                   <!-- <button mat-icon-button color="primary" aria-label="Edit">
                       <mat-icon>edit</mat-icon>
                   </button> -->
-                  <button mat-icon-button color="warn" aria-label="Delete">
+                  <button mat-icon-button color="warn" aria-label="Delete" (click)="deleteForecast(element.trueId); $event.stopPropagation()">
                       <mat-icon>delete</mat-icon>
                   </button>
               </td>
@@ -77,5 +77,5 @@
   </div>
 
   <!-- Pagination to always stay at the bottom -->
-  <mat-paginator [pageSizeOptions]="pageSizeOptions" [length]="totalElements" showFirstLastButtons [pageSize]="10" [pageIndex]="pageLink.page" [pageSize]="pageLink.pageSize"></mat-paginator>
+  <mat-paginator [pageSizeOptions]="pageSizeOptions" [length]="totalElements" showFirstLastButtons [pageSize]="10"></mat-paginator>
 </mat-card>
