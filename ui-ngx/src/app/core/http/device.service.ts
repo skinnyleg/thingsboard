@@ -113,8 +113,8 @@ export class DeviceService {
     deviceId: string,
     config?: RequestConfig
   ): Observable<Device> {
-    console.log("getDevice === ", deviceId);
-    console.log("6");
+    // console.log("getDevice === ", deviceId);
+    // console.log("6");
     return this.http.get<Device>(
       `/api/device/${deviceId}`,
       defaultHttpOptionsFromConfig(config)

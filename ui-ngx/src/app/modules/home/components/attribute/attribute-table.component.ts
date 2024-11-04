@@ -290,10 +290,10 @@ export class AttributeTableComponent
   }
 
   updateData(reload: boolean = false) {
-    console.log("please");
-    console.log("entityIdValue === ", this.entityIdValue);
-    console.log("attributeScope === ", this.attributeScope);
-    console.log("pageLink === ", this.pageLink);
+    // console.log("please");
+    // console.log("entityIdValue === ", this.entityIdValue);
+    // console.log("attributeScope === ", this.attributeScope);
+    // console.log("pageLink === ", this.pageLink);
     this.pageLink.page = this.paginator.pageIndex;
     this.pageLink.pageSize = this.paginator.pageSize;
     this.pageLink.sortOrder.property = this.sort.active;
