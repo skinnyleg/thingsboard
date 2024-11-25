@@ -79,12 +79,14 @@ async def websocket_endpoint(
     client: WebSocket,
     forecast_id: str,
     x_authorization: str = Header(None),
+    token: str = Query(None),
     startTs: int = Query(None),  # seconds
     forecastWindow: int = Query(FORECAST_WINDOW),
 ):
-    if x_authorization is None:
+    if not token and x_authorization is None:
         return await client.close()
-    token = x_authorization.split(" ")[1]
+    if not token:
+        token = x_authorization.split(" ")[1]
     if startTs is None:
         startTs = int(time.time()) - FORECAST_HISTORY_WINDOW
     session = SessionLocal()
