@@ -35,8 +35,16 @@ import {
   ChartComponent,
   NgApexchartsModule,
 } from "ng-apexcharts";
-import { Subject } from "rxjs";
-import { takeUntil } from "rxjs/operators";
+import { from, interval, Subject, zip } from "rxjs";
+import {
+  debounce,
+  map,
+  takeLast,
+  takeUntil,
+  tap,
+  throttle,
+} from "rxjs/operators";
+import { webSocket, WebSocketSubject } from "rxjs/webSocket";
 
 @Component({
   selector: "tb-forcast-chart",
@@ -48,7 +56,18 @@ import { takeUntil } from "rxjs/operators";
 export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   // ApexChart configuration
 
-  public series: ApexAxisChartSeries = [];
+  public series: ApexAxisChartSeries = [
+    {
+      name: "Pressure",
+      data: [] as { x: number; y: number }[],
+      color: "#FF5733",
+    },
+    {
+      name: "Pressure Forecast",
+      data: [] as { x: number; y: number }[],
+      color: "#FF5733",
+    },
+  ];
   public chart: ApexChart;
   public dataLabels: ApexDataLabels;
   public markers: ApexMarkers;
@@ -60,6 +79,8 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   public legend: ApexLegend;
   public stroke: ApexStroke;
 
+  public forecastWs: WebSocketSubject<any>;
+
   // Attribute data source
   public telemetryData: any[] = []; // To store the telemetry data
   public seriesHidden: number[] = []; // To store the telemetry data
@@ -67,11 +88,14 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   private destroy$ = new Subject<void>();
   @Input() deviceId: string;
   @Input() Attributes: string[];
+  @Input() forecastId: string;
 
   entityId: EntityId;
   attributeScope: TelemetryType;
   dataSource: AttributeDatasource;
   displayData: boolean = true;
+
+  setIntervalId: number;
 
   constructor(
     private attributeService: AttributeService,
@@ -80,12 +104,12 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
     private zone: NgZone
   ) {
     // Initialize the data source with necessary services
-    this.dataSource = new AttributeDatasource(
-      this.attributeService,
-      this.telemetryWsService,
-      this.zone,
-      this.translate
-    );
+    // this.dataSource = new AttributeDatasource(
+    //   this.attributeService,
+    //   this.telemetryWsService,
+    //   this.zone,
+    //   this.translate
+    // );
 
     // Initialize the chart data
     this.initChartData();
@@ -97,24 +121,76 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       changes.deviceId &&
       this.deviceId &&
       changes.Attributes &&
-      this.Attributes
+      this.Attributes &&
+      this.forecastId
     ) {
       // console.log("deviceId received: ", this.deviceId);
       // console.log("Attributes received: ", this.Attributes);
-
-      this.entityId = {
-        entityType: EntityType.DEVICE,
-        id: this.deviceId, // Use the passed deviceId
-      };
-      this.attributeScope = LatestTelemetry.LATEST_TELEMETRY;
-      console.log("series begin === ", this.series);
-      this.series = [];
-      this.telemetryData = [];
-      this.seriesHidden = [];
-      this.displayData = true;
-      this.originalSeriesData = {};
-      // Now that deviceId and Attributes are set, we can load attributes
-      this.loadAttributes();
+      // this.entityId = {
+      //   entityType: EntityType.DEVICE,
+      //   id: this.deviceId, // Use the passed deviceId
+      // };
+      // this.attributeScope = LatestTelemetry.LATEST_TELEMETRY;
+      // console.log("series begin === ", this.series);
+      // this.series = [];
+      // this.telemetryData = [];
+      // this.seriesHidden = [];
+      // this.displayData = true;
+      // this.originalSeriesData = {};
+      // // Now that deviceId and Attributes are set, we can load attributes
+      // this.loadAttributes();
+      console.log("forecast_id === ", this.forecastId);
+      this.forecastWs = webSocket({
+        url:
+          "ws://10.152.188.106:8000/forecast/" +
+          this.forecastId +
+          "/ws?token=" +
+          localStorage.getItem("jwt_token"),
+        deserializer: (e) => e.data,
+        openObserver: {
+          next: () => {
+            console.log("connection opened");
+          },
+        },
+      });
+      this.forecastWs.subscribe({
+        next: (msg) => {
+          let data;
+          try {
+            data = JSON.parse(msg);
+          } catch {}
+          if (data && this.displayData) {
+            let pressure = data.data.pressure.map(([x, y]) => ({
+              x: new Date(x).getTime(),
+              y: parseFloat(y),
+            }));
+            pressure = [...this.series[0].data, ...pressure];
+            pressure.sort((a, b) => a.x - b.x);
+            pressure = pressure.slice(-60);
+            let forecast = [pressure[pressure.length - 1]];
+            if (pressure.length) {
+              let currentDate = pressure[pressure.length - 1].x;
+              forecast = [
+                ...forecast,
+                ...data.forecast.pressure.map((point) => {
+                  currentDate += 1000;
+                  return {
+                    x: currentDate,
+                    y: point,
+                  };
+                }),
+              ];
+            }
+            this.series = this.series.map((series, index) => {
+              if (index === 0) return { ...series, data: pressure };
+              if (index === 1) return { ...series, data: forecast };
+              return series;
+            });
+          }
+        },
+        error: (err) => console.log("error: ", err),
+        complete: () => console.log("complete"),
+      });
     }
   }
   ngOnInit(): void {}
@@ -343,10 +419,11 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
 
   updateDashArray() {
     // Set all values to 0, except the last one which is set to 8
-    this.stroke.dashArray = Array(this.series.length).fill(0);
-    if (this.stroke.dashArray.length > 0) {
-      this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
-    }
+    // this.stroke.dashArray = Array(this.series.length).fill(0);
+    // if (this.stroke.dashArray.length > 0) {
+    //   // this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
+    //   this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
+    // }
   }
 
   // Initialize chart configuration
@@ -405,9 +482,10 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       },
     };
     this.stroke = {
-      curve: "smooth",
+      // curve: "smooth",
+      curve: "straight",
       // TODO generate the dashed array for only the forecast part
-      dashArray: [],
+      dashArray: [0, 8],
     };
     this.dataLabels = {
       enabled: false,
@@ -484,6 +562,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     // Clean up subscriptions
+    clearInterval(this.setIntervalId);
     this.destroy$.next();
     this.destroy$.complete();
   }

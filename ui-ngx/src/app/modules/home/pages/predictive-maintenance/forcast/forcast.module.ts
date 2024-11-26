@@ -37,6 +37,7 @@ export class ForcastComponent extends PageComponent implements Order {
 
     this.deviceId = "";
     this.Attributes = [];
+    this.trueId = value;
     this.fetchForcast(value);
   }
   ngOnInit(): void {
@@ -79,6 +80,7 @@ export class ForcastComponent extends PageComponent implements Order {
         this.Attributes = data.attributes.map((attr) => {
           return attr.key;
         });
+        this.trueId = data.id.id;
       },
       (error) => {
         console.error("Error fetching forecast:", error);

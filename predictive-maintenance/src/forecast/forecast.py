@@ -64,7 +64,7 @@ def to_timeseries_ws_cmd(
                 "cmdId": 10,
                 "entityType": "DEVICE",
                 "entityId": device_id,
-                # "keys": ",".join(attribute_keys),
+                "keys": ",".join(attribute_keys),
                 "startTs": startTs,
                 "timeWindow": timeWindow,
                 "scope": "LATEST_TELEMETRY",
@@ -83,6 +83,7 @@ async def websocket_endpoint(
     startTs: int = Query(None),  # seconds
     forecastWindow: int = Query(FORECAST_WINDOW),
 ):
+    print("x_authorization === ", x_authorization)
     if not token and x_authorization is None:
         return await client.close()
     if not token:
@@ -101,50 +102,54 @@ async def websocket_endpoint(
         attributes = result[1]
         attributes.append({"key": "datetime"})
         attribute_keys = [attr["key"] for attr in attributes]
+        attribute_keys.append("datetime")
+        print("result === ", result)
         await client.accept()
         await client.send_text(f"Connected to forecast {forecast_id}")
         async with websockets.connect(THINGSBOARD_WS_URL) as ws:
-            await ws.send(
-                json.dumps(
-                    to_timeseries_ws_cmd(
-                        device_id,
-                        attribute_keys,
-                        startTs * 1000,
-                        int(time.time() * 1000),
-                        token,
+            try:
+                await ws.send(
+                    json.dumps(
+                        to_timeseries_ws_cmd(
+                            device_id,
+                            attribute_keys,
+                            startTs * 1000,
+                            int(time.time() * 1000),
+                            token,
+                        )
                     )
                 )
-            )
-            tm_data = {key: [] for key in attribute_keys}
-            while True:
-                try:
-                    response = await asyncio.wait_for(ws.recv(), timeout=3)
-                    response = json.loads(response)
-                    if response["errorCode"] != 0:
-                        raise Exception("Error in response")
-                    response_data = response.get("data", None)
-                    if not response_data or not response_data.get("pressure", None):
-                        continue
-                    for key in response_data.keys():
-                        tm_data[key].extend(response_data[key])
-                    if len(tm_data["pressure"]) >= 24:
-                        forecast_data = predict(tm_data, forecastWindow)
-                        await client.send_text(
-                            json.dumps(
-                                {
-                                    "forecast": forecast_data,
-                                    "data": response_data,
-                                }
+                tm_data = {key: [] for key in attribute_keys}
+                while True:
+                    try:
+                        response = await asyncio.wait_for(ws.recv(), timeout=3)
+                        response = json.loads(response)
+                        if response["errorCode"] != 0:
+                            raise Exception("Error in response")
+                        response_data = response.get("data", None)
+                        if not response_data or not response_data.get("pressure", None):
+                            continue
+                        for key in response_data.keys():
+                            tm_data[key].extend(response_data[key])
+                        if len(tm_data["pressure"]) >= 24:
+                            forecast_data = predict(tm_data, forecastWindow)
+                            await client.send_text(
+                                json.dumps(
+                                    {
+                                        "forecast": forecast_data,
+                                        "data": response_data,
+                                    }
+                                )
                             )
-                        )
-                except asyncio.exceptions.TimeoutError:
-                    print("Timeout")
-                    if client.application_state == WebSocketState.CONNECTED:
-                        await client.send_text("Keep Alive")
-                    continue
-    except (WebSocketDisconnect, asyncio.CancelledError):
-        if ws.open:
-            await ws.close()
+                    except asyncio.exceptions.TimeoutError:
+                        print("Timeout")
+                        if client.application_state == WebSocketState.CONNECTED:
+                            await client.send_text("Keep Alive")
+                        continue
+            except WebSocketDisconnect:
+                if ws.open:
+                    await ws.close()
+    except asyncio.CancelledError:
         if client.application_state == WebSocketState.CONNECTED:
             await client.close()
     except Exception as e:
