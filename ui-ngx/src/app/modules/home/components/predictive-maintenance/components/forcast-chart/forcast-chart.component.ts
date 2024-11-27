@@ -56,18 +56,7 @@ import { webSocket, WebSocketSubject } from "rxjs/webSocket";
 export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   // ApexChart configuration
 
-  public series: ApexAxisChartSeries = [
-    {
-      name: "Pressure",
-      data: [] as { x: number; y: number }[],
-      color: "#FF5733",
-    },
-    {
-      name: "Pressure Forecast",
-      data: [] as { x: number; y: number }[],
-      color: "#FF5733",
-    },
-  ];
+  public series: ApexAxisChartSeries = [];
   public chart: ApexChart;
   public dataLabels: ApexDataLabels;
   public markers: ApexMarkers;
@@ -142,7 +131,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       console.log("forecast_id === ", this.forecastId);
       this.forecastWs = webSocket({
         url:
-          "ws://10.152.188.106:8000/forecast/" +
+          "ws://10.152.188.198:8000/forecast/" +
           this.forecastId +
           "/ws?token=" +
           localStorage.getItem("jwt_token"),
@@ -160,31 +149,60 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
             data = JSON.parse(msg);
           } catch {}
           if (data && this.displayData) {
-            let pressure = data.data.pressure.map(([x, y]) => ({
-              x: new Date(x).getTime(),
-              y: parseFloat(y),
-            }));
-            pressure = [...this.series[0].data, ...pressure];
-            pressure.sort((a, b) => a.x - b.x);
-            pressure = pressure.slice(-60);
-            let forecast = [pressure[pressure.length - 1]];
-            if (pressure.length) {
-              let currentDate = pressure[pressure.length - 1].x;
-              forecast = [
-                ...forecast,
-                ...data.forecast.pressure.map((point) => {
-                  currentDate += 1000;
-                  return {
-                    x: currentDate,
-                    y: point,
-                  };
-                }),
-              ];
-            }
-            this.series = this.series.map((series, index) => {
-              if (index === 0) return { ...series, data: pressure };
-              if (index === 1) return { ...series, data: forecast };
-              return series;
+            Object.keys(data.data).forEach((key) => {
+              if (key === "datetime") return;
+              let values = data.data[key].map(([x, y]) => ({
+                x: new Date(x).getTime(),
+                y: parseFloat(y),
+              }));
+              let keyIndex = this.series.findIndex(
+                (series) => series.name.toLowerCase() === key.toLowerCase()
+              );
+              let keyForecastIndex = this.series.findIndex(
+                (series) =>
+                  series.name.toLowerCase() === key.toLowerCase() + " forecast"
+              );
+              if (keyIndex === -1) {
+                this.series.push({
+                  name: key,
+                  data: [],
+                  color: "hsl(360, 100%, 50%)",
+                });
+                keyIndex = this.series.length - 1;
+              }
+              if (keyForecastIndex === -1) {
+                this.series.push({
+                  name: key[0].toUpperCase() + key.slice(1) + " Forecast",
+                  data: [],
+                  color: "hsl(360, 100%, 50%)",
+                });
+                keyForecastIndex = this.series.length - 1;
+              }
+              values = [...this.series[keyIndex].data, ...values];
+              values.sort((a, b) => a.x - b.x);
+              values = values.slice(-60);
+              let forecast = [values[values.length - 1]];
+              if (values.length) {
+                let currentDate = values[values.length - 1].x;
+                forecast = [
+                  ...forecast,
+                  ...data.forecast[key].map((point) => {
+                    currentDate += 1000;
+                    return {
+                      x: currentDate,
+                      y: point,
+                    };
+                  }),
+                ];
+              }
+              this.series = this.series.map((series, index) => {
+                if (index === keyIndex)
+                  return { ...series, data: values, color: "#FF5733" };
+                if (index === keyForecastIndex)
+                  return { ...series, data: forecast, color: "#FF5733" };
+                return series;
+              });
+              this.updateDashArray();
             });
           }
         },
@@ -419,11 +437,16 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
 
   updateDashArray() {
     // Set all values to 0, except the last one which is set to 8
-    // this.stroke.dashArray = Array(this.series.length).fill(0);
-    // if (this.stroke.dashArray.length > 0) {
-    //   // this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
-    //   this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
-    // }
+    this.stroke.dashArray = Array(this.series.length).fill(0);
+    if (this.stroke.dashArray.length > 0) {
+      // this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
+      // this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
+      this.series.forEach((series, index) => {
+        if (series.name.toLowerCase().includes("forecast")) {
+          this.stroke.dashArray[index] = 8;
+        }
+      });
+    }
   }
 
   // Initialize chart configuration
