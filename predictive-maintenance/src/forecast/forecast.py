@@ -83,7 +83,6 @@ async def websocket_endpoint(
     startTs: int = Query(None),  # seconds
     forecastWindow: int = Query(FORECAST_WINDOW),
 ):
-    print("x_authorization === ", x_authorization)
     if not token and x_authorization is None:
         return await client.close()
     if not token:
@@ -103,7 +102,6 @@ async def websocket_endpoint(
         attributes.append({"key": "datetime"})
         attribute_keys = [attr["key"] for attr in attributes]
         attribute_keys.append("datetime")
-        print("result === ", result)
         await client.accept()
         await client.send_text(f"Connected to forecast {forecast_id}")
         async with websockets.connect(THINGSBOARD_WS_URL) as ws:

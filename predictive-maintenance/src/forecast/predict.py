@@ -43,7 +43,6 @@ def shape_sequence(arr, step, start):
         out.append(arr[low_lim:up_lim])
 
         if up_lim == arr.shape[0]:
-            # print(i)
             break
 
     out_seq = np.array(out)
