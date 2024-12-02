@@ -15,7 +15,7 @@
 ///
 
 export const environment = {
-  appTitle: 'ThingsBoard',
+  appTitle: 'AnalyticBird',
   production: true,
 // @ts-ignore
   tbVersion: TB_VERSION,

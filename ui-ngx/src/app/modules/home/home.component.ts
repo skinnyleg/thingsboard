@@ -66,7 +66,7 @@ export class HomeComponent
   sidenavMode: "over" | "push" | "side" = "side";
   sidenavOpened = true;
 
-  logo = "assets/logo_title_white.svg";
+  logo = "assets/analytic-bird-logo.PNG";
 
   @ViewChild("sidenav")
   sidenav: MatSidenav;
