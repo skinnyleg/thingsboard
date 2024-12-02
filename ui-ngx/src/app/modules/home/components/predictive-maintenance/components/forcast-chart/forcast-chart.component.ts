@@ -46,6 +46,12 @@ import {
 } from "rxjs/operators";
 import { webSocket, WebSocketSubject } from "rxjs/webSocket";
 
+type ApexAxisChartSeriesWithXYData = {
+  [K in keyof ApexAxisChartSeries[number]]: K extends "data"
+    ? { x: number; y: number }[]
+    : ApexAxisChartSeries[number][K];
+}[];
+
 @Component({
   selector: "tb-forcast-chart",
   templateUrl: "./forcast-chart.component.html",
@@ -56,7 +62,7 @@ import { webSocket, WebSocketSubject } from "rxjs/webSocket";
 export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   // ApexChart configuration
 
-  public series: ApexAxisChartSeries = [];
+  public series: ApexAxisChartSeriesWithXYData = [];
   public chart: ApexChart;
   public dataLabels: ApexDataLabels;
   public markers: ApexMarkers;
@@ -67,6 +73,10 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   public tooltip: ApexTooltip;
   public legend: ApexLegend;
   public stroke: ApexStroke;
+
+  public oldForecastSeries: {
+    [key: string]: ApexAxisChartSeriesWithXYData[number]["data"];
+  } = {};
 
   public forecastWs: WebSocketSubject<any>;
 
@@ -128,7 +138,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       // this.originalSeriesData = {};
       // // Now that deviceId and Attributes are set, we can load attributes
       // this.loadAttributes();
-      console.log("forecast_id === ", this.forecastId);
+      // console.log("forecast_id === ", this.forecastId);
       this.forecastWs = webSocket({
         url:
           "ws://10.152.188.198:8000/forecast/" +
@@ -138,7 +148,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
         deserializer: (e) => e.data,
         openObserver: {
           next: () => {
-            console.log("connection opened");
+            // console.log("connection opened");
           },
         },
       });
@@ -162,26 +172,38 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
                 (series) =>
                   series.name.toLowerCase() === key.toLowerCase() + " forecast"
               );
+              let keyOldForecastIndex = this.series.findIndex(
+                (series) =>
+                  series.name.toLowerCase() ===
+                  key.toLowerCase() + " measured forecast"
+              );
               if (keyIndex === -1) {
                 this.series.push({
                   name: key,
                   data: [],
-                  color: "hsl(360, 100%, 50%)",
+                  color: "#FF5733",
                 });
                 keyIndex = this.series.length - 1;
-              }
-              if (keyForecastIndex === -1) {
                 this.series.push({
                   name: key[0].toUpperCase() + key.slice(1) + " Forecast",
                   data: [],
-                  color: "hsl(360, 100%, 50%)",
+                  color: "#0000FF50",
                 });
                 keyForecastIndex = this.series.length - 1;
+                this.series.push({
+                  name:
+                    key[0].toUpperCase() + key.slice(1) + " Measured Forecast",
+                  data: [],
+                  color: "#989898",
+                });
+                keyOldForecastIndex = this.series.length - 1;
+                this.oldForecastSeries[key] = [];
+                this.updateDashArray();
               }
               values = [...this.series[keyIndex].data, ...values];
               values.sort((a, b) => a.x - b.x);
               values = values.slice(-60);
-              let forecast = [values[values.length - 1]];
+              let forecast = [];
               if (values.length) {
                 let currentDate = values[values.length - 1].x;
                 forecast = [
@@ -195,19 +217,33 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
                   }),
                 ];
               }
+              if (this.series[keyForecastIndex].data.length) {
+                this.oldForecastSeries[key].push({
+                  x: values[values.length - 1].x,
+                  y: this.series[keyForecastIndex].data[
+                    this.series[keyForecastIndex].data.length - 20
+                  ].y,
+                });
+                this.oldForecastSeries[key] =
+                  this.oldForecastSeries[key].slice(-60);
+              }
               this.series = this.series.map((series, index) => {
-                if (index === keyIndex)
-                  return { ...series, data: values, color: "#FF5733" };
-                if (index === keyForecastIndex)
-                  return { ...series, data: forecast, color: "#FF5733" };
-                return series;
+                switch (index) {
+                  case keyIndex:
+                    return { ...series, data: values };
+                  case keyForecastIndex:
+                    return { ...series, data: forecast };
+                  case keyOldForecastIndex:
+                    return { ...series, data: this.oldForecastSeries[key] };
+                  default:
+                    return series;
+                }
               });
-              this.updateDashArray();
             });
           }
         },
-        error: (err) => console.log("error: ", err),
-        complete: () => console.log("complete"),
+        error: (err) => {},
+        complete: () => {},
       });
     }
   }
@@ -436,17 +472,12 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   updateDashArray() {
-    // Set all values to 0, except the last one which is set to 8
-    this.stroke.dashArray = Array(this.series.length).fill(0);
-    if (this.stroke.dashArray.length > 0) {
-      // this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
-      // this.stroke.dashArray[this.stroke.dashArray.length - 1] = 8; // Dash the last series
-      this.series.forEach((series, index) => {
-        if (series.name.toLowerCase().includes("forecast")) {
-          this.stroke.dashArray[index] = 8;
-        }
-      });
-    }
+    this.stroke = {
+      ...this.stroke,
+      dashArray: this.series.map((series) =>
+        series.name.toLowerCase().includes("forecast") ? 8 : 0
+      ),
+    };
   }
 
   // Initialize chart configuration
@@ -508,7 +539,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       // curve: "smooth",
       curve: "straight",
       // TODO generate the dashed array for only the forecast part
-      dashArray: [0, 8],
+      width: 2,
     };
     this.dataLabels = {
       enabled: false,
