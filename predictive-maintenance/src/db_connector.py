@@ -2,8 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 DB_NAME = "thingsboard"
-DB_USER = "thingsboard"
-DB_PASSWORD = "thingsboard"
+DB_USER = "postgres"
+DB_PASSWORD = "postgres"
 DB_HOST = "localhost"
 DB_PORT = "5432"
 

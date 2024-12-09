@@ -202,8 +202,12 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
               }
               values = [...this.series[keyIndex].data, ...values];
               values.sort((a, b) => a.x - b.x);
-              values = values.slice(-60);
-              let forecast = [];
+              values = values
+                .slice(-60)
+                .filter(
+                  (point) => Date.now() - +new Date(point.x) <= 2 * 60 * 1000
+                );
+              let forecast = values.length ? [values[values.length - 1]] : [];
               if (values.length) {
                 let currentDate = values[values.length - 1].x;
                 forecast = [
@@ -224,8 +228,11 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
                     this.series[keyForecastIndex].data.length - 20
                   ].y,
                 });
-                this.oldForecastSeries[key] =
-                  this.oldForecastSeries[key].slice(-60);
+                this.oldForecastSeries[key] = this.oldForecastSeries[key]
+                  .slice(-60)
+                  .filter(
+                    (point) => Date.now() - +new Date(point.x) <= 2 * 60 * 1000
+                  );
               }
               this.series = this.series.map((series, index) => {
                 switch (index) {
