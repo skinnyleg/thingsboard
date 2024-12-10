@@ -65,22 +65,23 @@ module.exports = (config, options) => {
   );
 
   config.module.rules[2].use[0].options.aot = false;
-  const index = config.plugins.findIndex(p => p instanceof ngWebpack.AngularWebpackPlugin);
+  const index = config.plugins.findIndex(p => p.constructor.name === 'AngularWebpackPlugin');
   let angularWebpackPlugin = config.plugins[index];
-  // if (config.mode === 'production') {
-  //   const angularCompilerOptions = angularWebpackPlugin.pluginOptions;
-  //   angularCompilerOptions.emitClassMetadata = true;
-  //   angularCompilerOptions.emitNgModuleScope = true;
-  //   config.plugins.splice(index, 1);
-  //   angularWebpackPlugin = new ngWebpack.AngularWebpackPlugin(angularCompilerOptions);
-  //   config.plugins.push(angularWebpackPlugin);
-  //   const javascriptOptimizerOptions = config.optimization.minimizer[0].options;
-  //   delete javascriptOptimizerOptions.define.ngJitMode;
-  //   config.optimization.minimizer.splice(0, 1);
-  //   config.optimization.minimizer.unshift(new JavaScriptOptimizerPlugin(javascriptOptimizerOptions));
-  // }
+  console.log(JSON.stringify(angularWebpackPlugin));
+  if (config.mode === 'production') {
+    const angularCompilerOptions = angularWebpackPlugin.pluginOptions;
+    angularCompilerOptions.emitClassMetadata = true;
+    angularCompilerOptions.emitNgModuleScope = true;
+    config.plugins.splice(index, 1);
+    angularWebpackPlugin = new ngWebpack.AngularWebpackPlugin(angularCompilerOptions);
+    config.plugins.push(angularWebpackPlugin);
+    const javascriptOptimizerOptions = config.optimization.minimizer[0].options;
+    delete javascriptOptimizerOptions.define.ngJitMode;
+    config.optimization.minimizer.splice(0, 1);
+    config.optimization.minimizer.unshift(new JavaScriptOptimizerPlugin(javascriptOptimizerOptions));
+  }
 
-  // addTransformerToAngularWebpackPlugin(angularWebpackPlugin, keysTransformer);
+  addTransformerToAngularWebpackPlugin(angularWebpackPlugin, keysTransformer);
 
   return config;
 };
