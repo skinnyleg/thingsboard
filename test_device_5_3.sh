@@ -18,7 +18,7 @@ echo -e "LOOP:\t\t$COUNT"
 echo -e 'COMMAND:\tmosquitto_pub
                     -d
                     -q 1
-                    -h 10.152.116.185
+                    -h localhost
                     -p 1883
                     -t v1/devices/me/telemetry
                     -u "jxl8ni3f0em9zpmuq0oq"
@@ -38,5 +38,5 @@ do
         IFS="," read -r datetime machineId volt rotate pressure vibration
         printf "LOOP: $i, PRESSURE: $pressure, DATETIME: $datetime\r"
         sleep 1
-        mosquitto_pub -d -q 1 -h 10.152.116.185 -p 1883 -t v1/devices/me/telemetry -u "jxl8ni3f0em9zpmuq0oq" -m "{pressure:$pressure,datetime:'$datetime'}" > /dev/null
+        mosquitto_pub -d -q 1 -h localhost -p 1883 -t v1/devices/me/telemetry -u "jxl8ni3f0em9zpmuq0oq" -m "{pressure:$pressure,datetime:'$datetime'}" > /dev/null
 done < $path
