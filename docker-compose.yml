@@ -25,24 +25,10 @@ services:
     ports:
       - "8000:8000"
       
-  
-  thingsboard_app:
-    build:
-      context: .
-      dockerfile: .Dockerfile
-    container_name: thingsboard_app
-    restart: unless-stopped
-    depends_on:
-      - fastapi
-      - postgres
-    ports:
-      - "1883:1883"
-      - "8080:8080"
-
 volumes:
   postgres_data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ../thingsboard_psql_db
+      device: ../psql_data/main/

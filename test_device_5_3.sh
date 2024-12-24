@@ -27,7 +27,7 @@ echo -e 'COMMAND:\tmosquitto_pub
 
 trap 'echo -e "\Closed at LOOP: $i, PRESSURE: $VALUE"; exit' SIGINT
 
-path='/home/alabindusrie/Desktop/SamyThingsBoard/predictive-maintenance/data/PdM_telemetry_MachineID11.csv'
+path='./predictive-maintenance/data/PdM_telemetry_MachineID11.csv'
 
 echo ''
 # for ((i=1; i<=COUNT; i++))
