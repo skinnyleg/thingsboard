@@ -141,7 +141,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       // console.log("forecast_id === ", this.forecastId);
       this.forecastWs = webSocket({
         url:
-          "ws://10.152.116.185:8000/forecast/" +
+          "ws://localhost:8000/forecast/" +
           this.forecastId +
           "/ws?token=" +
           localStorage.getItem("jwt_token"),

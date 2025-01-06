@@ -58,7 +58,8 @@ public enum EntityType {
     NOTIFICATION(32),
     NOTIFICATION_RULE(33),
     QUEUE_STATS(34),
-    FORECAST(35);
+    FORECAST(35),
+    CLAIM(36);
 
     @Getter
     private final int protoNumber; // Corresponds to EntityTypeProto

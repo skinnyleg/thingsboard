@@ -23,3 +23,13 @@ CREATE TABLE IF NOT EXISTS forecast (
     attributes jsonb NOT NULL,
     active BOOLEAN DEFAULT FALSE
 );
+
+CREATE TABLE IF NOT EXISTS claim (
+    id uuid NOT NULL CONSTRAINT claims_pkey PRIMARY KEY,
+    -- body text NOT NULL,
+    body varchar(255) NOT NULL,
+    created_time bigint NOT NULL,
+    tenant_id uuid NOT NULL CONSTRAINT fk_claims_tenant_id REFERENCES tenant (id) ON DELETE CASCADE,
+    done BOOLEAN DEFAULT FALSE,
+    name varchar(255) not null
+);

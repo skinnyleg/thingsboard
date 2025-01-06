@@ -45,6 +45,7 @@ public enum Resource {
     RPC(EntityType.RPC),
     QUEUE(EntityType.QUEUE),
     FORECAST(EntityType.FORECAST),
+    CLAIM(EntityType.CLAIM),
     VERSION_CONTROL,
     NOTIFICATION(EntityType.NOTIFICATION_TARGET, EntityType.NOTIFICATION_TEMPLATE,
             EntityType.NOTIFICATION_REQUEST, EntityType.NOTIFICATION_RULE),
