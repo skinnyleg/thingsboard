@@ -28,5 +28,5 @@ public interface ClaimsService {
 
     void deleteClaim(TenantId tenantId, ClaimId claimId);
 
-    void disableClaim(TenantId tenantId, ClaimId claimId);
+    void toggleClaim(TenantId tenantId, ClaimId claimId);
 }

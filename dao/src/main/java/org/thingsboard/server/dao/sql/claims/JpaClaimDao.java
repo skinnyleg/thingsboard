@@ -81,9 +81,9 @@ public class JpaClaimDao extends JpaAbstractDao<ClaimEntity, Claim> implements C
     }
 
     @Override
-    public Claim disableClaim(TenantId tenantId, ClaimId claimId) {
+    public Claim toggleClaim(TenantId tenantId, ClaimId claimId) {
         ClaimEntity claim = claimRepository.findClaim(tenantId.getId(), claimId.getId());
-        claim.setDone(true);
+        claim.setDone(!claim.isDone());
         Claim result = saveAndFlush(tenantId, claim.toData());
         return result;
     }

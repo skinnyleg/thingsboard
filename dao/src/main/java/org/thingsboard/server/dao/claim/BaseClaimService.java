@@ -53,9 +53,9 @@ public class BaseClaimService implements ClaimsService {
     }
 
     @Override
-    public void disableClaim(TenantId tenantId, ClaimId claimId) {
+    public void toggleClaim(TenantId tenantId, ClaimId claimId) {
         try {
-            Claim result = claimDao.disableClaim(tenantId, claimId);
+            Claim result = claimDao.toggleClaim(tenantId, claimId);
             log.info("Activated forecast: [{}]", result);
         } catch (Exception e) {
             throw e;

@@ -27,7 +27,7 @@ public interface ClaimDao extends Dao<Claim> {
 
     Claim saveAndFlush(TenantId tenantId, Claim claim);
 
-    Claim disableClaim(TenantId tenantId, ClaimId claimId);
+    Claim toggleClaim(TenantId tenantId, ClaimId claimId);
 
     Claim findTenantClaim(TenantId tenantId, ClaimId claimId);
 }

@@ -28,5 +28,5 @@ public interface TbClaimsService extends SimpleTbEntityService<Claim> {
 
     void deleteForecast(Claim entity, User user);
 
-    void disable(Claim entity, User user) throws ThingsboardException;
+    void toggleClaim(Claim entity, User user) throws ThingsboardException;
 }

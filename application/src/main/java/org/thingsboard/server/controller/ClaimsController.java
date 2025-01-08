@@ -96,15 +96,15 @@ public class ClaimsController extends BaseController {
         claimsService.delete(new Claim(claimId), getCurrentUser());
     }
 
-    @ApiOperation(value = "Disable claim", notes = "mark a claim as disabled")
+    @ApiOperation(value = "Switch claim", notes = "switch claim to done or not done")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @PatchMapping(value = "/claims/{claimId}/disable")
+    @PatchMapping(value = "/claims/{claimId}/switch")
     @ResponseBody
-    public void disableClaim(@PathVariable("claimId") String strClaimId) throws Exception {
+    public void toggleClaim(@PathVariable("claimId") String strClaimId) throws Exception {
         checkParameter("claimId", strClaimId);
         ClaimId claimId = new ClaimId(toUUID(strClaimId));
         try {
-            claimsService.disable(new Claim(claimId), getCurrentUser());
+            claimsService.toggleClaim(new Claim(claimId), getCurrentUser());
         } catch (Exception e) {
             throw new ThingsboardException("Failed to disable Claim", e, ThingsboardErrorCode.GENERAL);
         }

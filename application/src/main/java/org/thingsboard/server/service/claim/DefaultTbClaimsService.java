@@ -76,7 +76,7 @@ public class DefaultTbClaimsService extends AbstractTbEntityService implements T
         }
     }
 
-    public void disable(Claim claim, User user) throws ThingsboardException {
-        this.claimsService.disableClaim(user.getTenantId(), claim.getId());
+    public void toggleClaim(Claim claim, User user) throws ThingsboardException {
+        this.claimsService.toggleClaim(user.getTenantId(), claim.getId());
     }
 }
