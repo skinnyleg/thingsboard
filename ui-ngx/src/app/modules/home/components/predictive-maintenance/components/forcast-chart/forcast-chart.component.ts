@@ -45,11 +45,15 @@ import {
   throttle,
 } from "rxjs/operators";
 import { webSocket, WebSocketSubject } from "rxjs/webSocket";
+import { MatInputModule, } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { FormsModule } from '@angular/forms';
 
 type ApexAxisChartSeriesWithXYData = {
   [K in keyof ApexAxisChartSeries[number]]: K extends "data"
-    ? { x: number; y: number }[]
-    : ApexAxisChartSeries[number][K];
+  ? { x: number; y: number }[]
+  : ApexAxisChartSeries[number][K];
 }[];
 
 @Component({
@@ -57,7 +61,7 @@ type ApexAxisChartSeriesWithXYData = {
   templateUrl: "./forcast-chart.component.html",
   styleUrls: ["./forcast-chart.component.scss"],
   standalone: true,
-  imports: [CommonModule, NgApexchartsModule],
+  imports: [CommonModule, NgApexchartsModule, MatInputModule, MatSelectModule, MatFormFieldModule, FormsModule],
 })
 export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   // ApexChart configuration
@@ -79,6 +83,34 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   } = {};
 
   public forecastWs: WebSocketSubject<any>;
+
+  public selected = {
+    value: "60s",
+    name: "Last 60 seconds",
+    seconds: 60,
+  };
+
+  public selectionOptions = [
+    this.selected,
+    {
+      value: "5min",
+      name: "Last 5 minutes",
+      seconds: 5 * 60,
+    },
+    {
+      value: "10min",
+      name: "Last 10 minutes",
+      seconds: 10 * 60,
+    }
+  ];
+
+  onSelectTimeChange(event) {
+    this.selected = this.selectionOptions.find((i) => i.value === event.value);
+    this.forecastWs.complete();
+    this.forecastWs.unsubscribe();
+    this.connectToSocket();
+  }
+
 
   // Attribute data source
   public telemetryData: any[] = []; // To store the telemetry data
@@ -114,6 +146,123 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
     this.initChartData();
   }
 
+  connectToSocket() {
+    this.forecastWs = webSocket({
+      url:
+        "ws://localhost:8000/forecast/" +
+        this.forecastId +
+        "/ws?token=" +
+        localStorage.getItem("jwt_token") +
+        "&history=" + this.selected.seconds,
+      deserializer: (e) => e.data,
+      openObserver: {
+        next: () => {
+          // console.log("connection opened");
+        },
+      },
+    });
+    this.forecastWs.subscribe({
+      next: (msg) => {
+        let data;
+        try {
+          data = JSON.parse(msg);
+        } catch { }
+        if (data && this.displayData) {
+          Object.keys(data.data).forEach((key) => {
+            if (key === "datetime") return;
+            let values = data.data[key].map(([x, y]) => ({
+              x: new Date(x).getTime(),
+              y: parseFloat(y),
+            }));
+            let keyIndex = this.series.findIndex(
+              (series) => series.name.toLowerCase() === key.toLowerCase()
+            );
+            let keyForecastIndex = this.series.findIndex(
+              (series) =>
+                series.name.toLowerCase() === key.toLowerCase() + " forecast"
+            );
+            let keyOldForecastIndex = this.series.findIndex(
+              (series) =>
+                series.name.toLowerCase() ===
+                key.toLowerCase() + " measured forecast"
+            );
+            if (keyIndex === -1) {
+              this.series.push({
+                name: key,
+                data: [],
+                color: "#FF5733",
+              });
+              keyIndex = this.series.length - 1;
+              this.series.push({
+                name: key[0].toUpperCase() + key.slice(1) + " Forecast",
+                data: [],
+                color: "#0000FF50",
+              });
+              keyForecastIndex = this.series.length - 1;
+              this.series.push({
+                name:
+                  key[0].toUpperCase() + key.slice(1) + " Measured Forecast",
+                data: [],
+                color: "#989898",
+              });
+              keyOldForecastIndex = this.series.length - 1;
+              this.oldForecastSeries[key] = [];
+              this.updateDashArray();
+            }
+            values = [...this.series[keyIndex].data, ...values];
+            values.sort((a, b) => a.x - b.x);
+            values = values
+              .slice(-this.selected.seconds)
+              .filter(
+                (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
+              );
+            let forecast = values.length ? [values[values.length - 1]] : [];
+            if (values.length) {
+              let currentDate = values[values.length - 1].x;
+              forecast = [
+                ...forecast,
+                ...data.forecast[key].map((point) => {
+                  currentDate += 1000;
+                  return {
+                    x: currentDate,
+                    y: point,
+                  };
+                }),
+              ];
+            }
+            if (this.series[keyForecastIndex].data.length) {
+              this.oldForecastSeries[key].push({
+                x: values[values.length - 1].x,
+                y: this.series[keyForecastIndex].data[
+                  this.series[keyForecastIndex].data.length - 20
+                ].y,
+              });
+              this.oldForecastSeries[key] = this.oldForecastSeries[key]
+                .slice(-this.selected.seconds)
+                .filter(
+                  (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
+                );
+            }
+            this.series = this.series.map((series, index) => {
+              switch (index) {
+                case keyIndex:
+                  return { ...series, data: values };
+                case keyForecastIndex:
+                  return { ...series, data: forecast };
+                case keyOldForecastIndex:
+                  return { ...series, data: this.oldForecastSeries[key] };
+                default:
+                  return series;
+              }
+            });
+          });
+        }
+      },
+      error: (err) => { },
+      complete: () => { },
+    });
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     // Check if deviceId and Attributes have been set
     if (
@@ -139,122 +288,10 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       // // Now that deviceId and Attributes are set, we can load attributes
       // this.loadAttributes();
       // console.log("forecast_id === ", this.forecastId);
-      this.forecastWs = webSocket({
-        url:
-          "ws://localhost:8000/forecast/" +
-          this.forecastId +
-          "/ws?token=" +
-          localStorage.getItem("jwt_token"),
-        deserializer: (e) => e.data,
-        openObserver: {
-          next: () => {
-            // console.log("connection opened");
-          },
-        },
-      });
-      this.forecastWs.subscribe({
-        next: (msg) => {
-          let data;
-          try {
-            data = JSON.parse(msg);
-          } catch {}
-          if (data && this.displayData) {
-            Object.keys(data.data).forEach((key) => {
-              if (key === "datetime") return;
-              let values = data.data[key].map(([x, y]) => ({
-                x: new Date(x).getTime(),
-                y: parseFloat(y),
-              }));
-              let keyIndex = this.series.findIndex(
-                (series) => series.name.toLowerCase() === key.toLowerCase()
-              );
-              let keyForecastIndex = this.series.findIndex(
-                (series) =>
-                  series.name.toLowerCase() === key.toLowerCase() + " forecast"
-              );
-              let keyOldForecastIndex = this.series.findIndex(
-                (series) =>
-                  series.name.toLowerCase() ===
-                  key.toLowerCase() + " measured forecast"
-              );
-              if (keyIndex === -1) {
-                this.series.push({
-                  name: key,
-                  data: [],
-                  color: "#FF5733",
-                });
-                keyIndex = this.series.length - 1;
-                this.series.push({
-                  name: key[0].toUpperCase() + key.slice(1) + " Forecast",
-                  data: [],
-                  color: "#0000FF50",
-                });
-                keyForecastIndex = this.series.length - 1;
-                this.series.push({
-                  name:
-                    key[0].toUpperCase() + key.slice(1) + " Measured Forecast",
-                  data: [],
-                  color: "#989898",
-                });
-                keyOldForecastIndex = this.series.length - 1;
-                this.oldForecastSeries[key] = [];
-                this.updateDashArray();
-              }
-              values = [...this.series[keyIndex].data, ...values];
-              values.sort((a, b) => a.x - b.x);
-              values = values
-                .slice(-60)
-                .filter(
-                  (point) => Date.now() - +new Date(point.x) <= 2 * 60 * 1000
-                );
-              let forecast = values.length ? [values[values.length - 1]] : [];
-              if (values.length) {
-                let currentDate = values[values.length - 1].x;
-                forecast = [
-                  ...forecast,
-                  ...data.forecast[key].map((point) => {
-                    currentDate += 1000;
-                    return {
-                      x: currentDate,
-                      y: point,
-                    };
-                  }),
-                ];
-              }
-              if (this.series[keyForecastIndex].data.length) {
-                this.oldForecastSeries[key].push({
-                  x: values[values.length - 1].x,
-                  y: this.series[keyForecastIndex].data[
-                    this.series[keyForecastIndex].data.length - 20
-                  ].y,
-                });
-                this.oldForecastSeries[key] = this.oldForecastSeries[key]
-                  .slice(-60)
-                  .filter(
-                    (point) => Date.now() - +new Date(point.x) <= 2 * 60 * 1000
-                  );
-              }
-              this.series = this.series.map((series, index) => {
-                switch (index) {
-                  case keyIndex:
-                    return { ...series, data: values };
-                  case keyForecastIndex:
-                    return { ...series, data: forecast };
-                  case keyOldForecastIndex:
-                    return { ...series, data: this.oldForecastSeries[key] };
-                  default:
-                    return series;
-                }
-              });
-            });
-          }
-        },
-        error: (err) => {},
-        complete: () => {},
-      });
+      this.connectToSocket();
     }
   }
-  ngOnInit(): void {}
+  ngOnInit(): void { }
 
   // Load telemetry (attributes) from the device
   loadAttributes() {

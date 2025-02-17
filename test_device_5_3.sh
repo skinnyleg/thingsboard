@@ -37,6 +37,6 @@ do
         # echo -ne "LOOP: $i, PRESSURE: $VALUE\r"
         IFS="," read -r datetime machineId volt rotate pressure vibration
         printf "LOOP: $i, PRESSURE: $pressure, DATETIME: $datetime\r"
-        sleep 1
+        sleep 4
         mosquitto_pub -d -q 1 -h localhost -p 1883 -t v1/devices/me/telemetry -u "jxl8ni3f0em9zpmuq0oq" -m "{pressure:$pressure,datetime:'$datetime'}" > /dev/null
 done < $path

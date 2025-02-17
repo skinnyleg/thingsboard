@@ -1,11 +1,22 @@
 ul {
-    text-align: center;
-  }
+  text-align: center;
+}
 
 .container {
-  background-color: rgba(255, 255, 255, 0.715);;
+  background-color: rgba(255, 255, 255, 0.715);
+  ;
 }
 
 .chart {
   padding-top: 0.5rem;
+}
+
+.history-container {
+  width: 100%;
+  display: flex;
+  justify-content: end;
+}
+
+.history {
+  margin-right: 2em;
 }

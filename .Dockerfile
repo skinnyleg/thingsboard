@@ -1,13 +1,21 @@
-FROM maven:3.8.5-openjdk-17
+FROM maven:3.8.4-openjdk-17-slim
+
+RUN apt-get update && apt-get install vim wget -y && apt install -f -y
+
+COPY . /tb-app
+
+WORKDIR /tb-app
+
+# RUN mvn dependency:go-offline
+
+# RUN mvn install -DskipTests -T8
 
 WORKDIR /app
 
-COPY . /app/
+EXPOSE 8081
 
-RUN mvn install -DskipTests -T16
-
-EXPOSE 8080
+EXPOSE 7071
 
 EXPOSE 1883
 
-CMD ["ping", "google.com"]
+CMD ["tail", "-f"]
