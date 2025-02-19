@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:16
@@ -10,9 +8,11 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: thingsboard
     ports:
-      - "5432:5432"
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - thingsboard
 
   fastapi:
     build:
@@ -22,25 +22,30 @@ services:
     restart: unless-stopped
     depends_on:
       - postgres
-    ports:
-      - "8000:8000"
-    network_mode: host
+      - tb_application
+    # ports:
+    #   - "8000:8000"
+    # network_mode: host
+    networks:
+      - thingsboard
 
-  # tb_application:
-  #   container_name: thingsboard
-  #   build:
-  #     context: .
-  #     dockerfile: .Dockerfile
-  #   volumes:
-  #     - application_source_code:/app
-  #     - application_m2_cache:/.m2
-  #   # network_mode: host
-  #   ports:
-  #     - "8081:8081"
-  #     - "1883:1883"
-  #     - "7071:7071"
-  #   networks:
-  #     - thingsboard_network
+  tb_application:
+    container_name: thingsboard
+    build:
+      context: .
+      dockerfile: .Dockerfile
+    volumes:
+      - application_source_code:/app
+      - application_m2_cache:/.m2
+    # network_mode: host
+    ports:
+      - "8080:8080"
+      # - "1883:1883"
+      # - "7071:7071"
+    networks:
+      - thingsboard
+    depends_on:
+      - postgres
 
   ui-ngx:
     build:
@@ -49,9 +54,13 @@ services:
     container_name: thingsboard-dev
     volumes:
       - application_source_code:/app
-    network_mode: host
+    # network_mode: host
     ports:
       - "4200:4200"
+    networks:
+      - thingsboard
+    depends_on:
+      - tb_application
 
 volumes:
   postgres_data:
@@ -74,4 +83,4 @@ volumes:
       device: ../thingsboard_m2_cache
 
 networks:
-  thingsboard_network:
+  thingsboard:

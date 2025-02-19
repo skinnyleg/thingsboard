@@ -1,10 +1,8 @@
 FROM maven:3.8.4-openjdk-17-slim
 
-RUN apt-get update && apt-get install vim wget -y && apt install -f -y
+RUN apt update
 
-COPY . /tb-app
-
-WORKDIR /tb-app
+RUN apt install vim wget tar zip npm git -y
 
 # RUN mvn dependency:go-offline
 
@@ -18,4 +16,5 @@ EXPOSE 7071
 
 EXPOSE 1883
 
-CMD ["tail", "-f"]
+CMD ["java", "-jar", "application/target/thingsboard-3.7.0-boot.jar"]
+

@@ -32,7 +32,9 @@ public class DefaultTbMailConfigTemplateService implements TbMailConfigTemplateS
 
     @PostConstruct
     private void postConstruct() throws IOException {
-        mailConfigTemplates = JacksonUtil.toJsonNode(new ClassPathResource("/templates/mail_config_templates.json").getFile());
+        var inputStream = new ClassPathResource("templates/mail_config_templates.json").getInputStream();
+        String jsonContent = new String(inputStream.readAllBytes());
+        mailConfigTemplates = JacksonUtil.toJsonNode(jsonContent);
     }
 
     @Override

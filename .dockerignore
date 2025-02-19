@@ -1,3 +1,5 @@
 **/target
 **/node_modules
 .git
+predictive-maintenance
+ui-ngx
