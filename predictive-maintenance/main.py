@@ -19,6 +19,7 @@ from src.forecast.forecast import router as forecast_router
 
 app = FastAPI(
     root_path="/api/v1",
+    debug=True,
 )
 
 app.include_router(forecast_router, prefix="/forecast")

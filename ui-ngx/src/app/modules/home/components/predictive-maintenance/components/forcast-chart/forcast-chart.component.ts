@@ -195,7 +195,8 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
         this.forecastId +
         "/ws?token=" +
         localStorage.getItem("jwt_token") +
-        "&history=" + this.selected.seconds,
+        "&startTs=" + Math.floor(Date.now() / 1000 - this.selected.seconds - 60) +
+        "&history=" + (this.selected.seconds + 60),
       deserializer: (e) => e.data,
       openObserver: {
         next: () => {
@@ -211,23 +212,25 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
         } catch { }
         if (data && this.displayData) {
           Object.keys(data.data).forEach((key) => {
+            console.log(key, data.data[key], data.data[key].length);
             if (key === "datetime") return;
             let values = data.data[key].map(([x, y]) => ({
-              x: new Date(x).getTime(),
+              // x: new Date(x).getTime(),
+              x,
               y: parseFloat(y),
             }));
             let keyIndex = this.series.findIndex(
               (series) => series.name.toLowerCase() === key.toLowerCase()
             );
-            let keyForecastIndex = this.series.findIndex(
-              (series) =>
-                series.name.toLowerCase() === key.toLowerCase() + " forecast"
-            );
-            let keyOldForecastIndex = this.series.findIndex(
-              (series) =>
-                series.name.toLowerCase() ===
-                key.toLowerCase() + " measured forecast"
-            );
+            // let keyForecastIndex = this.series.findIndex(
+            //   (series) =>
+            //     series.name.toLowerCase() === key.toLowerCase() + " forecast"
+            // );
+            // let keyOldForecastIndex = this.series.findIndex(
+            //   (series) =>
+            //     series.name.toLowerCase() ===
+            //     key.toLowerCase() + " measured forecast"
+            // );
             if (keyIndex === -1) {
               this.series.push({
                 name: key,
@@ -235,64 +238,64 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
                 color: "#FF5733",
               });
               keyIndex = this.series.length - 1;
-              this.series.push({
-                name: key[0].toUpperCase() + key.slice(1) + " Forecast",
-                data: [],
-                color: "#0000FF50",
-              });
-              keyForecastIndex = this.series.length - 1;
-              this.series.push({
-                name:
-                  key[0].toUpperCase() + key.slice(1) + " Measured Forecast",
-                data: [],
-                color: "#989898",
-              });
-              keyOldForecastIndex = this.series.length - 1;
-              this.oldForecastSeries[key] = [];
+              // this.series.push({
+              //   name: key[0].toUpperCase() + key.slice(1) + " Forecast",
+              //   data: [],
+              //   color: "#0000FF50",
+              // });
+              // keyForecastIndex = this.series.length - 1;
+              // this.series.push({
+              //   name:
+              //     key[0].toUpperCase() + key.slice(1) + " Measured Forecast",
+              //   data: [],
+              //   color: "#989898",
+              // });
+              // keyOldForecastIndex = this.series.length - 1;
+              // this.oldForecastSeries[key] = [];
               this.updateDashArray();
             }
             values = [...this.series[keyIndex].data, ...values];
             values.sort((a, b) => a.x - b.x);
-            values = values
-              .slice(-this.selected.seconds)
-              .filter(
-                (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
-              );
-            let forecast = values.length ? [values[values.length - 1]] : [];
-            if (values.length) {
-              let currentDate = values[values.length - 1].x;
-              forecast = [
-                ...forecast,
-                ...data.forecast[key].map((point) => {
-                  currentDate += 1000;
-                  return {
-                    x: currentDate,
-                    y: point,
-                  };
-                }),
-              ];
-            }
-            if (this.series[keyForecastIndex].data.length) {
-              this.oldForecastSeries[key].push({
-                x: values[values.length - 1].x,
-                y: this.series[keyForecastIndex].data[
-                  this.series[keyForecastIndex].data.length - 20
-                ].y,
-              });
-              this.oldForecastSeries[key] = this.oldForecastSeries[key]
-                .slice(-this.selected.seconds)
-                .filter(
-                  (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
-                );
-            }
+            // values = values
+            //   .slice(-this.selected.seconds)
+            //   .filter(
+            //     (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
+            //   );
+            // let forecast = values.length ? [values[values.length - 1]] : [];
+            // if (values.length) {
+            //   let currentDate = values[values.length - 1].x;
+            //   forecast = [
+            //     ...forecast,
+            //     ...data.forecast[key].map((point) => {
+            //       currentDate += 1000;
+            //       return {
+            //         x: currentDate,
+            //         y: point,
+            //       };
+            //     }),
+            //   ];
+            // }
+            // if (this.series[keyForecastIndex].data.length) {
+            //   this.oldForecastSeries[key].push({
+            //     x: values[values.length - 1].x,
+            //     y: this.series[keyForecastIndex].data[
+            //       this.series[keyForecastIndex].data.length - 20
+            //     ].y,
+            //   });
+            //   this.oldForecastSeries[key] = this.oldForecastSeries[key]
+            //     .slice(-this.selected.seconds)
+            //     .filter(
+            //       (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
+            //     );
+            // }
             this.series = this.series.map((series, index) => {
               switch (index) {
                 case keyIndex:
                   return { ...series, data: values };
-                case keyForecastIndex:
-                  return { ...series, data: forecast };
-                case keyOldForecastIndex:
-                  return { ...series, data: this.oldForecastSeries[key] };
+                // case keyForecastIndex:
+                //   return { ...series, data: forecast };
+                // case keyOldForecastIndex:
+                //   return { ...series, data: this.oldForecastSeries[key] };
                 default:
                   return series;
               }
