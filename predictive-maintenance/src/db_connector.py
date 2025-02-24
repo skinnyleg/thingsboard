@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 DB_NAME = "thingsboard"
 DB_USER = "postgres"
 DB_PASSWORD = "postgres"
-DB_HOST = "localhost"
+DB_HOST = "thingsboard_db"
 DB_PORT = "5432"
 
 # Set up the database URL and connection

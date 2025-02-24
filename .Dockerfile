@@ -2,7 +2,7 @@ FROM maven:3.8.4-openjdk-17-slim
 
 RUN apt update
 
-RUN apt install vim wget tar zip npm git -y
+RUN apt install vim wget tar zip npm git mosquitto-clients -y
 
 # RUN mvn dependency:go-offline
 

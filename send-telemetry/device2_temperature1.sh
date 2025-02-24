@@ -18,7 +18,7 @@ echo -e "LOOP:\t\t$COUNT"
 echo -e 'COMMAND:\tmosquitto_pub
                     -d
                     -q 1
-                    -h localhost
+                    -h thingsboard
                     -p 1883
                     -t v1/devices/me/telemetry
                     -u "kBG5JB86PX0UkOgX3pwF"
@@ -33,5 +33,5 @@ do
         VALUE=$(seq 70 .01 80 | shuf | head -n1)
         echo -ne "LOOP: $i, TEMPERATURE: $VALUE\r"
         sleep 2
-        mosquitto_pub -d -q 1 -h localhost -p 1883 -t v1/devices/me/telemetry -u "kBG5JB86PX0UkOgX3pwF" -m "{temperature:$VALUE}" > /dev/null
+        mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "kBG5JB86PX0UkOgX3pwF" -m "{temperature:$VALUE}" > /dev/null
 done

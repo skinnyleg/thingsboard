@@ -18,7 +18,7 @@ echo -e "LOOP:\t\t$COUNT"
 echo -e 'COMMAND:\tmosquitto_pub
                     -d
                     -q 1
-                    -h localhost
+                    -h thingsboard
                     -p 1883
                     -t v1/devices/me/telemetry
                     -u "R5GlBV2sf01nKbbcYZwt"
@@ -33,5 +33,5 @@ do
         VALUE=$(seq 0.2625 .001 0.7875 | shuf | head -n1)
         echo -ne "LOOP: $i, PRESSURE: $VALUE\r"
         sleep 2
-        mosquitto_pub -d -q 1 -h localhost -p 1883 -t v1/devices/me/telemetry -u "R5GlBV2sf01nKbbcYZwt" -m "{pressure:$VALUE}" > /dev/null
+        mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "R5GlBV2sf01nKbbcYZwt" -m "{pressure:$VALUE}" > /dev/null
 done

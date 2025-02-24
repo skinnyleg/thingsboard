@@ -14,8 +14,8 @@ from src.forecast.predict import predict
 
 router = APIRouter()
 
-THINGSBOARD_WS_HOST_ADDR = "localhost"
-THINGSBOARD_WS_PORT = 8081
+THINGSBOARD_WS_HOST_ADDR = "thingsboard"
+THINGSBOARD_WS_PORT = 8080
 THINGSBOARD_WS_URL = f"ws://{THINGSBOARD_WS_HOST_ADDR}:{THINGSBOARD_WS_PORT}/api/ws"
 SCRIPTS_PATH = "/usr/share/thingsboard/data/predictive-maintenance/forecasts/"
 TRAIN_SCRIPT = Path(SCRIPTS_PATH + "train.py")
@@ -74,6 +74,11 @@ def to_timeseries_ws_cmd(
     }
 
 
+import logging
+
+logger = logging.getLogger("uvicorn.debug")
+
+
 @router.websocket("/{forecast_id}/ws")
 async def websocket_endpoint(
     client: WebSocket,
@@ -89,6 +94,8 @@ async def websocket_endpoint(
         token = x_authorization.split(" ")[1]
     if startTs is None:
         startTs = int(time.time()) - FORECAST_HISTORY_WINDOW
+    startTs = int(startTs)
+    logger.debug("time.time() - startTs = ", time.time())
     session = SessionLocal()
     try:
         result = session.execute(
@@ -136,18 +143,22 @@ async def websocket_endpoint(
                                     {
                                         "forecast": forecast_data,
                                         "data": response_data,
+                                        # "len": len(response_data.get("pressure")),
                                     }
                                 )
                             )
+                            break
                     except asyncio.exceptions.TimeoutError:
                         print("Timeout")
                         if client.application_state == WebSocketState.CONNECTED:
                             await client.send_text("Keep Alive")
                         continue
-            except WebSocketDisconnect:
+            except WebSocketDisconnect as e:
+                print("error", e)
                 if ws.open:
                     await ws.close()
-    except asyncio.CancelledError:
+    except asyncio.CancelledError as e:
+        print("error", e)
         if client.application_state == WebSocketState.CONNECTED:
             await client.close()
     except Exception as e:

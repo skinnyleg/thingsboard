@@ -8,9 +8,19 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: thingsboard
     ports:
-      - "5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - thingsboard
+
+  python-scripts:
+    build:
+      context: ./send-telemetry/
+      dockerfile: .Dockerfile
+    container_name: python-scripts
+    depends_on:
+      - postgres
     networks:
       - thingsboard
 
@@ -19,12 +29,12 @@ services:
       context: ./predictive-maintenance
       dockerfile: .Dockerfile
     container_name: fastapi
-    restart: unless-stopped
+    restart: always
     depends_on:
       - postgres
       - tb_application
-    # ports:
-    #   - "8000:8000"
+    ports:
+      - "8000:8000"
     # network_mode: host
     networks:
       - thingsboard
@@ -40,7 +50,7 @@ services:
     # network_mode: host
     ports:
       - "8080:8080"
-      # - "1883:1883"
+      - "1883:1883"
       # - "7071:7071"
     networks:
       - thingsboard

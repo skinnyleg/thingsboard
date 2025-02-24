@@ -18,7 +18,7 @@ echo -e "LOOP:\t\t$COUNT"
 echo -e 'COMMAND:\tmosquitto_pub
                     -d
                     -q 1
-                    -h localhost
+                    -h thingsboard
                     -p 1883
                     -t v1/devices/me/telemetry
                     -u "2W8qDjUE3YkUas99J2cy"
@@ -33,5 +33,5 @@ do
         VALUE=$(seq 65 .01 75 | shuf | head -n1)
         echo -ne "LOOP: $i, LEVEL: $VALUE\r"
         sleep 2
-        mosquitto_pub -d -q 1 -h localhost -p 1883 -t v1/devices/me/telemetry -u "2W8qDjUE3YkUas99J2cy" -m "{level:$VALUE}" > /dev/null
+        mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "2W8qDjUE3YkUas99J2cy" -m "{level:$VALUE}" > /dev/null
 done

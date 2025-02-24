@@ -81,7 +81,6 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   public oldForecastSeries: {
     [key: string]: ApexAxisChartSeriesWithXYData[number]["data"];
   } = {};
-
   public forecastWs: WebSocketSubject<any>;
 
   public selected = {
@@ -91,7 +90,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   };
 
   public selectionOptions = [
-    this.selected,
+    { ...this.selected },
     {
       value: "5min",
       name: "Last 5 minutes",
@@ -101,11 +100,53 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       value: "10min",
       name: "Last 10 minutes",
       seconds: 10 * 60,
-    }
+    },
+    {
+      value: "1hour",
+      name: "Last 1 hour",
+      seconds: 60 * 60,
+    },
+    {
+      value: "12hours",
+      name: "Last 12 hours",
+      seconds: 12 * 60 * 60,
+    },
+    {
+      value: "1day",
+      name: "Last 1 day",
+      seconds: 24 * 60 * 60,
+    },
+    {
+      value: "5day",
+      name: "Last 5 days",
+      seconds: 5 * 24 * 60 * 60,
+    },
+    {
+      value: "10day",
+      name: "Last 10 days",
+      seconds: 10 * 24 * 60 * 60,
+    },
+    {
+      value: "15days",
+      name: "Last 15 days",
+      seconds: 15 * 24 * 60 * 60,
+    },
+    {
+      value: "1month",
+      name: "Last 1 month",
+      seconds: 30 * 24 * 60 * 60,
+    },
+    {
+      value: "2month",
+      name: "Last 2 months",
+      seconds: 2 * 30 * 24 * 60 * 60,
+    },
   ];
 
   onSelectTimeChange(event) {
-    this.selected = this.selectionOptions.find((i) => i.value === event.value);
+    console.log({ "hello": "world", selected: this.selected })
+    this.selected = { ...this.selectionOptions.find((i) => i.value === event.value) };
+    console.log({ selected: this.selected, event: event.value })
     this.forecastWs.complete();
     this.forecastWs.unsubscribe();
     this.connectToSocket();
@@ -147,6 +188,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   connectToSocket() {
+    console.log({ selected: this.selected.seconds })
     this.forecastWs = webSocket({
       url:
         "ws://localhost:8000/forecast/" +

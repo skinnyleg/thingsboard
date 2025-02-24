@@ -18,7 +18,7 @@ echo -e "LOOP:\t\t$COUNT"
 echo -e 'COMMAND:\tmosquitto_pub
                     -d
                     -q 1
-                    -h localhost
+                    -h thingsboard
                     -p 1883
                     -t v1/devices/me/telemetry
                     -u "sc02igdNfcnBceA6Vwh2"
@@ -36,7 +36,7 @@ do
         mosquitto_pub \
                 -d \
                 -q 1 \
-                -h localhost \
+                -h thingsboard \
                 -p 1883 \
                 -t v1/devices/me/telemetry \
                 -u "sc02igdNfcnBceA6Vwh2" \
