@@ -69,6 +69,7 @@ def to_timeseries_ws_cmd(
                 "timeWindow": timeWindow,
                 "scope": "LATEST_TELEMETRY",
                 "type": "TIMESERIES",
+                "limit": 20000,
             },
         ],
     }
