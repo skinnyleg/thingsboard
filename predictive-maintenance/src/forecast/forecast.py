@@ -69,7 +69,7 @@ def to_timeseries_ws_cmd(
                 "timeWindow": timeWindow,
                 "scope": "LATEST_TELEMETRY",
                 "type": "TIMESERIES",
-                "limit": 20000,
+                # "limit": 20000,
             },
         ],
     }
@@ -86,18 +86,16 @@ async def websocket_endpoint(
     forecast_id: str,
     x_authorization: str = Header(None),
     token: str = Query(None),
-    startTs: int = Query(None),  # seconds
+    startTs: int = Query(None),  # ms
     forecastWindow: int = Query(FORECAST_WINDOW),
-    history: int = Query(60)
 ):
     if not token and x_authorization is None:
         return await client.close()
     if not token:
         token = x_authorization.split(" ")[1]
-    # if startTs is None:
-    #     startTs = int(time.time()) - FORECAST_HISTORY_WINDOW
+    if startTs is None:
+        startTs = int(time.time())
     startTs = int(startTs)
-    logger.debug("time.time() - startTs = ", time.time())
     session = SessionLocal()
     try:
         result = session.execute(
@@ -113,7 +111,6 @@ async def websocket_endpoint(
         attribute_keys.append("datetime")
         await client.accept()
         await client.send_text(f"Connected to forecast {forecast_id}")
-        print("startTs", startTs, type(startTs))
         async with websockets.connect(THINGSBOARD_WS_URL) as ws:
             try:
                 await ws.send(
@@ -121,8 +118,8 @@ async def websocket_endpoint(
                         to_timeseries_ws_cmd(
                             device_id,
                             attribute_keys,
-                            startTs * 1000,
-                            history * 1000,
+                            startTs,
+                            int(time.time() * 1000),
                             token,
                         )
                     )
@@ -140,13 +137,12 @@ async def websocket_endpoint(
                         for key in response_data.keys():
                             tm_data[key].extend(response_data[key])
                         if len(tm_data["pressure"]) >= 24:
-                            # forecast_data = predict(tm_data, forecastWindow)
+                            forecast_data = predict(tm_data, forecastWindow)
                             await client.send_text(
                                 json.dumps(
                                     {
-                                        # "forecast": forecast_data,
+                                        "forecast": forecast_data,
                                         "data": response_data,
-                                        # "len": len(response_data.get("pressure")),
                                     }
                                 )
                             )

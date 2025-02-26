@@ -30,12 +30,15 @@ trap 'echo -e "\Closed at LOOP: $i, PRESSURE: $VALUE"; exit' SIGINT
 path='./PdM_telemetry_MachineID11.csv'
 
 echo ''
-# for ((i=1; i<=COUNT; i++))
-for (( ; ; )); do
+while true; do
+  # for ((i=1; i<=COUNT; i++))
+  # for (( ; ; )); do
   # VALUE=$(seq 0.2625 .001 0.7875 | shuf | head -n1)
   # echo -ne "LOOP: $i, PRESSURE: $VALUE\r"
-  IFS="," read -r datetime machineId volt rotate pressure vibration
-  printf "LOOP: $i, PRESSURE: $pressure, DATETIME: $datetime\r"
-  sleep 3
-  mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "jxl8ni3f0em9zpmuq0oq" -m "{pressure:$pressure,datetime:'$datetime'}" >/dev/null
-done <$path
+  while IFS="," read -r datetime machineId volt rotate pressure vibration; do
+    printf "LOOP: $i, PRESSURE: $pressure, DATETIME: $datetime\r"
+    sleep 1
+    mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "jxl8ni3f0em9zpmuq0oq" -m "{pressure:$pressure,datetime:'$datetime'}" >/dev/null
+  done <"$path"
+  echo "Restarting file read..."
+done
