@@ -12,5 +12,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app/
 
-CMD ["bash", "-c", "./docker-entry-point.sh"]
+CMD ["bash", "-c", "./docker-entry-point-forecast.sh"]
 # CMD [ "tail", "-f"]

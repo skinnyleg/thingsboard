@@ -14,11 +14,21 @@ services:
     networks:
       - thingsboard
 
-  python-scripts:
+  forecast-script:
     build:
       context: ./send-telemetry/
-      dockerfile: .Dockerfile
-    container_name: python-scripts
+      dockerfile: forecast-script.Dockerfile
+    container_name: forecast-script
+    depends_on:
+      - postgres
+    networks:
+      - thingsboard
+
+  dashboard-script:
+    build:
+      context: ./send-telemetry/
+      dockerfile: dashboard-script.Dockerfile
+    container_name: dashboard-script
     depends_on:
       - postgres
     networks:
