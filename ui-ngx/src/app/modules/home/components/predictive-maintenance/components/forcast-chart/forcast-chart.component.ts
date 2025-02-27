@@ -647,7 +647,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       id: "realtime",
       type: "area",
       stacked: false,
-      height: 350,
+      height: '100%',
       zoom: {
         type: "x",
         enabled: true,
@@ -763,13 +763,13 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
           hour: "HH:mm",
           minute: "HH:mm:ss", // For real-time updates at minute level
         },
-        formatter: (value: string, timestamp: number) => {
-          return new Date(timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }); // Format as hh:mm:ss
-        },
+        // formatter: (value: string, timestamp: number) => {
+        //   return new Date(timestamp).toLocaleTimeString([], {
+        //     hour: "2-digit",
+        //     minute: "2-digit",
+        //     second: "2-digit",
+        //   }); // Format as hh:mm:ss
+        // },
       },
     };
 
@@ -790,7 +790,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       id: "realtime",
       type: "area",
       stacked: false,
-      height: 350,
+      height: '100%',
       zoom: {
         type: "x",
         enabled: false,

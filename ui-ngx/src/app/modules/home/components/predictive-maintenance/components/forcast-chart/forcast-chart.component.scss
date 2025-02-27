@@ -2,19 +2,17 @@ ul {
   text-align: center;
 }
 
-.container {
-  background-color: rgba(255, 255, 255, 0.715);
-  ;
-}
-
 .chart {
   padding-top: 0.5rem;
+  height: 40%;
+  overflow: hidden;
 }
 
 .history-container {
   width: 100%;
   display: flex;
   justify-content: end;
+  height: 10%;
 }
 
 .history {
@@ -23,4 +21,17 @@ ul {
 
 .history_chart {
   // font-size: 120%;
+}
+
+:host {
+  background-color: rgba(255, 255, 255, 0.715);
+  height: 94%;
+  display: block;
+  overflow: scroll;
+
+  height: 93%;
+  display: block;
+  overflow: scroll;
+  display: flex;
+  flex-direction: column;
 }

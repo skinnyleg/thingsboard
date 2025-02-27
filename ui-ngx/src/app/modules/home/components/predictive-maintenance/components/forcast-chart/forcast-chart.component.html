@@ -1,16 +1,14 @@
-<div class="container">
-  <apx-chart [series]="series" [chart]="chart" class="chart" [title]="title" [fill]="fill" [yaxis]="yaxis"
-    [xaxis]="xaxis" [tooltip]="tooltip" [dataLabels]="dataLabels" [markers]="markers" [legend]="legend"
-    [stroke]="stroke"></apx-chart>
-  <div class="history-container">
-    <mat-form-field class="history">
-      <mat-label>History</mat-label>
-      <mat-select (selectionChange)="onSelectTimeChange($event)" [(value)]="selected.value">
-        <mat-option *ngFor="let option of selectionOptions" [(value)]="option.value">{{ option.name }}</mat-option>
-      </mat-select>
-    </mat-form-field>
-  </div>
-  <apx-chart [series]="history_series" [chart]="history_chart" class="chart" [title]="history_chart_title" [fill]="history_chart_fill" [yaxis]="history_chart_yaxis"
-    [xaxis]="history_chart_xaxis" [tooltip]="history_chart_tooltip" [dataLabels]="history_chart_dataLabels" [markers]="history_chart_markers" [legend]="history_chart_legend"
-    [stroke]="history_chart_stroke"></apx-chart>
+<apx-chart [series]="series" [chart]="chart" class="chart" [title]="title" [fill]="fill" [yaxis]="yaxis" [xaxis]="xaxis"
+  [tooltip]="tooltip" [dataLabels]="dataLabels" [markers]="markers" [legend]="legend" [stroke]="stroke"></apx-chart>
+<div class="history-container">
+  <mat-form-field class="history">
+    <mat-label>History</mat-label>
+    <mat-select (selectionChange)="onSelectTimeChange($event)" [(value)]="selected.value">
+      <mat-option *ngFor="let option of selectionOptions" [(value)]="option.value">{{ option.name }}</mat-option>
+    </mat-select>
+  </mat-form-field>
 </div>
+<apx-chart [series]="history_series" [chart]="history_chart" class="chart" [title]="history_chart_title"
+  [fill]="history_chart_fill" [yaxis]="history_chart_yaxis" [xaxis]="history_chart_xaxis"
+  [tooltip]="history_chart_tooltip" [dataLabels]="history_chart_dataLabels" [markers]="history_chart_markers"
+  [legend]="history_chart_legend" [stroke]="history_chart_stroke"></apx-chart>
