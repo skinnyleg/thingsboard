@@ -19,7 +19,7 @@ import { NgModule } from "@angular/core";
 import { SharedModule } from "@shared/shared.module";
 import { PredictiveMaintenanceRoutingModule } from "./predictive-maintenance-routing.module";
 import { AnomalyDetectionComponent } from "./anomaly-detection/anomaly-detection-page.module";
-import { NgApexchartsModule } from "ng-apexcharts";
+// import { NgApexchartsModule } from "ng-apexcharts";
 import { ForcastChartComponent } from "../../components/predictive-maintenance/components/forcast-chart/forcast-chart.component";
 import { ForcastComponent } from "./forcast/forcast.module";
 @NgModule({
@@ -28,8 +28,8 @@ import { ForcastComponent } from "./forcast/forcast.module";
     CommonModule,
     SharedModule,
     PredictiveMaintenanceRoutingModule,
-    NgApexchartsModule,
+    // NgApexchartsModule,
     ForcastChartComponent,
   ],
 })
-export class PredictiveMaintenanceModule {}
+export class PredictiveMaintenanceModule { }

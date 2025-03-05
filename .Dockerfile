@@ -17,4 +17,5 @@ EXPOSE 7071
 EXPOSE 1883
 
 CMD ["java", "-jar", "application/target/thingsboard-3.7.0-boot.jar"]
+# CMD [ "tail", "-f"]
 

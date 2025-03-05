@@ -1,5 +1,6 @@
 import { CommonModule } from "@angular/common";
 import {
+  AfterViewInit,
   Component,
   Input,
   NgZone,
@@ -7,9 +8,7 @@ import {
   OnDestroy,
   OnInit,
   SimpleChanges,
-  ViewChild,
 } from "@angular/core";
-import { EntityType } from "@app/shared/public-api";
 import { AttributeService } from "@core/http/attribute.service";
 import { TelemetryWebsocketService } from "@core/ws/telemetry-websocket.service";
 import { AttributeDatasource } from "@home/models/datasource/attribute-datasource";
@@ -17,38 +16,18 @@ import { TranslateService } from "@ngx-translate/core";
 import { EntityId } from "@shared/models/id/entity-id";
 import { PageLink } from "@shared/models/page/page-link";
 import {
-  LatestTelemetry,
   TelemetryType,
 } from "@shared/models/telemetry/telemetry.models";
+import { Subject } from "rxjs";
 import {
-  ApexAxisChartSeries,
-  ApexChart,
-  ApexDataLabels,
-  ApexFill,
-  ApexLegend,
-  ApexMarkers,
-  ApexStroke,
-  ApexTitleSubtitle,
-  ApexTooltip,
-  ApexXAxis,
-  ApexYAxis,
-  ChartComponent,
-  NgApexchartsModule,
-} from "ng-apexcharts";
-import { from, interval, Subject, zip } from "rxjs";
-import {
-  debounce,
-  map,
-  takeLast,
   takeUntil,
-  tap,
-  throttle,
 } from "rxjs/operators";
 import { webSocket, WebSocketSubject } from "rxjs/webSocket";
 import { MatInputModule, } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
+import ApexCharts from "apexcharts";
 
 type ApexAxisChartSeriesWithXYData = {
   [K in keyof ApexAxisChartSeries[number]]: K extends "data"
@@ -61,9 +40,9 @@ type ApexAxisChartSeriesWithXYData = {
   templateUrl: "./forcast-chart.component.html",
   styleUrls: ["./forcast-chart.component.scss"],
   standalone: true,
-  imports: [CommonModule, NgApexchartsModule, MatInputModule, MatSelectModule, MatFormFieldModule, FormsModule],
+  imports: [CommonModule, MatInputModule, MatSelectModule, MatFormFieldModule, FormsModule],
 })
-export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
+export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, AfterViewInit {
   // ApexChart configuration
 
   public series: ApexAxisChartSeriesWithXYData = [];
@@ -77,18 +56,6 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   public tooltip: ApexTooltip;
   public legend: ApexLegend;
   public stroke: ApexStroke;
-
-  public history_series: ApexAxisChartSeriesWithXYData = [];
-  public history_chart: ApexChart;
-  public history_chart_dataLabels: ApexDataLabels;
-  public history_chart_markers: ApexMarkers;
-  public history_chart_title: ApexTitleSubtitle;
-  public history_chart_fill: ApexFill;
-  public history_chart_yaxis: ApexYAxis;
-  public history_chart_xaxis: ApexXAxis;
-  public history_chart_tooltip: ApexTooltip;
-  public history_chart_legend: ApexLegend;
-  public history_chart_stroke: ApexStroke;
 
   public oldForecastSeries: {
     [key: string]: ApexAxisChartSeriesWithXYData[number]["data"];
@@ -176,13 +143,15 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
   handleTimeChangeDate() {
     this.getHistoricalData().then((data) => {
       // console.log(data['pressure']);
-      this.history_series = [
+      this.series = [
         {
           name: "pressure",
           data: data["pressure"].map((e) => ({ x: e.ts, y: parseFloat(e.value) })),
           color: "#FF5733",
         }
       ]
+      this.chartInstance.updateSeries(this.series);
+      this.connectToSocket();
     })
   }
 
@@ -219,7 +188,12 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
 
     // Initialize the chart data
     this.initChartData();
-    this.initHistoricalChartData();
+  }
+
+  public chartInstance;
+
+  ngAfterViewInit() {
+
   }
 
   async getHistoricalData() {
@@ -227,6 +201,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
     const startTs = Math.floor(Date.now() / 1000 - this.selected.seconds - 60);
     const history = (this.selected.seconds + 60);
     const interval = this.selected.interval;
+    // const interval = 1000
     const agg = "AVG";
     const limit = 100;
 
@@ -286,6 +261,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
           Object.keys(data.data).forEach((key) => {
             // console.log(key, data.data[key], data.data[key].length);
             if (key === "datetime") return;
+            // return;
             let values = data.data[key].map(([x, y]) => ({
               // x: new Date(x).getTime(),
               x,
@@ -310,12 +286,16 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
                 color: "#FF5733",
               });
               keyIndex = this.series.length - 1;
+            }
+            if (keyForecastIndex === -1) {
               this.series.push({
                 name: key[0].toUpperCase() + key.slice(1) + " Forecast",
                 data: [],
                 color: "#0000FF50",
               });
               keyForecastIndex = this.series.length - 1;
+            }
+            if (keyOldForecastIndex === -1) {
               this.series.push({
                 name:
                   key[0].toUpperCase() + key.slice(1) + " Measured Forecast",
@@ -326,13 +306,14 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
               this.oldForecastSeries[key] = [];
               this.updateDashArray();
             }
-            values = [...this.series[keyIndex].data, ...values];
-            values.sort((a, b) => a.x - b.x);
-            values = values
-              .slice(-this.forecast_chart_seconds_away)
-              .filter(
-                (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
-              );
+            this.series[keyIndex].data = this.series[keyIndex].data.concat(values);
+            this.series[keyIndex].data.sort((a, b) => a.x - b.x);
+            // values = values
+            //   // .slice(-this.forecast_chart_seconds_away)
+            //   .filter(
+            //     (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
+            //   );
+            values = this.series[keyIndex].data;
             let forecast = values.length ? [values[values.length - 1]] : [];
             if (values.length) {
               let currentDate = values[values.length - 1].x;
@@ -354,16 +335,14 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
                   this.series[keyForecastIndex].data.length - 20
                 ].y,
               });
-              this.oldForecastSeries[key] = this.oldForecastSeries[key]
-                .slice(-this.forecast_chart_seconds_away)
-                .filter(
-                  (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
-                );
+              // this.oldForecastSeries[key] = this.oldForecastSeries[key]
+              //   // .slice(-this.forecast_chart_seconds_away)
+              //   .filter(
+              //     (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
+              //   );
             }
             this.series = this.series.map((series, index) => {
               switch (index) {
-                case keyIndex:
-                  return { ...series, data: values };
                 case keyForecastIndex:
                   return { ...series, data: forecast };
                 case keyOldForecastIndex:
@@ -372,6 +351,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
                   return series;
               }
             });
+            this.chartInstance.updateSeries(this.series);
           });
         }
       },
@@ -405,8 +385,21 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
       // // Now that deviceId and Attributes are set, we can load attributes
       // this.loadAttributes();
       // console.log("forecast_id === ", this.forecastId);
+      this.chartInstance = new ApexCharts(document.querySelector('#chart'), {
+        chart: this.chart,
+        stroke: this.stroke,
+        dataLabels: this.dataLabels,
+        markers: this.markers,
+        legend: this.legend,
+        title: this.title,
+        fill: this.fill,
+        yaxis: this.yaxis,
+        xaxis: this.xaxis,
+        tooltip: this.tooltip,
+        series: this.series,
+      })
+      this.chartInstance.render();
       this.handleTimeChangeDate();
-      this.connectToSocket();
     }
   }
   ngOnInit(): void { }
@@ -642,159 +635,18 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy {
     };
   }
 
-  initHistoricalChartData(): void {
-    this.history_chart = {
-      id: "realtime",
-      type: "area",
-      stacked: false,
-      height: '100%',
-      zoom: {
-        type: "x",
-        enabled: true,
-        autoScaleYaxis: false,
-      },
-      toolbar: {
-        show: true,
-        tools: {
-          download: false,
-          selection: true,
-          zoom: true,
-          zoomin: true,
-          zoomout: true,
-          pan: true,
-          reset: true,
-        },
-        export: {
-          csv: {
-            filename: 'history_chart_' + new Date().toString(),
-            columnDelimiter: ',',
-          }
-        }
-        // autoSelected: "zoom",
-      },
-      events: {
-        beforeZoom: (chart, options) => {
-          this.displayData = false;
-        },
-
-        beforeResetZoom: (chart, options) => {
-          this.displayData = true;
-          // console.log("home clicked");
-        },
-        legendClick: (chart, seriesIndex, options) => {
-          if (this.seriesHidden.includes(seriesIndex)) {
-            // Series was hidden, so remove from hidden list and restore original data
-            this.seriesHidden = this.seriesHidden.filter(
-              (i) => i !== seriesIndex
-            );
-            this.series[seriesIndex].data =
-              this.originalSeriesData[seriesIndex]; // Restore original data
-          } else {
-            // Series is visible, so hide it and clear its data
-            this.seriesHidden.push(seriesIndex);
-            this.originalSeriesData[seriesIndex] = [
-              ...this.series[seriesIndex].data,
-            ]; // Backup original data
-            this.series[seriesIndex].data = []; // Clear data to hide it
-          }
-        },
-      },
-      animations: {
-        enabled: false, // Disables re-zooming upon new data points
-      },
-    };
-    this.history_chart_stroke = {
-      // curve: "smooth",
-      curve: "straight",
-      // TODO generate the dashed array for only the forecast part
-      width: 2,
-    };
-    this.history_chart_dataLabels = {
-      enabled: false,
-    };
-
-    this.history_chart_markers = {
-      size: 0,
-    };
-    this.history_chart_legend = {
-      show: true,
-      showForSingleSeries: true,
-      showForNullSeries: true,
-      showForZeroSeries: true,
-    };
-
-    this.history_chart_title = {
-      text: "History Over Time",
-      align: "left",
-    };
-
-    this.history_chart_fill = {
-      type: "gradient",
-      gradient: {
-        shadeIntensity: 1,
-        inverseColors: false,
-        opacityFrom: 0.5,
-        opacityTo: 0,
-        stops: [0, 90, 100],
-      },
-    };
-
-    this.history_chart_yaxis = {
-      labels: {
-        formatter: function (val) {
-          if (val === undefined) return;
-          return val.toFixed(2); // Adjust this to display temperature values
-        },
-      },
-      title: {
-        text: "Values",
-      },
-      min: 10,
-      max: 160,
-    };
-
-    this.history_chart_xaxis = {
-      type: "datetime",
-      labels: {
-        datetimeFormatter: {
-          year: "yyyy",
-          month: "MMM 'yy",
-          day: "dd MMM",
-          hour: "HH:mm",
-          minute: "HH:mm:ss", // For real-time updates at minute level
-        },
-        // formatter: (value: string, timestamp: number) => {
-        //   return new Date(timestamp).toLocaleTimeString([], {
-        //     hour: "2-digit",
-        //     minute: "2-digit",
-        //     second: "2-digit",
-        //   }); // Format as hh:mm:ss
-        // },
-      },
-    };
-
-    this.history_chart_tooltip = {
-      shared: false,
-      y: {
-        formatter: function (val) {
-          if (val === undefined) return;
-          return `${val.toFixed(2)} °C`;
-        },
-      },
-    };
-  }
-
   // Initialize chart configuration
   initChartData(): void {
     this.chart = {
       id: "realtime",
       type: "area",
       stacked: false,
-      height: '100%',
+      // height: '100%',
       zoom: {
         type: "x",
-        enabled: false,
+        enabled: true,
         autoScaleYaxis: true,
+        allowMouseWheelZoom: true,
       },
       toolbar: {
         show: false,
