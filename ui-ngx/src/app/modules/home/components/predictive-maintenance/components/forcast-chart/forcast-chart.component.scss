@@ -2,10 +2,14 @@ ul {
   text-align: center;
 }
 
-.chart {
+.chart-container {
   padding-top: 0.5rem;
-  height: 40%;
+  height: 50%;
   overflow: hidden;
+}
+
+.chart {
+  height: 100%;
 }
 
 .history-container {

@@ -58,6 +58,7 @@ services:
       - application_source_code:/app
       - application_m2_cache:/root/.m2
       - application_npm_cache:/root/.npm
+      - application_gradle_cache:/root/.gradle
     # network_mode: host
     ports:
       - "8080:8080"
@@ -109,6 +110,12 @@ volumes:
       type: none
       o: bind
       device: ../thingsboard_npm_cache/
+  application_gradle_cache:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../thingsboard_gradle/
 
 networks:
   thingsboard:

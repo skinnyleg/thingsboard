@@ -641,7 +641,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
       id: "realtime",
       type: "area",
       stacked: false,
-      // height: '100%',
+      height: '100%',
       zoom: {
         type: "x",
         enabled: true,

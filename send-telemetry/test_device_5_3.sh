@@ -37,7 +37,7 @@ while true; do
   # echo -ne "LOOP: $i, PRESSURE: $VALUE\r"
   while IFS="," read -r datetime machineId volt rotate pressure vibration; do
     printf "LOOP: $i, PRESSURE: $pressure, DATETIME: $datetime\r"
-    sleep 1
+    sleep 2
     mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "jxl8ni3f0em9zpmuq0oq" -m "{pressure:$pressure,datetime:'$datetime'}" >/dev/null
   done <"$path"
   echo "Restarting file read..."
