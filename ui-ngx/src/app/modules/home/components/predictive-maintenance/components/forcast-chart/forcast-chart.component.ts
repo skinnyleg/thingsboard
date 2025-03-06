@@ -402,229 +402,8 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
       this.handleTimeChangeDate();
     }
   }
+
   ngOnInit(): void { }
-
-  // Load telemetry (attributes) from the device
-  loadAttributes() {
-    this.dataSource
-      .loadAttributes(this.entityId, this.attributeScope, new PageLink(100, 0)) // Fetch all data without pagination
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((data) => {
-        // Store the loaded attributes and update the chart
-        this.telemetryData = data.data;
-        // console.log("attributes ==== ", this.attributes);
-        this.updateXAxisFormatter();
-        // this.condenseDataByMinute();
-        this.processEntityData();
-        this.addForecastModelData();
-      });
-  }
-
-  processEntityData() {
-    // TODO create as many colors as telemtry data
-    const colors = ["#FF5733", "#33FF57"];
-    const seriesArray = [];
-
-    this.Attributes.forEach((attributeKey, index) => {
-      const newChartData = this.telemetryData
-        .filter((attribute) => attribute.key === attributeKey)
-        .map((attribute) => ({
-          x: new Date(attribute.lastUpdateTs).getTime(),
-          y: parseFloat(attribute.value),
-        }));
-
-      // const existingSeriesIndex = this.series.findIndex((series) =>
-      //   series.name.includes(attributeKey)
-      // );
-      const existingSeriesIndex = this.series.findIndex((series) =>
-        series.name.includes(attributeKey)
-      );
-      if (existingSeriesIndex !== -1) {
-        // Append new data to existing series while maintaining the zoom level
-        if (this.seriesHidden.includes(existingSeriesIndex)) {
-          console.log("series is hidden updating backup");
-          this.originalSeriesData[existingSeriesIndex] = [
-            ...(this.originalSeriesData[existingSeriesIndex] as {
-              x: number;
-              y: number;
-            }[]),
-            ...newChartData,
-          ];
-          return;
-        }
-        this.series[existingSeriesIndex].data = [
-          ...(this.series[existingSeriesIndex].data as {
-            x: number;
-            y: number;
-          }[]),
-          ...newChartData,
-        ];
-      } else {
-        // Create new series if it doesn’t exist
-        seriesArray.push({
-          name: `${attributeKey} Data`,
-          data: newChartData,
-          color: colors[index % colors.length],
-        });
-      }
-    });
-    // this.chart.updateSeries([...this.series, ...seriesArray]);
-    if (this.displayData === true) {
-      this.series = [...this.series, ...seriesArray];
-      this.updateDashArray();
-    }
-    // console.log("series === ", this.series);
-    // console.log("hidden === ", this.seriesHidden);
-  }
-
-  // Add a method to generate forecast model data
-  addForecastModelData() {
-    const forecastSeries = {
-      name: "Forecast Model",
-      data: this.generateRandomForecastData(),
-      color: "#6A0DAD",
-      dashArray: 10, // Makes the line dotted
-    };
-
-    const existingSeriesIndex = this.series.findIndex((series) =>
-      series.name.includes("Forecast Model")
-    );
-    if (existingSeriesIndex !== -1) {
-      return;
-    }
-    this.series.push(forecastSeries);
-    this.updateDashArray();
-    // this.chart.updateSeries(this.series); // Update the chart with the new series
-  }
-
-  // Generate random forecast data points
-  generateRandomForecastData() {
-    const forecastData = [];
-    const currentTime = new Date().getTime();
-    for (let i = 0; i < 60; i++) {
-      forecastData.push({
-        x: currentTime + i * 1000, // 1-minute intervals
-        y: Math.random() * 100, // Random y values
-      });
-    }
-    return forecastData;
-  }
-
-  condenseDataByMinute() {
-    // Calculate min and max timestamps from your data
-    const timestamps = this.series.flatMap((series) =>
-      series.data.map((point) => point.x)
-    );
-    const minX = Math.min(...timestamps);
-    const maxX = Math.max(...timestamps);
-    const diffInSeconds = (maxX - minX) / 1000;
-
-    if (diffInSeconds > 60) {
-      // If data covers more than 1 minute
-      // Map over each series and condense data by minute
-      this.series = this.series.map((series) => {
-        const condensedData = this.groupDataByMinute(series.data);
-        return { ...series, data: condensedData };
-      });
-
-      // Update x-axis labels to show condensed time
-      this.xaxis.labels.formatter = (value, timestamp) =>
-        new Date(timestamp).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-    } else {
-      // Use default second-by-second formatter if data spans less than a minute
-      this.xaxis.labels.formatter = (value, timestamp) =>
-        new Date(timestamp).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-    }
-  }
-
-  // Helper function to group data by minute
-  groupDataByMinute(data) {
-    const groupedData = [];
-    let currentMinute = null;
-    let minuteGroup = [];
-
-    data.forEach((point) => {
-      const pointMinute = new Date(point.x).getMinutes();
-      if (pointMinute === currentMinute) {
-        // Add data to the current minute group
-        minuteGroup.push(point);
-      } else {
-        // Condense the current minute group (e.g., take average) and reset
-        if (minuteGroup.length > 0) {
-          groupedData.push(this.condenseMinuteGroup(minuteGroup));
-        }
-        currentMinute = pointMinute;
-        minuteGroup = [point];
-      }
-    });
-
-    // Condense the final minute group and add it
-    if (minuteGroup.length > 0) {
-      groupedData.push(this.condenseMinuteGroup(minuteGroup));
-    }
-
-    return groupedData;
-  }
-
-  // Condense minute data (here, calculating the average for illustration)
-  condenseMinuteGroup(dataGroup) {
-    const averageY =
-      dataGroup.reduce((sum, point) => sum + point.y, 0) / dataGroup.length;
-    return { x: dataGroup[0].x, y: averageY }; // Use the first timestamp in the group
-  }
-
-  updateXAxisFormatter() {
-    // Calculate min and max timestamps from your data
-    const timestamps = this.series.flatMap((series) =>
-      series.data.map((point) => point.x)
-    );
-    const minX = Math.min(...timestamps);
-    const maxX = Math.max(...timestamps);
-    const diff = maxX - minX;
-
-    // Define your x-axis format based on the range difference
-    if (diff > 365 * 24 * 60 * 60 * 1000) {
-      // Over a year
-      this.xaxis.labels.formatter = (value, timestamp) =>
-        new Date(timestamp).toLocaleDateString([], { year: "numeric" });
-    } else if (diff > 30 * 24 * 60 * 60 * 1000) {
-      // Over a month
-      this.xaxis.labels.formatter = (value, timestamp) =>
-        new Date(timestamp).toLocaleDateString([], {
-          month: "short",
-          year: "numeric",
-        });
-    } else if (diff > 24 * 60 * 60 * 1000) {
-      // Over a day
-      this.xaxis.labels.formatter = (value, timestamp) =>
-        new Date(timestamp).toLocaleDateString([], {
-          day: "2-digit",
-          month: "short",
-        });
-    } else if (diff > 60 * 60 * 1000) {
-      // Over an hour
-      this.xaxis.labels.formatter = (value, timestamp) =>
-        new Date(timestamp).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-    } else {
-      // Less than an hour, show seconds
-      this.xaxis.labels.formatter = (value, timestamp) =>
-        new Date(timestamp).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-    }
-  }
 
   updateDashArray() {
     this.stroke = {
@@ -649,7 +428,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
         allowMouseWheelZoom: true,
       },
       toolbar: {
-        show: false,
+        show: true,
         tools: {
           download: false,
           selection: true,
@@ -669,7 +448,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
       },
       events: {
         beforeZoom: (chart, options) => {
-          this.displayData = false;
+          this.displayData = true;
         },
 
         beforeResetZoom: (chart, options) => {
