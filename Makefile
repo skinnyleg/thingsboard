@@ -2,7 +2,10 @@ DOCKER_CMD=docker run -v .:/app/ -v /home/samy/work-projects/thingsboard_m2_cach
 
 all: clean build
 
-clean:
+backup:
+	-cp ./application/target/thingsboard-3.7.0-boot.jar ../thingsboard-3.7.0-boot.jar
+
+clean: backup
 	$(DOCKER_CMD) mvn clean
 	rm -rf **/target
 	rm -rf ./ui-ngx/.angular
