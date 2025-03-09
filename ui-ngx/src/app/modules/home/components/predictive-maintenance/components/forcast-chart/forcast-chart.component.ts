@@ -25,11 +25,18 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
 import ApexCharts from "apexcharts";
 
-type ApexAxisChartSeriesWithXYData = {
-  [K in keyof ApexAxisChartSeries[number]]: K extends "data"
-  ? { x: number; y: number }[]
-  : ApexAxisChartSeries[number][K];
-}[];
+import * as echarts from 'echarts/core';
+import {
+  TitleComponent,
+  ToolboxComponent,
+  TooltipComponent,
+  GridComponent,
+  DataZoomComponent,
+  LegendComponent
+} from 'echarts/components';
+import { LineChart } from 'echarts/charts';
+import { UniversalTransition } from 'echarts/features';
+import { CanvasRenderer } from 'echarts/renderers';
 
 const selectionOptions = [
   {
@@ -108,9 +115,6 @@ const selectionOptions = [
   imports: [CommonModule, MatInputModule, MatSelectModule, MatFormFieldModule, FormsModule],
 })
 export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, AfterViewInit {
-  public oldForecastSeries: {
-    [key: string]: ApexAxisChartSeriesWithXYData[number]["data"];
-  } = {};
   public forecastWs: WebSocketSubject<any>;
 
   public selected = selectionOptions.find((a) => a.seconds === 60)
@@ -131,144 +135,8 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
   setIntervalId: number;
   public chartInstance;
   public selectionOptions = selectionOptions;
-  public series: ApexAxisChartSeriesWithXYData = [];
-  public lastZoom;
-
-  public chart: ApexChart = {
-    id: "realtime",
-    type: "area",
-    stacked: false,
-    height: '100%',
-    zoom: {
-      type: "x",
-      enabled: true,
-      autoScaleYaxis: true,
-    },
-    toolbar: {
-      show: true,
-      tools: {
-        download: false,
-        selection: true,
-        zoom: true,
-        zoomin: true,
-        zoomout: true,
-        pan: true,
-        reset: true,
-      },
-      export: {
-        csv: {
-          filename: 'history_chart_' + new Date().toString(),
-          columnDelimiter: ',',
-        }
-      }
-    },
-    events: {
-      beforeResetZoom: () => {
-        this.lastZoom = null;
-      },
-      zoomed: (_, value) => {
-        this.lastZoom = [value.xaxis.min, value.xaxis.max];
-      },
-      legendClick: (chart, seriesIndex, options) => {
-        if (this.seriesHidden.includes(seriesIndex)) {
-          this.seriesHidden = this.seriesHidden.filter(
-            (i) => i !== seriesIndex
-          );
-          this.series[seriesIndex].data =
-            this.originalSeriesData[seriesIndex];
-        } else {
-          this.seriesHidden.push(seriesIndex);
-          this.originalSeriesData[seriesIndex] = [
-            ...this.series[seriesIndex].data,
-          ];
-          this.series[seriesIndex].data = [];
-        }
-      },
-    },
-    animations: {
-      enabled: false,
-    },
-  };
-
-  public stroke: ApexStroke = {
-    curve: "straight",
-    width: 2,
-  };
-
-  public dataLabels: ApexDataLabels = {
-    enabled: false,
-  };
-
-  public markers: ApexMarkers = {
-    size: 0,
-  };
-
-  public legend: ApexLegend = {
-    show: true,
-    showForSingleSeries: true,
-    showForNullSeries: true,
-    showForZeroSeries: true,
-  };
-
-  public title: ApexTitleSubtitle = {
-    text: "Forcast Over Time",
-    align: "left",
-  };
-
-  public fill: ApexFill = {
-    type: "gradient",
-    gradient: {
-      shadeIntensity: 1,
-      inverseColors: false,
-      opacityFrom: 0.5,
-      opacityTo: 0,
-      stops: [0, 90, 100],
-    },
-  };
-
-  public yaxis: ApexYAxis = {
-    labels: {
-      formatter: function (val) {
-        if (val === undefined) return;
-        return val.toFixed(2);
-      },
-    },
-    title: {
-      text: "Values",
-    },
-    min: 10,
-    max: 160,
-  };
-
-  public xaxis: ApexXAxis = {
-    type: "datetime",
-    labels: {
-      datetimeFormatter: {
-        year: "yyyy",
-        month: "MMM 'yy",
-        day: "dd MMM",
-        hour: "HH:mm",
-        minute: "HH:mm:ss",
-      },
-      formatter: (value: string, timestamp: number) => {
-        return new Date(timestamp).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-      },
-    },
-  };
-
-  public tooltip: ApexTooltip = {
-    shared: false,
-    y: {
-      formatter: function (val) {
-        if (val === undefined) return;
-        return `${val.toFixed(2)} °C`;
-      },
-    },
-  }
+  public series = [];
+  public oldForecastSeries = {};
 
   constructor(
     private attributeService: AttributeService,
@@ -285,24 +153,46 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
     this.handleTimeChangeDate();
   }
 
-  updateSeries(series) {
-    this.chartInstance.updateSeries(series);
-    if (this.lastZoom) {
-      this.chartInstance.zoomX(this.lastZoom[0], this.lastZoom[1])
-
-    }
-  }
-
   handleTimeChangeDate() {
-    this.getHistoricalData().then((data) => {
-      this.series = [
+    this.chartInstance.setOption({
+      series: [
         {
           name: "Pressure",
-          data: data["pressure"].map((e) => ({ x: e.ts, y: parseFloat(e.value) })),
-          color: "#FF5733",
+          type: "line",
+          color: ["#FF5733"],
+          symbol: 'none',
+          data: [],
+        },
+        {
+          name: "Pressure Forecast",
+          type: "line",
+          color: ["#0000FF50"],
+          symbol: 'none',
+          data: [],
+        },
+        {
+          name: "Pressure Historical Forecast",
+          type: "line",
+          color: ["#989898"],
+          symbol: 'none',
+          data: [],
         }
-      ]
-      this.updateSeries(this.series);
+      ],
+      animation: false,
+      legend: {
+      }
+    })
+    this.oldForecastSeries["pressure"] = [];
+    this.getHistoricalData().then((data) => {
+      data["pressure"].sort((a, b) => a.ts - b.ts)
+      this.chartInstance.setOption({
+        series: [
+          {
+            name: "Pressure",
+            data: data["pressure"].map((e) => [e.ts, parseFloat(e.value)]),
+          },
+        ],
+      });
       this.connectToSocket();
     })
   }
@@ -352,6 +242,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
     });
     this.forecastWs.subscribe({
       next: (msg) => {
+        // return;
         let data;
         try {
           data = JSON.parse(msg);
@@ -359,95 +250,65 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
         if (data && this.displayData) {
           Object.keys(data.data).forEach((key) => {
             if (key === "datetime") return;
-            let values = data.data[key].map(([x, y]) => ({
-              x,
-              y: parseFloat(y),
-            }));
-            let keyIndex = this.series.findIndex(
+            let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
+            const series = this.chartInstance.getOption().series;
+            let keyIndex = series.findIndex(
               (series) => series.name.toLowerCase() === key.toLowerCase()
             );
-            let keyForecastIndex = this.series.findIndex(
+            let keyForecastIndex = series.findIndex(
               (series) =>
                 series.name.toLowerCase() === key.toLowerCase() + " forecast"
             );
-            let keyOldForecastIndex = this.series.findIndex(
-              (series) =>
-                series.name.toLowerCase() ===
-                key.toLowerCase() + " measured forecast"
-            );
-            if (keyIndex === -1) {
-              this.series.push({
-                name: key,
-                data: [],
-                color: "#FF5733",
-              });
-              keyIndex = this.series.length - 1;
-            }
-            if (keyForecastIndex === -1) {
-              this.series.push({
-                name: key[0].toUpperCase() + key.slice(1) + " Forecast",
-                data: [],
-                color: "#0000FF50",
-              });
-              keyForecastIndex = this.series.length - 1;
-            }
-            if (keyOldForecastIndex === -1) {
-              this.series.push({
-                name:
-                  key[0].toUpperCase() + key.slice(1) + " Measured Forecast",
-                data: [],
-                color: "#989898",
-              });
-              keyOldForecastIndex = this.series.length - 1;
-              this.oldForecastSeries[key] = [];
-              this.updateDashArray();
-            }
-            this.series[keyIndex].data = this.series[keyIndex].data.concat(values);
-            this.series[keyIndex].data.sort((a, b) => a.x - b.x);
+            values = series[keyIndex].data.concat(values);
+            values.sort((a, b) => a[0] - b[0]);
             // values = values
             //   // .slice(-this.forecast_chart_seconds_away)
             //   .filter(
             //     (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
             //   );
-            values = this.series[keyIndex].data;
             let forecast = values.length ? [values[values.length - 1]] : [];
             if (values.length) {
-              let currentDate = values[values.length - 1].x;
+              let currentDate = values[values.length - 1][0];
               forecast = [
                 ...forecast,
                 ...data.forecast[key].map((point) => {
                   currentDate += 1000;
-                  return {
-                    x: currentDate,
-                    y: point,
-                  };
+                  return [
+                    currentDate,
+                    point,
+                  ];
                 }),
               ];
             }
-            if (this.series[keyForecastIndex].data.length) {
-              this.oldForecastSeries[key].push({
-                x: values[values.length - 1].x,
-                y: this.series[keyForecastIndex].data[
-                  this.series[keyForecastIndex].data.length - 20
-                ].y,
-              });
+            if (series[keyForecastIndex].data.length) {
+              this.oldForecastSeries[key].push([
+                values[values.length - 1][0],
+                series[keyForecastIndex].data[
+                series[keyForecastIndex].data.length - 20
+                ][1]
+              ]);
               // this.oldForecastSeries[key] = this.oldForecastSeries[key]
-              //   // .slice(-this.forecast_chart_seconds_away)
-              //   .filter(
-              //     (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
-              //   );
+              // .slice(-this.forecast_chart_seconds_away)
+              // .filter(
+              //   (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
+              // );
             }
-            this.series = this.series.map((series, index) => {
-              switch (index) {
-                case keyForecastIndex:
-                  return { ...series, data: forecast };
-                case keyOldForecastIndex:
-                  return { ...series, data: this.oldForecastSeries[key] };
-                default:
-                  return series;
-              }
-            });
-            this.updateSeries(this.series);
+            this.chartInstance.setOption({
+              series: [
+                {
+                  name: "Pressure",
+                  data: values
+                },
+                {
+                  name: "Pressure Forecast",
+                  data: forecast,
+                },
+                {
+                  name: "Pressure Historical Forecast",
+                  data: this.oldForecastSeries[key]
+                }
+              ],
+            })
           });
         }
       },
@@ -464,37 +325,84 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
       this.Attributes &&
       this.forecastId
     ) {
-      this.chartInstance = new ApexCharts(document.querySelector('#chart'), {
-        chart: this.chart,
-        stroke: this.stroke,
-        dataLabels: this.dataLabels,
-        markers: this.markers,
-        legend: this.legend,
-        title: this.title,
-        fill: this.fill,
-        yaxis: this.yaxis,
-        xaxis: this.xaxis,
-        tooltip: this.tooltip,
-        series: this.series,
-      })
-      this.chartInstance.render();
+      const chart = document.getElementById("chart");
+      echarts.use([
+        TitleComponent,
+        ToolboxComponent,
+        TooltipComponent,
+        GridComponent,
+        DataZoomComponent,
+        LineChart,
+        CanvasRenderer,
+        UniversalTransition,
+        LegendComponent,
+      ]);
+      this.chartInstance = echarts.init(chart);
+      let base = +new Date(1968, 9, 3);
+      let oneDay = 24 * 3600 * 1000;
+      let date = [];
+      let data = [Math.random() * 300];
+      for (let i = 1; i < 20000; i++) {
+        var now = new Date((base += oneDay));
+        date.push([now.getFullYear(), now.getMonth() + 1, now.getDate()].join('/'));
+        data.push(Math.round((Math.random() - 0.5) * 20 + data[i - 1]));
+      }
+      const option = {
+        tooltip: {
+          trigger: 'axis',
+          position: function (pt) {
+            return [pt[0], '10%'];
+          }
+        },
+        title: {
+          align: 'left',
+          x: 10,
+          text: 'Forecast Chart'
+        },
+        toolbox: {
+          feature: {
+            dataZoom: {
+              yAxisIndex: 'none'
+            },
+            restore: {},
+            saveAsImage: {}
+          }
+        },
+        xAxis: {
+          type: 'time',
+          boundaryGap: false,
+        },
+        yAxis: {
+          type: 'value',
+          boundaryGap: [0, '100%']
+        },
+        dataZoom: [
+          {
+            type: 'inside',
+            start: 0,
+            end: 100
+          },
+          {
+            start: 0,
+            end: 100
+          }
+        ],
+      };
+      this.chartInstance.setOption(option);
+      window.onresize = () => {
+        this.chartInstance.resize();
+      }
       this.handleTimeChangeDate();
     }
   }
 
   ngOnInit(): void { }
 
-  updateDashArray() {
-    this.stroke = {
-      ...this.stroke,
-      dashArray: this.series.map((series) =>
-        series.name.toLowerCase().includes("forecast") ? 8 : 0
-      ),
-    };
-  }
-
   ngOnDestroy(): void {
     clearInterval(this.setIntervalId);
+    if (this.chartInstance) {
+      this.chartInstance.dispose();
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
