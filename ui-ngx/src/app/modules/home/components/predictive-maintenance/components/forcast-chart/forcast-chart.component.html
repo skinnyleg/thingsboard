@@ -1,10 +1,35 @@
-<div class="history-container">
-  <mat-form-field class="history">
-    <mat-label>History</mat-label>
-    <mat-select (selectionChange)="onSelectTimeChange($event)" [(value)]="selected.value">
-      <mat-option *ngFor="let option of selectionOptions" [(value)]="option.value">{{ option.name }}</mat-option>
-    </mat-select>
-  </mat-form-field>
+<div style="height: 100%;">
+  <div class="history-container">
+    <div class="title">
+      Forecast Chart
+    </div>
+    <button mat-flat-button class="history" *ngIf="group.value == 'realtime'">
+      <mat-select [disabled]="group.value == 'history'" (selectionChange)="onSelectTimeChange($event)" [(value)]="selected.value">
+        <mat-option *ngFor="let option of selectionOptions" [(value)]="option.value">{{ option.name }}</mat-option>
+      </mat-select>
+    </button>
+    <mat-form-field class="example-form-field" *ngIf="group.value == 'history'">
+      <mat-date-range-input [rangePicker]="rangePicker">
+        <input matStartDate placeholder="Start date" #dateStartRange [(value)]="startDate" (keyup.enter)="handleHistoryTimeChange(dateStartRange, dateEndRange)">
+        <input matEndDate placeholder="End date" #dateEndRange [value]="endDate" (keyup.enter)="handleHistoryTimeChange(dateStartRange, dateEndRange)">
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="rangePicker"></mat-datepicker-toggle>
+      <mat-date-range-picker #rangePicker>
+        <mat-date-range-picker-actions>
+          <button mat-button matDateRangePickerCancel>Cancel</button>
+          <button mat-raised-button matDateRangePickerApply (click)="handleHistoryTimeChange(dateStartRange, dateEndRange)">Apply</button>
+        </mat-date-range-picker-actions>
+      </mat-date-range-picker>
+    </mat-form-field>
+    <mat-button-toggle-group name="fontStyle" #group="matButtonToggleGroup" value="realtime" class="graph-toggle" aria-label="Font Style" (change)="handleGraphChange($event)">
+      <mat-button-toggle value="history">History</mat-button-toggle>
+      <mat-button-toggle value="realtime">Realtime</mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+  <div class="chart-container">
+    <div
+      id="chart"
+      class="chart"
+    ></div>
+  </div>
 </div>
-<div class="chart-container">
-<div id="chart" class="chart" ></div></div>

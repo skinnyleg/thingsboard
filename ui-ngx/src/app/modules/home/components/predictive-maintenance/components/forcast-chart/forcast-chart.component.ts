@@ -1,4 +1,4 @@
-import { CommonModule } from "@angular/common";
+import { CommonModule } from "@angular/common"
 import {
   AfterViewInit,
   Component,
@@ -24,7 +24,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
 import ApexCharts from "apexcharts";
-
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import * as echarts from 'echarts/core';
 import {
   TitleComponent,
@@ -36,7 +36,12 @@ import {
 } from 'echarts/components';
 import { LineChart } from 'echarts/charts';
 import { UniversalTransition } from 'echarts/features';
+import { MatButtonModule } from '@angular/material/button';
 import { CanvasRenderer } from 'echarts/renderers';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { FormControl } from '@angular/forms';
+import { FormGroup } from "@material-ui/core";
 
 const selectionOptions = [
   {
@@ -112,12 +117,22 @@ const selectionOptions = [
   templateUrl: "./forcast-chart.component.html",
   styleUrls: ["./forcast-chart.component.scss"],
   standalone: true,
-  imports: [CommonModule, MatInputModule, MatSelectModule, MatFormFieldModule, FormsModule],
+  imports: [
+    CommonModule,
+    MatInputModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    FormsModule,
+    MatButtonToggleModule,
+    MatButtonModule,
+    MatIconModule,
+    MatDatepickerModule
+  ],
 })
 export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, AfterViewInit {
   public forecastWs: WebSocketSubject<any>;
 
-  public selected = selectionOptions.find((a) => a.seconds === 60)
+  public selected = { ...selectionOptions.find((a) => a.seconds === 60) }
 
   public telemetryData: any[] = [];
   public seriesHidden: number[] = [];
@@ -138,12 +153,23 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
   public series = [];
   public oldForecastSeries = {};
 
+  startDate = new Date(+new Date() - 5 * 24 * 60 * 60 * 1000);
+  endDate = new Date()
+
+  graphtype = 'realtime';
+
   constructor(
     private attributeService: AttributeService,
     private telemetryWsService: TelemetryWebsocketService,
     private translate: TranslateService,
     private zone: NgZone
   ) {
+  }
+
+  handleHistoryTimeChange(start, end) {
+    this.startDate = new Date(start.value.split('/').reverse().join('/'));
+    this.endDate = new Date(end.value.split('/').reverse().join('/'));
+    this.handleTimeChangeDate();
   }
 
   ngAfterViewInit() { }
@@ -153,35 +179,57 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
     this.handleTimeChangeDate();
   }
 
+  handleGraphChange(event) {
+    this.graphtype = event.value;
+    this.handleTimeChangeDate();
+  }
+
   handleTimeChangeDate() {
-    this.chartInstance.setOption({
-      series: [
-        {
-          name: "Pressure",
-          type: "line",
-          color: ["#FF5733"],
-          symbol: 'none',
-          data: [],
-        },
-        {
-          name: "Pressure Forecast",
-          type: "line",
-          color: ["#0000FF50"],
-          symbol: 'none',
-          data: [],
-        },
-        {
-          name: "Pressure Historical Forecast",
-          type: "line",
-          color: ["#989898"],
-          symbol: 'none',
-          data: [],
-        }
-      ],
-      animation: false,
-      legend: {
+    if (this.forecastWs) {
+      this.forecastWs.complete();
+    }
+    const history_series = [
+      {
+        name: "Pressure",
+        type: "line",
+        color: ["#FF5733"],
+        symbol: 'none',
+        data: [],
       }
-    })
+    ];
+    const realtime_series = [
+      ...history_series,
+      {
+        name: "Pressure Forecast",
+        type: "line",
+        color: ["#0000FF50"],
+        symbol: 'none',
+        data: []
+      },
+      {
+        name: "Pressure Historical Forecast",
+        type: "line",
+        color: ["#989898"],
+        symbol: 'none',
+        data: [],
+      }
+
+    ]
+    if (this.graphtype === 'history') {
+      this.chartInstance.setOption({
+        series: history_series,
+        legend: {}
+      }, {
+        replaceMerge: ['series']
+      })
+    } else {
+      this.chartInstance.setOption({
+        series: realtime_series,
+        legend: {}
+      }, {
+        replaceMerge: ['series']
+      })
+    }
     this.oldForecastSeries["pressure"] = [];
     this.getHistoricalData().then((data) => {
       data["pressure"].sort((a, b) => a.ts - b.ts)
@@ -193,17 +241,35 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
           },
         ],
       });
-      this.connectToSocket();
+      if (this.graphtype === 'realtime') {
+        this.connectToSocket();
+      }
     })
   }
 
   async getHistoricalData() {
-    const startTs = Math.floor(Date.now() / 1000 - this.selected.seconds - 60);
+    let startTs;
+    if (this.graphtype === 'realtime') {
+      startTs = Math.floor(Date.now() / 1000 - this.selected.seconds) * 1000;
+    } else {
+      startTs = +this.startDate;
+    }
+    let endTs;
+    if (this.graphtype === 'realtime') {
+      endTs = +new Date();
+    } else {
+      endTs = +this.endDate;
+    }
     const history = (this.selected.seconds + 60);
-    const interval = this.selected.interval;
-    // const interval = 1000
     const agg = "AVG";
-    const limit = 100;
+    const limit = 500;
+    let interval;
+    if (this.graphtype === 'realtime') {
+      interval = Math.floor(this.selected.seconds * 1000 / limit)
+    }
+    else {
+      interval = Math.floor((+this.endDate - +this.startDate) / limit)
+    }
 
     const headers = {
       'x-authorization': 'Bearer ' + localStorage.getItem('jwt_token'),
@@ -218,8 +284,8 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
     if (typeof device_id != 'string') return Promise.reject("Didnt find device Id");
     return await fetch(
       `/api/plugins/telemetry/DEVICE/${device_id}/values/timeseries?`
-      + 'keys=pressure&startTs=' + (startTs * 1000)
-      + '&endTs=' + Date.now()
+      + 'keys=pressure&startTs=' + startTs
+      + '&endTs=' + endTs
       + '&interval=' + interval
       + '&limit=' + limit
       + '&agg=' + agg
@@ -251,6 +317,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
           Object.keys(data.data).forEach((key) => {
             if (key === "datetime") return;
             let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
+            values.sort((a, b) => a[0] - b[0]);
             const series = this.chartInstance.getOption().series;
             let keyIndex = series.findIndex(
               (series) => series.name.toLowerCase() === key.toLowerCase()
@@ -259,13 +326,10 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
               (series) =>
                 series.name.toLowerCase() === key.toLowerCase() + " forecast"
             );
-            values = series[keyIndex].data.concat(values);
+            values = series[keyIndex].data.concat([values[values.length - 1]]);
             values.sort((a, b) => a[0] - b[0]);
-            // values = values
-            //   // .slice(-this.forecast_chart_seconds_away)
-            //   .filter(
-            //     (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
-            //   );
+            values = values
+              .slice(-Math.floor(this.selected.seconds / this.selected.interval * 1000) + 20)
             let forecast = values.length ? [values[values.length - 1]] : [];
             if (values.length) {
               let currentDate = values[values.length - 1][0];
@@ -287,11 +351,8 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
                 series[keyForecastIndex].data.length - 20
                 ][1]
               ]);
-              // this.oldForecastSeries[key] = this.oldForecastSeries[key]
-              // .slice(-this.forecast_chart_seconds_away)
-              // .filter(
-              //   (point) => Date.now() - +new Date(point.x) <= 2 * this.selected.seconds * 1000
-              // );
+              this.oldForecastSeries[key] = this.oldForecastSeries[key]
+                .slice(-Math.floor(this.selected.seconds / this.selected.interval * 1000) + 20)
             }
             this.chartInstance.setOption({
               series: [
@@ -309,6 +370,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
                 }
               ],
             })
+            // this.forecastWs.complete();
           });
         }
       },
@@ -338,34 +400,27 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
         LegendComponent,
       ]);
       this.chartInstance = echarts.init(chart);
-      let base = +new Date(1968, 9, 3);
-      let oneDay = 24 * 3600 * 1000;
-      let date = [];
-      let data = [Math.random() * 300];
-      for (let i = 1; i < 20000; i++) {
-        var now = new Date((base += oneDay));
-        date.push([now.getFullYear(), now.getMonth() + 1, now.getDate()].join('/'));
-        data.push(Math.round((Math.random() - 0.5) * 20 + data[i - 1]));
-      }
       const option = {
+        // width: '90%',
+        // grid: {
+        //   left: '1%',
+        // },
         tooltip: {
           trigger: 'axis',
           position: function (pt) {
             return [pt[0], '10%'];
           }
         },
-        title: {
-          align: 'left',
-          x: 10,
-          text: 'Forecast Chart'
-        },
         toolbox: {
+          right: 50,
           feature: {
             dataZoom: {
               yAxisIndex: 'none'
             },
             restore: {},
-            saveAsImage: {}
+            saveAsImage: {},
+            dataView: {},
+            brush: {}
           }
         },
         xAxis: {
@@ -387,6 +442,9 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
             end: 100
           }
         ],
+        animation: false,
+        legend: {
+        }
       };
       this.chartInstance.setOption(option);
       window.onresize = () => {
@@ -403,6 +461,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
     if (this.chartInstance) {
       this.chartInstance.dispose();
     }
+    this.forecastWs.complete();
     this.destroy$.next();
     this.destroy$.complete();
   }
