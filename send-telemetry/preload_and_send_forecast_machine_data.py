@@ -64,18 +64,20 @@ try:
     result = session.execute(
         text(
             "INSERT INTO key_dictionary (key)\
-                VALUES ('pressure'), ('datetime')\
+                VALUES ('pressure'), ('datetime'), ('forecast')\
                 ON CONFLICT (key) DO NOTHING"
         )
     )
     result = session.execute(
-        text("SELECT KEY_ID FROM KEY_DICTIONARY WHERE KEY IN ('pressure', 'datetime')")
+        text(
+            "SELECT KEY_ID FROM KEY_DICTIONARY WHERE KEY IN ('pressure', 'datetime', 'forecast')"
+        )
     )
     session.commit()
-    pressure, datetime = result.scalars().all()
+    pressure, datetime, forecast = result.scalars().all()
     if (
         os.system(
-            f"bash ./preload_forecast_machine_csv.sh {entity_id} {pressure} {datetime}"
+            f"bash ./preload_forecast_machine_csv.sh {entity_id} {pressure} {datetime} {forecast}"
         )
         != 0
     ):
@@ -87,6 +89,12 @@ try:
         )
         cur.connection.commit()
     with open("./pressure.csv") as file:
+        cur.copy_expert(
+            "COPY ts_kv(ts,dbl_v,entity_id,key) FROM STDIN WITH (FORMAT csv, DELIMITER ',', HEADER)",
+            file,
+        )
+        cur.connection.commit()
+    with open("./forecast.csv") as file:
         cur.copy_expert(
             "COPY ts_kv(ts,dbl_v,entity_id,key) FROM STDIN WITH (FORMAT csv, DELIMITER ',', HEADER)",
             file,

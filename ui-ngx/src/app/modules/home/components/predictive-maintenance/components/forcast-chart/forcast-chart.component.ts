@@ -153,7 +153,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
   public series = [];
   public oldForecastSeries = {};
 
-  startDate = new Date(+new Date() - 5 * 24 * 60 * 60 * 1000);
+  startDate = new Date(+new Date() - 60 * 60 * 1000);
   endDate = new Date()
 
   graphtype = 'realtime';
@@ -195,10 +195,23 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
         color: ["#FF5733"],
         symbol: 'none',
         data: [],
+      },
+      {
+        name: "Pressure Historical Forecast",
+        type: "line",
+        color: ["#989898"],
+        symbol: 'none',
+        data: []
       }
     ];
     const realtime_series = [
-      ...history_series,
+      {
+        name: "Pressure",
+        type: "line",
+        color: ["#FF5733"],
+        symbol: 'none',
+        data: [],
+      },
       {
         name: "Pressure Forecast",
         type: "line",
@@ -232,15 +245,31 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
     }
     this.oldForecastSeries["pressure"] = [];
     this.getHistoricalData().then((data) => {
-      data["pressure"].sort((a, b) => a.ts - b.ts)
-      this.chartInstance.setOption({
-        series: [
-          {
-            name: "Pressure",
-            data: data["pressure"].map((e) => [e.ts, parseFloat(e.value)]),
-          },
-        ],
-      });
+      data["pressure"].sort((a, b) => a.ts - b.ts);
+      if (this.graphtype === 'history') {
+        this.chartInstance.setOption({
+          series: [
+            {
+              name: "Pressure",
+              data: data["pressure"].map((e) => [e.ts, parseFloat(e.value)]),
+            },
+            {
+              name: "Pressure Historical Forecast",
+              data: data["forecast"].map((e) => [e.ts, parseFloat(e.value)])
+            }
+          ],
+        });
+      }
+      else {
+        this.chartInstance.setOption({
+          series: [
+            {
+              name: "Pressure",
+              data: data["pressure"].map((e) => [e.ts, parseFloat(e.value)])
+            }
+          ]
+        })
+      }
       if (this.graphtype === 'realtime') {
         this.connectToSocket();
       }
@@ -284,7 +313,7 @@ export class ForcastChartComponent implements OnInit, OnChanges, OnDestroy, Afte
     if (typeof device_id != 'string') return Promise.reject("Didnt find device Id");
     return await fetch(
       `/api/plugins/telemetry/DEVICE/${device_id}/values/timeseries?`
-      + 'keys=pressure&startTs=' + startTs
+      + 'keys=pressure,forecast&startTs=' + startTs
       + '&endTs=' + endTs
       + '&interval=' + interval
       + '&limit=' + limit
