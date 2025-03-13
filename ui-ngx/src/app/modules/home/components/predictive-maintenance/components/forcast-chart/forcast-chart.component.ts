@@ -175,14 +175,6 @@ export class ForcastChartComponent
     }
     this.startDate = start;
     this.endDate = end;
-    if (this.graphtype === 'history') {
-      this.chartInstance.setOption({
-        xAxis: {
-          min: +this.startDate,
-          max: +this.endDate
-        }
-      })
-    }
     this.handleTimeChangeDate();
   }
 
@@ -203,6 +195,21 @@ export class ForcastChartComponent
   handleTimeChangeDate() {
     if (this.forecastWs) {
       this.forecastWs.complete();
+    }
+    if (this.graphtype === 'history') {
+      this.chartInstance.setOption({
+        xAxis: {
+          min: +this.startDate,
+          max: +this.endDate
+        }
+      })
+    } else {
+      this.chartInstance.setOption({
+        xAxis: {
+          min: 'dataMin',
+          max: 'dataMax'
+        }
+      })
     }
     const history_series = [
       {
@@ -504,6 +511,8 @@ export class ForcastChartComponent
         xAxis: {
           type: "time",
           boundaryGap: false,
+          min: null,
+          max: null
         },
         yAxis: {
           type: "value",
