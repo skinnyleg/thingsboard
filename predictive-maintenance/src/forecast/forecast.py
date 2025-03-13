@@ -109,6 +109,7 @@ async def websocket_endpoint(
         attributes.append({"key": "datetime"})
         attribute_keys = [attr["key"] for attr in attributes]
         attribute_keys.append("datetime")
+        attribute_keys.append("forecast")
         await client.accept()
         await client.send_text(f"Connected to forecast {forecast_id}")
         async with websockets.connect(THINGSBOARD_WS_URL) as ws:
