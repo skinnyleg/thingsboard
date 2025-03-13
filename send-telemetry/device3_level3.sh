@@ -28,7 +28,7 @@ echo -e 'COMMAND:\tmosquitto_pub
 trap 'echo -e "\Closed at LOOP: $i, LEVEL: $VALUE"; exit' SIGINT
 
 echo ''
-for ((i=1; i<=COUNT; i++))
+for (( ; ; ))
 do
         VALUE=$(seq 65 .01 75 | shuf | head -n1)
         echo -ne "LOOP: $i, LEVEL: $VALUE\r"

@@ -28,7 +28,7 @@ echo -e 'COMMAND:\tmosquitto_pub
 trap 'echo -e "\Closed at LOOP: $i, VIBRATION2: $VALUE2"; exit' SIGINT
 
 echo ''
-for ((i=1; i<=COUNT; i++))
+for (( ; ; ))
 do
         VALUE2=$(seq 5000 .1 6000 | shuf | head -1)
         echo -ne "LOOP: $i, VIBRATION2: $VALUE2\r"

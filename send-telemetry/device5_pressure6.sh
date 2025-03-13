@@ -28,7 +28,7 @@ echo -e 'COMMAND:\tmosquitto_pub
 trap 'echo -e "\Closed at LOOP: $i, PRESSURE: $VALUE"; exit' SIGINT
 
 echo ''
-for ((i=1; i<=COUNT; i++))
+for (( ; ; ))
 do
         VALUE=$(seq 0.2625 .001 0.7875 | shuf | head -n1)
         echo -ne "LOOP: $i, PRESSURE: $VALUE\r"
