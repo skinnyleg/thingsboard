@@ -41,6 +41,10 @@ import { MatDatepickerModule } from "@angular/material/datepicker";
 import { FormControl } from "@angular/forms";
 import { FormGroup } from "@material-ui/core";
 
+const Hours = Array.from(Array(24), (_, i) => i < 10 ? '0' + i : i.toString());
+const Minutes = Array.from(Array(60), (_, i) => i < 10 ? '0' + i : i.toString());
+const Seconds = Array.from(Minutes);
+
 const selectionOptions = [
   {
     value: "60s",
@@ -154,6 +158,25 @@ export class ForcastChartComponent
 
   startDate = new Date(+new Date() - 60 * 60 * 1000);
   endDate = new Date();
+  startDateHours = Hours[0];
+  startDateMinutes = Minutes[0];
+  startDateSeconds = Seconds[0];
+
+  endDateHours = Hours[0];
+  endDateMinutes = Minutes[0];
+  endDateSeconds = Seconds[0];
+
+  public getHours() {
+    return Array.from(Hours);
+  }
+
+  public getMinutes() {
+    return Array.from(Minutes);
+  }
+
+  public getSeconds() {
+    return Array.from(Seconds);
+  }
 
   graphtype = "realtime";
 
@@ -164,9 +187,11 @@ export class ForcastChartComponent
     private zone: NgZone
   ) { }
 
-  handleHistoryTimeChange(start, end) {
-    start = new Date(start.value.split("/").reverse().join("/"));
-    end = new Date(end.value.split("/").reverse().join("/"));
+  handleHistoryTimeChange(start, end, shours, smin, sseconds, ehours, emin, eseconds) {
+    start = new Date(start.selected);
+    end = new Date(end.selected);
+    start.setHours(+shours.value, +smin.value, +sseconds.value);
+    end.setHours(+ehours.value, +emin.value, +eseconds.value);
     if (!+end) {
       return alert("Invalid Start Date");
     }
@@ -176,6 +201,10 @@ export class ForcastChartComponent
     this.startDate = start;
     this.endDate = end;
     this.handleTimeChangeDate();
+  }
+
+  toggleDatePicker(el) {
+    el.style.display = el.style.display === 'block' ? "none" : "block";
   }
 
   ngAfterViewInit() { }

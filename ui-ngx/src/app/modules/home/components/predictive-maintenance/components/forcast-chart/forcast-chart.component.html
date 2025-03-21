@@ -8,19 +8,50 @@
         <mat-option *ngFor="let option of selectionOptions" [(value)]="option.value">{{ option.name }}</mat-option>
       </mat-select>
     </button>
-    <mat-form-field class="example-form-field" *ngIf="group.value == 'history'">
-      <mat-date-range-input [rangePicker]="rangePicker">
-        <input matStartDate placeholder="Start date" #dateStartRange [(value)]="startDate" (keyup.enter)="handleHistoryTimeChange(dateStartRange, dateEndRange)">
-        <input matEndDate placeholder="End date" #dateEndRange [value]="endDate" (keyup.enter)="handleHistoryTimeChange(dateStartRange, dateEndRange)">
-      </mat-date-range-input>
-      <mat-datepicker-toggle matIconSuffix [for]="rangePicker"></mat-datepicker-toggle>
-      <mat-date-range-picker #rangePicker>
-        <mat-date-range-picker-actions>
-          <button mat-button matDateRangePickerCancel>Cancel</button>
-          <button mat-raised-button matDateRangePickerApply (click)="handleHistoryTimeChange(dateStartRange, dateEndRange)">Apply</button>
-        </mat-date-range-picker-actions>
-      </mat-date-range-picker>
-    </mat-form-field>
+    <div style="position:relative">
+      <div class="datepicker-container" #datepicker>
+        <div style="display:flex; align-items:end">
+          <div>
+            Start Date
+            <mat-calendar [(selected)]="startDate" [(startAt)]="startDate" #dateStartRange>
+            </mat-calendar>
+            <div style="display:flex">
+              <mat-select [value]="startDate.getHours() < 10 ? '0' + startDate.getHours(): startDate.getHours().toString()" #startDateHours>
+                <mat-option *ngFor="let option of getHours()" [value]="option">{{ option }}</mat-option>
+              </mat-select>
+              <mat-select [value]="startDate.getMinutes() < 10 ? '0' + startDate.getMinutes() : startDate.getMinutes().toString()" #startDateMinutes>
+                <mat-option *ngFor="let option of getMinutes()" [value]="option">{{ option }}</mat-option>
+              </mat-select>
+              <mat-select [value]="startDate.getSeconds() < 10 ? '0' + startDate.getSeconds() : startDate.getSeconds().toString()" #startDateSeconds>
+                <mat-option *ngFor="let option of getSeconds()" [value]="option">{{ option }}</mat-option>
+              </mat-select>
+            </div>
+          </div>
+          <div>
+            End Date
+            <mat-calendar [(selected)]="endDate" [(startAt)]="endDate" #dateEndRange>
+            </mat-calendar>
+            <div style="display:flex">
+              <mat-select [value]="endDate.getHours() < 10 ? '0' + endDate.getHours() : endDate.getHours().toString()" #endDateHours>
+                <mat-option *ngFor="let option of getHours()" [value]="option">{{ option }}</mat-option>
+              </mat-select>
+              <mat-select [value]="endDate.getMinutes() < 10 ? '0' + endDate.getMinutes() : endDate.getMinutes().toString()" #endDateMinutes>
+                <mat-option *ngFor="let option of getMinutes()" [value]="option">{{ option }}</mat-option>
+              </mat-select>
+              <mat-select [value]="endDate.getSeconds() < 10 ? '0' + endDate.getSeconds() : endDate.getSeconds().toString()" #endDateSeconds>
+                <mat-option *ngFor="let option of getSeconds()" [value]="option">{{ option }}</mat-option>
+              </mat-select>
+            </div>
+          </div>
+        </div>
+        <div style="width: 100%; text-align: end">
+          <button style="margin-left: auto;" mat-raised-button class="datepicker-apply" (click)="handleHistoryTimeChange(dateStartRange, dateEndRange, startDateHours, startDateMinutes, startDateSeconds, endDateHours, endDateMinutes, endDateSeconds)">OK</button>
+        </div>
+      </div>
+    </div>
+    <button (click)="toggleDatePicker(datepicker)" *ngIf="group.value == 'history'">
+      <mat-icon aria-hidden="false" aria-label="Example home icon" fontIcon="calendar_month"></mat-icon>
+    </button>
     <mat-button-toggle-group name="fontStyle" #group="matButtonToggleGroup" value="realtime" class="graph-toggle" aria-label="Font Style" (change)="handleGraphChange($event)">
       <mat-button-toggle value="history">History</mat-button-toggle>
       <mat-button-toggle value="realtime">Realtime</mat-button-toggle>
