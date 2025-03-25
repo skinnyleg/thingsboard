@@ -41,6 +41,8 @@ try:
     )
     session.commit()
     entity_id = str(device.scalars().all()[0])
+    result = session.execute(text("DELETE FROM alarm"))
+    result = session.execute(text("DELETE FROM notification"))
     result = session.execute(
         text(
             "DELETE FROM public.ts_kv\

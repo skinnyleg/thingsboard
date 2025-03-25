@@ -31,6 +31,7 @@ import {
   GridComponent,
   DataZoomComponent,
   LegendComponent,
+  MarkAreaComponent,
 } from "echarts/components";
 import { LineChart } from "echarts/charts";
 import { UniversalTransition } from "echarts/features";
@@ -44,6 +45,76 @@ import { FormGroup } from "@material-ui/core";
 const Hours = Array.from(Array(24), (_, i) => i < 10 ? '0' + i : i.toString());
 const Minutes = Array.from(Array(60), (_, i) => i < 10 ? '0' + i : i.toString());
 const Seconds = Array.from(Minutes);
+
+const getAlarmSubscriptionCmd = (token, device_id) => ({
+  "authCmd": {
+    "cmdId": 0,
+    "token": token
+  },
+  "cmds": [
+    {
+      "type": "ALARM_DATA",
+      "query": {
+        "entityFilter": {
+          "type": "singleEntity",
+          "singleEntity": {
+            "entityType": "DEVICE",
+            "id": device_id
+          }
+        },
+        "pageLink": {
+          "page": 0,
+          "pageSize": 10,
+          "textSearch": null,
+          "typeList": [],
+          "severityList": [],
+          "statusList": [
+            "ACTIVE",
+            "CLEARED"
+          ],
+          "searchPropagatedAlarms": false,
+          "sortOrder": {
+            "key": {
+              "key": "createdTime",
+              "type": "ALARM_FIELD"
+            },
+            "direction": "DESC"
+          },
+          "timeWindow": 2592000000
+        },
+        "alarmFields": [
+          {
+            "type": "ALARM_FIELD",
+            "key": "createdTime"
+          },
+          {
+            "type": "ALARM_FIELD",
+            "key": "originator"
+          },
+          {
+            "type": "ALARM_FIELD",
+            "key": "type"
+          },
+          {
+            "type": "ALARM_FIELD",
+            "key": "severity"
+          },
+          {
+            "type": "ALARM_FIELD",
+            "key": "type"
+          },
+          {
+            "type": "ALARM_FIELD",
+            "key": "status"
+          }
+        ],
+        "entityFields": [],
+        "latestValues": []
+      },
+      "cmdId": 3
+    }
+  ]
+});
 
 const selectionOptions = [
   {
@@ -225,6 +296,9 @@ export class ForcastChartComponent
     if (this.forecastWs) {
       this.forecastWs.complete();
     }
+    if (this.alarmsWs$) {
+      this.alarmsWs$.complete();
+    }
     if (this.graphtype === 'history') {
       this.chartInstance.setOption({
         xAxis: {
@@ -301,24 +375,31 @@ export class ForcastChartComponent
       );
     }
     this.oldForecastSeries["pressure"] = [];
-    this.getHistoricalData().then((data) => {
-      if (!data?.pressure) {
+    this.getHistoricalData().then(([history, alarms]) => {
+      if (!history?.pressure) {
         return alert("No Data Found.");
       }
-      data["pressure"].sort((a, b) => a.ts - b.ts);
+      history["pressure"].sort((a, b) => a.ts - b.ts);
       this.chartInstance.setOption({
         series: [
           {
             name: "Pressure",
-            data: data["pressure"].map((e) => [e.ts, parseFloat(e.value)]),
+            data: history["pressure"].map((e) => [e.ts, parseFloat(e.value)]),
+            markArea: {
+              itemStyle: {
+                color: 'rgba(255, 173, 177, 0.4)',
+              },
+              data: alarms.data.map((alarm) => [{ xAxis: alarm.startTs }, { xAxis: alarm.endTs }])
+            }
           },
           {
             name: "Pressure Historical Forecast",
-            data: data["forecast"].map((e) => [e.ts, parseFloat(e.value)]),
+            data: history["forecast"].map((e) => [e.ts, parseFloat(e.value)]),
           },
         ],
       });
       if (this.graphtype === "realtime") {
+        this.getAlarms();
         this.connectToSocket();
       }
     });
@@ -363,20 +444,80 @@ export class ForcastChartComponent
     const device_id = forecast.data.deviceId?.id;
     if (typeof device_id != "string")
       return Promise.reject("Didnt find device Id");
-    return await fetch(
-      `/api/plugins/telemetry/DEVICE/${device_id}/values/timeseries?` +
-      "keys=pressure,forecast&startTs=" +
-      startTs +
-      "&endTs=" +
-      endTs +
-      "&interval=" +
-      interval +
-      "&limit=" +
-      limit +
-      "&agg=" +
-      agg,
-      { headers }
-    ).then(async (res) => await res.json());
+    return await Promise.all([
+      fetch(
+        `/api/plugins/telemetry/DEVICE/${device_id}/values/timeseries?` +
+        "keys=pressure,forecast&startTs=" +
+        startTs +
+        "&endTs=" +
+        endTs +
+        "&interval=" +
+        interval +
+        "&limit=" +
+        limit +
+        "&agg=" +
+        agg,
+        { headers }
+      ),
+      fetch(
+        '/api/alarm/DEVICE/' + device_id + '?pageSize=1&page=0&sortProperty=createdTime',
+        { headers }
+      )])
+      .then(async ([history, alarms]) => [await history.json(), await alarms.json()]);
+  }
+
+  alarmsWs$;
+
+  async getAlarms() {
+    const token = localStorage.getItem("jwt_token");
+    const headers = {
+      "x-authorization": "Bearer " + token,
+      "content-type": "application/json",
+    };
+    const forecast = await fetch("/api/forecasts/" + this.forecastId, {
+      headers,
+    }).then(async (res) => !res.ok ? { error: res.statusText } : { data: await res.json() })
+      .catch((err) => ({ error: err }));
+    if (forecast.error) return Promise.reject(forecast.error);
+    // @ts-ignore
+    const device_id = forecast.data.deviceId?.id;
+    if (typeof device_id != "string")
+      return Promise.reject("Didnt find device id");
+    this.alarmsWs$ = webSocket({
+      url: '/api/ws',
+      // deserializer: (e) => e.data,
+      openObserver: {
+        next: (e) => {
+        },
+      },
+    });
+    this.alarmsWs$.next(getAlarmSubscriptionCmd(token, device_id));
+    const alarms = new Map();
+    this.alarmsWs$.subscribe({
+      next: (msg) => {
+        const data = msg.data?.data ?? msg.update;
+        data.forEach((alarm) => alarms.set(alarm.id.id, alarm));
+        const areas = Array
+          .from(alarms.values())
+          .map((alarm) => ([
+            { xAxis: alarm.startTs },
+            { xAxis: alarm.endTs }
+          ]));
+        this.chartInstance.setOption({
+          series: [
+            {
+              name: "Pressure",
+              markArea: {
+                itemStyle: {
+                  color: 'rgba(255, 173, 177, 0.4)'
+                },
+                data: areas
+              }
+            }
+          ]
+        })
+      }
+    });
   }
 
   connectToSocket() {
@@ -512,6 +653,7 @@ export class ForcastChartComponent
         CanvasRenderer,
         UniversalTransition,
         LegendComponent,
+        MarkAreaComponent,
       ]);
       this.chartInstance = echarts.init(chart);
       const option = {
@@ -576,6 +718,7 @@ export class ForcastChartComponent
     if (this.chartInstance) {
       this.chartInstance.dispose();
     }
+    this.alarmsWs$.complete();
     this.forecastWs.complete();
     this.destroy$.next();
     this.destroy$.complete();
