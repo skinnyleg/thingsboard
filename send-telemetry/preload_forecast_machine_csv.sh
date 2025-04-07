@@ -8,8 +8,8 @@ if [ -z "$entity_id" ] || [ -z "$pressure" ] || [ -z "$datetime" ] || [ -z "$for
   exit 1
 fi
 
-path='./PdM_telemetry_MachineID11_OLD_DATA_until_4_16.csv'
-forecast_path='./df.csv'
+path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
+forecast_path='./new_df.csv'
 
 lines=$(wc -l <$path)
 

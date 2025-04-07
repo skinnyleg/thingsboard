@@ -27,8 +27,8 @@ echo -e 'COMMAND:\tmosquitto_pub
 
 trap 'echo -e "\Closed at LOOP: $i, PRESSURE: $VALUE"; exit' SIGINT
 
-path='./PdM_telemetry_MachineID11.csv'
-forecast_path='./df_realtime.csv'
+path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
+forecast_path='./new_df.csv'
 
 echo ''
 while true; do
