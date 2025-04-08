@@ -23,7 +23,12 @@ f = open("./machine_uuid.txt", "r")
 
 machine_access_token = f.read().strip()
 
+phones_f = open("./send_to_phones.txt", "r")
+phones = phones_f.read().strip()
+
+
 print("machine_access_token=", machine_access_token)
+print("send_to_phones=", phones)
 logging.basicConfig()
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
@@ -103,6 +108,6 @@ try:
         )
         cur.connection.commit()
     session.commit()
-    os.system("bash ./test_device_5_3.sh")
+    os.system(f"bash ./test_device_5_3.sh& python ./create_alarm.py 120 {phones}")
 except Exception as e:
     print(e)
