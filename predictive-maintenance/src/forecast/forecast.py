@@ -112,7 +112,9 @@ async def websocket_endpoint(
         attribute_keys.append("forecast")
         await client.accept()
         await client.send_text(f"Connected to forecast {forecast_id}")
+        logger.warning("connected to websocket")
         async with websockets.connect(THINGSBOARD_WS_URL) as ws:
+            logger.warning("connected to thingsboard socket")
             try:
                 await ws.send(
                     json.dumps(
@@ -149,18 +151,21 @@ async def websocket_endpoint(
                             )
                             # break
                     except asyncio.exceptions.TimeoutError:
-                        print("Timeout")
+                        logger.warning("Timeout")
                         if client.application_state == WebSocketState.CONNECTED:
                             await client.send_text("Keep Alive")
                         continue
+                    except Exception as e:
+                        logger.warning(f"Loop Exception: {e}")
+                        break
             except WebSocketDisconnect as e:
-                print("error")
+                logger.warning(f"WebSocketDisconnect: {e}")
                 # if ws.open:
                 #     await ws.close()
     except asyncio.CancelledError as e:
-        print("error")
+        logger.warning(f"CancelledError: {e}")
         if client.application_state == WebSocketState.CONNECTED:
             await client.close()
     except Exception as e:
-        print("Error")
+        logger.warning(f"Exception: {e}")
         await client.close()

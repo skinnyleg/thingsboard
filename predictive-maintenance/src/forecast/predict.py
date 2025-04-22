@@ -12,6 +12,10 @@ MODEL_PATH = "data/models/model.h5"
 model = load_model(MODEL_PATH)
 scaler = MinMaxScaler()
 
+import logging
+
+logger = logging.getLogger("uvicorn.debug")
+
 
 def create_feature(df: pd.DataFrame):
     # create features from the selected machine
@@ -19,8 +23,15 @@ def create_feature(df: pd.DataFrame):
     timestamp = pd.to_datetime(df.loc[:, "datetime"])
     timestamp_hour = timestamp.map(lambda x: x.hour)
 
+    # Convert to categorical with full hour range
+    timestamp_hour_cat = pd.Categorical(timestamp_hour, categories=list(range(24)))
+
     # apply one-hot encode for timestamp data
-    timestamp_hour_onehot = pd.get_dummies(timestamp_hour).to_numpy()
+    timestamp_hour_onehot = pd.get_dummies(timestamp_hour_cat)
+
+    timestamp_hour_onehot = timestamp_hour_onehot.to_numpy()
+
+    # logger.warning(f"{len(timestamp_hour_onehot)} {timestamp_hour_onehot}")
 
     # apply min-max scaler to numerical data
     scaler = MinMaxScaler()
@@ -57,21 +68,28 @@ def predict(tm_data: Data, forecastWindow: int) -> Data:
         }
     )
     X_seq, _, scaler = create_feature(df)
+    logger.warning(f"shape {X_seq.shape}")
     X_seq = shape_sequence(X_seq, 5, 0)
     y_pred_future = deepcopy(X_seq[-1:])
     recursive_pred = {"pressure": [], "datetime": []}
-    for i in range(0, forecastWindow):
-        next_x = y_pred_future[0, -1, 1:].argmax()
-        if next_x == 23:
-            next_x = 0
-        else:
-            next_x += 1
-        x = np.zeros(24)
-        x[next_x] = 1
-        val = model.predict(y_pred_future, verbose=0)
-        recursive_pred["pressure"].append(val[0])
-        val = np.concatenate([val[0], x])
-        y_pred_future[0] = np.concatenate([y_pred_future[0][1:], [val]])
+    if len(y_pred_future.shape) != 3 or y_pred_future.shape[2] != 25:
+        return recursive_pred
+    try:
+        for i in range(0, forecastWindow):
+            next_x = y_pred_future[0, -1, 1:].argmax()
+            if next_x == 23:
+                next_x = 0
+            else:
+                next_x += 1
+            x = np.zeros(24)
+            x[next_x] = 1
+            val = model.predict(y_pred_future, verbose=0)
+            recursive_pred["pressure"].append(val[0])
+            val = np.concatenate([val[0], x])
+            y_pred_future[0] = np.concatenate([y_pred_future[0][1:], [val]])
+    except Exception as e:
+        logger.warning(f"Exception: {e}")
+        return recursive_pred
     recursive_pred["pressure"] = scaler.inverse_transform(
         np.array(recursive_pred["pressure"])
     ).flatten().tolist()
