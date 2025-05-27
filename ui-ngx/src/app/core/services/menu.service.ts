@@ -377,6 +377,13 @@ export class MenuService {
         path: '/home',
         icon: 'home'
       },
+      {
+        id: 'dashboards',
+        name: 'dashboard.dashboards',
+        type: 'link',
+        path: '/dashboards',
+        icon: 'dashboards'
+      },
       // {
       //   id: 'help',
       //   name: 'help.help',
@@ -392,11 +399,11 @@ export class MenuService {
         icon: 'mdi:alert-outline'
       },
       {
-        id: 'dashboards',
-        name: 'dashboard.dashboards',
+        id: 'devices',
+        name: 'device.devices',
         type: 'link',
-        path: '/dashboards',
-        icon: 'dashboards'
+        path: '/entities/devices',
+        icon: 'devices_other'
       },
       {
         id: 'entities',
@@ -405,13 +412,7 @@ export class MenuService {
         path: '/entities',
         icon: 'category',
         pages: [
-          {
-            id: 'devices',
-            name: 'device.devices',
-            type: 'link',
-            path: '/entities/devices',
-            icon: 'devices_other'
-          },
+
           {
             id: 'assets',
             name: 'asset.assets',
@@ -425,16 +426,7 @@ export class MenuService {
             type: 'link',
             path: '/entities/entityViews',
             icon: 'view_quilt'
-          }
-        ]
-      },
-      {
-        id: 'profiles',
-        name: 'profiles.profiles',
-        type: 'toggle',
-        path: '/profiles',
-        icon: 'badge',
-        pages: [
+          },
           {
             id: 'device_profiles',
             name: 'device-profile.device-profiles',
@@ -451,13 +443,17 @@ export class MenuService {
           }
         ]
       },
-      {
-        id: 'customers',
-        name: 'customer.customers',
-        type: 'link',
-        path: '/customers',
-        icon: 'supervisor_account'
-      },
+
+      // {
+      //   id: 'profiles',
+      //   name: 'profiles.profiles',
+      //   type: 'toggle',
+      //   path: '/profiles',
+      //   icon: 'badge',
+      //   pages: [
+
+      //   ]
+      // },
       {
         id: 'rule_chains',
         name: 'rulechain.rulechains',
@@ -471,60 +467,6 @@ export class MenuService {
         type: 'link',
         path: '/PM',
         icon: 'mdi:line-up'
-      },
-    );
-    if (authState.edgesSupportEnabled) {
-      sections.push(
-        {
-          id: 'edge_management',
-          name: 'edge.management',
-          type: 'toggle',
-          path: '/edgeManagement',
-          icon: 'settings_input_antenna',
-          pages: [
-            {
-              id: 'edges',
-              name: 'edge.instances',
-              fullName: 'edge.edge-instances',
-              type: 'link',
-              path: '/edgeManagement/instances',
-              icon: 'router'
-            },
-            {
-              id: 'rulechain_templates',
-              name: 'edge.rulechain-templates',
-              fullName: 'edge.edge-rulechain-templates',
-              type: 'link',
-              path: '/edgeManagement/ruleChains',
-              icon: 'settings_ethernet'
-            }
-          ]
-        }
-      );
-    }
-    sections.push(
-      {
-        id: 'features',
-        name: 'feature.advanced-features',
-        type: 'toggle',
-        path: '/features',
-        icon: 'construction',
-        pages: [
-          {
-            id: 'otaUpdates',
-            name: 'ota-update.ota-updates',
-            type: 'link',
-            path: '/features/otaUpdates',
-            icon: 'memory'
-          },
-          {
-            id: 'version_control',
-            name: 'version-control.version-control',
-            type: 'link',
-            path: '/features/vc',
-            icon: 'history'
-          }
-        ]
       },
       {
         id: 'resources',
@@ -572,119 +514,184 @@ export class MenuService {
           }
         ]
       },
-      {
-        id: 'notifications_center',
-        name: 'notification.notification-center',
-        type: 'link',
-        path: '/notification',
-        icon: 'mdi:message-badge',
-        pages: [
-          {
-            id: 'notification_inbox',
-            name: 'notification.inbox',
-            fullName: 'notification.notification-inbox',
-            type: 'link',
-            path: '/notification/inbox',
-            icon: 'inbox'
-          },
-          {
-            id: 'notification_sent',
-            name: 'notification.sent',
-            fullName: 'notification.notification-sent',
-            type: 'link',
-            path: '/notification/sent',
-            icon: 'outbox'
-          },
-          {
-            id: 'notification_recipients',
-            name: 'notification.recipients',
-            fullName: 'notification.notification-recipients',
-            type: 'link',
-            path: '/notification/recipients',
-            icon: 'contacts'
-          },
-          {
-            id: 'notification_templates',
-            name: 'notification.templates',
-            fullName: 'notification.notification-templates',
-            type: 'link',
-            path: '/notification/templates',
-            icon: 'mdi:message-draw'
-          },
-          {
-            id: 'notification_rules',
-            name: 'notification.rules',
-            fullName: 'notification.notification-rules',
-            type: 'link',
-            path: '/notification/rules',
-            icon: 'mdi:message-cog'
-          }
-        ]
-      },
-      {
-        id: 'api_usage',
-        name: 'api-usage.api-usage',
-        type: 'link',
-        path: '/usage',
-        icon: 'insert_chart'
-      },
-      {
-        id: 'settings',
-        name: 'admin.settings',
-        type: 'link',
-        path: '/settings',
-        icon: 'settings',
-        pages: [
-          {
-            id: 'home_settings',
-            name: 'admin.home',
-            fullName: 'admin.home-settings',
-            type: 'link',
-            path: '/settings/home',
-            icon: 'settings_applications'
-          },
-          {
-            id: 'notification_settings',
-            name: 'admin.notifications',
-            fullName: 'admin.notifications-settings',
-            type: 'link',
-            path: '/settings/notifications',
-            icon: 'mdi:message-badge'
-          },
-          {
-            id: 'repository_settings',
-            name: 'admin.repository',
-            fullName: 'admin.repository-settings',
-            type: 'link',
-            path: '/settings/repository',
-            icon: 'manage_history'
-          },
-          {
-            id: 'auto_commit_settings',
-            name: 'admin.auto-commit',
-            fullName: 'admin.auto-commit-settings',
-            type: 'link',
-            path: '/settings/auto-commit',
-            icon: 'settings_backup_restore'
-          }
-        ]
-      },
-      {
-        id: 'security_settings',
-        name: 'security.security',
-        type: 'toggle',
-        path: '/security-settings',
-        icon: 'security',
-        pages: [
-          {
-            id: 'audit_log',
-            name: 'audit-log.audit-logs',
-            type: 'link',
-            path: '/security-settings/auditLogs',
-            icon: 'track_changes'
-          }
-        ]
-      }
+    );
+    // if (authState.edgesSupportEnabled) {
+    //   sections.push(
+    //     {
+    //       id: 'edge_management',
+    //       name: 'edge.management',
+    //       type: 'toggle',
+    //       path: '/edgeManagement',
+    //       icon: 'settings_input_antenna',
+    //       pages: [
+
+    //       ]
+    //     }
+    //   );
+    // }
+    sections.push(
+
+      // {
+      //   id: 'features',
+      //   name: 'feature.advanced-features',
+      //   type: 'toggle',
+      //   path: '/features',
+      //   icon: 'construction',
+      //   pages: [
+      //     {
+      //       id: 'otaUpdates',
+      //       name: 'ota-update.ota-updates',
+      //       type: 'link',
+      //       path: '/features/otaUpdates',
+      //       icon: 'memory'
+      //     },
+      //     {
+      //       id: 'version_control',
+      //       name: 'version-control.version-control',
+      //       type: 'link',
+      //       path: '/features/vc',
+      //       icon: 'history'
+      //     },
+      //     {
+      //       id: 'customers',
+      //       name: 'customer.customers',
+      //       type: 'link',
+      //       path: '/customers',
+      //       icon: 'supervisor_account'
+      //     },
+      //     {
+      //       id: 'audit_log',
+      //       name: 'audit-log.audit-logs',
+      //       type: 'link',
+      //       path: '/security-settings/auditLogs',
+      //       icon: 'track_changes'
+      //     },
+      //     {
+      //       id: 'settings',
+      //       name: 'admin.settings',
+      //       type: 'link',
+      //       path: '/settings',
+      //       icon: 'settings',
+      //       pages: [
+      //         {
+      //           id: 'home_settings',
+      //           name: 'admin.home',
+      //           fullName: 'admin.home-settings',
+      //           type: 'link',
+      //           path: '/settings/home',
+      //           icon: 'settings_applications'
+      //         },
+      //         {
+      //           id: 'notification_settings',
+      //           name: 'admin.notifications',
+      //           fullName: 'admin.notifications-settings',
+      //           type: 'link',
+      //           path: '/settings/notifications',
+      //           icon: 'mdi:message-badge'
+      //         },
+      //         {
+      //           id: 'repository_settings',
+      //           name: 'admin.repository',
+      //           fullName: 'admin.repository-settings',
+      //           type: 'link',
+      //           path: '/settings/repository',
+      //           icon: 'manage_history'
+      //         },
+      //         {
+      //           id: 'auto_commit_settings',
+      //           name: 'admin.auto-commit',
+      //           fullName: 'admin.auto-commit-settings',
+      //           type: 'link',
+      //           path: '/settings/auto-commit',
+      //           icon: 'settings_backup_restore'
+      //         }
+      //       ]
+      //     },
+      //     {
+      //       id: 'notifications_center',
+      //       name: 'notification.notification-center',
+      //       type: 'link',
+      //       path: '/notification',
+      //       icon: 'mdi:message-badge',
+      //       pages: [
+      //         {
+      //           id: 'notification_inbox',
+      //           name: 'notification.inbox',
+      //           fullName: 'notification.notification-inbox',
+      //           type: 'link',
+      //           path: '/notification/inbox',
+      //           icon: 'inbox'
+      //         },
+      //         {
+      //           id: 'notification_sent',
+      //           name: 'notification.sent',
+      //           fullName: 'notification.notification-sent',
+      //           type: 'link',
+      //           path: '/notification/sent',
+      //           icon: 'outbox'
+      //         },
+      //         {
+      //           id: 'notification_recipients',
+      //           name: 'notification.recipients',
+      //           fullName: 'notification.notification-recipients',
+      //           type: 'link',
+      //           path: '/notification/recipients',
+      //           icon: 'contacts'
+      //         },
+      //         {
+      //           id: 'notification_templates',
+      //           name: 'notification.templates',
+      //           fullName: 'notification.notification-templates',
+      //           type: 'link',
+      //           path: '/notification/templates',
+      //           icon: 'mdi:message-draw'
+      //         },
+      //         {
+      //           id: 'notification_rules',
+      //           name: 'notification.rules',
+      //           fullName: 'notification.notification-rules',
+      //           type: 'link',
+      //           path: '/notification/rules',
+      //           icon: 'mdi:message-cog'
+      //         },
+      //         {
+      //           id: 'edges',
+      //           name: 'edge.instances',
+      //           fullName: 'edge.edge-instances',
+      //           type: 'link',
+      //           path: '/edgeManagement/instances',
+      //           icon: 'router'
+      //         },
+      //         {
+      //           id: 'rulechain_templates',
+      //           name: 'edge.rulechain-templates',
+      //           fullName: 'edge.edge-rulechain-templates',
+      //           type: 'link',
+      //           path: '/edgeManagement/ruleChains',
+      //           icon: 'settings_ethernet'
+      //         }
+      //       ]
+      //     },
+      //     {
+      //       id: 'api_usage',
+      //       name: 'api-usage.api-usage',
+      //       type: 'link',
+      //       path: '/usage',
+      //       icon: 'insert_chart'
+      //     },
+      //   ]
+      // },
+
+      // {
+      //   id: 'security_settings',
+      //   name: 'security.security',
+      //   type: 'toggle',
+      //   path: '/security-settings',
+      //   icon: 'security',
+      //   pages: [
+
+      //   ]
+      // }
     );
     return sections;
   }
