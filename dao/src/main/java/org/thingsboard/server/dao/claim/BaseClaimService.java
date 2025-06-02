@@ -26,6 +26,8 @@ import org.thingsboard.server.common.data.Claim;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.UUID;
+
 @Service("ClaimDaoService")
 @Slf4j
 public class BaseClaimService implements ClaimsService {
@@ -57,6 +59,16 @@ public class BaseClaimService implements ClaimsService {
         try {
             Claim result = claimDao.toggleClaim(tenantId, claimId);
             log.info("Activated forecast: [{}]", result);
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+
+    @Override
+    public void assignClaim(TenantId tenantId, UUID assigneeId, ClaimId claimId) {
+        try {
+            Claim result = claimDao.assignClaim(tenantId, assigneeId, claimId);
+            log.info("Assign claim: [{}]", result);
         } catch (Exception e) {
             throw e;
         }

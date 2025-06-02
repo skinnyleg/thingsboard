@@ -47,6 +47,9 @@ import org.springframework.http.MediaType;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.UUID;
+import java.util.Map;
+
 @Slf4j
 @RestController
 @TbCoreComponent
@@ -107,6 +110,28 @@ public class ClaimsController extends BaseController {
             claimsService.toggleClaim(new Claim(claimId), getCurrentUser());
         } catch (Exception e) {
             throw new ThingsboardException("Failed to disable Claim", e, ThingsboardErrorCode.GENERAL);
+        }
+    }
+
+    @ApiOperation(value = "Assign claim", notes = "assign claim")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @PatchMapping(value = "/claims/{claimId}/assign")
+    @ResponseBody
+    public void assignClaim(@PathVariable("claimId") String strClaimId, @RequestBody Map<String, String> body) throws Exception {
+        checkParameter("claimId", strClaimId);
+        ClaimId claimId = new ClaimId(toUUID(strClaimId));
+
+        String assigneeIdStr = body.get("assigneeId");
+        if (assigneeIdStr == null) {
+          throw new IllegalArgumentException("Missing assigneeId in request body");
+        }
+
+        UUID assigneeId = UUID.fromString(assigneeIdStr);
+
+        try {
+            claimsService.assignClaim(new Claim(claimId), assigneeId, getCurrentUser());
+        } catch (Exception e) {
+            throw new ThingsboardException("Failed to assign Claim", e, ThingsboardErrorCode.GENERAL);
         }
     }
 }

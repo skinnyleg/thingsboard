@@ -33,3 +33,6 @@ CREATE TABLE IF NOT EXISTS claim (
     done BOOLEAN DEFAULT FALSE,
     name varchar(255) not null
 );
+
+ALTER TABLE claim
+ADD COLUMN IF NOT EXISTS assignee_id uuid CONSTRAINT fk_claims_assignee_id REFERENCES tb_user(id);

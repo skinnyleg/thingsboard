@@ -23,6 +23,7 @@ import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.validation.Length;
 import org.thingsboard.server.common.data.validation.NoXss;
 import org.thingsboard.server.common.data.id.ClaimId;
+import org.thingsboard.server.common.data.id.UserId;
 
 @Schema
 @Data
@@ -43,6 +44,7 @@ public class Claim extends BaseData<ClaimId> implements HasTenantId, HasName {
         this.tenantId = claim.getTenantId();
         this.body = claim.getBody();
         this.done = claim.isDone();
+        this.assigneeId = claim.getAssigneeId();
     }
 
     @NoXss
@@ -60,4 +62,7 @@ public class Claim extends BaseData<ClaimId> implements HasTenantId, HasName {
 
     @Schema(description = "Active status of the claim", defaultValue = "false")
     private boolean done;
+
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Tenant Id.")
+    private UserId assigneeId;
 }

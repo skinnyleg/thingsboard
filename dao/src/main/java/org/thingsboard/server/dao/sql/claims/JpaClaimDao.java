@@ -88,4 +88,12 @@ public class JpaClaimDao extends JpaAbstractDao<ClaimEntity, Claim> implements C
         return result;
     }
 
+    @Override
+    public Claim assignClaim(TenantId tenantId, UUID assigneeId, ClaimId claimId) {
+        ClaimEntity claim = claimRepository.findClaim(tenantId.getId(), claimId.getId());
+        claim.setAssigneeId(assigneeId);
+        Claim result = saveAndFlush(tenantId, claim.toData());
+        return result;
+    }
+
 }

@@ -27,6 +27,7 @@ import java.util.UUID;
 import org.thingsboard.server.common.data.Claim;
 import org.thingsboard.server.common.data.id.ClaimId;
 import org.thingsboard.server.common.data.id.TenantId;
+import org.thingsboard.server.common.data.id.UserId;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -45,6 +46,9 @@ public final class ClaimEntity extends BaseSqlEntity<Claim> {
     @Column(name = "name")
     private String name;
 
+    @Column(name = "assignee_id")
+    private UUID assigneeId;
+
     public ClaimEntity() {
         super();
     }
@@ -60,6 +64,9 @@ public final class ClaimEntity extends BaseSqlEntity<Claim> {
         this.body = claim.getBody();
         this.done = claim.isDone();
         this.name = claim.getName();
+        if (claim.getAssigneeId() != null) {
+          this.assigneeId = claim.getAssigneeId().getId();
+        }
     }
 
     @Override
@@ -72,6 +79,9 @@ public final class ClaimEntity extends BaseSqlEntity<Claim> {
         claim.setBody(body);
         claim.setDone(done);
         claim.setName(name);
+        if (assigneeId != null) {
+          claim.setAssigneeId(new UserId(assigneeId));
+        }
         return claim;
     }
 }

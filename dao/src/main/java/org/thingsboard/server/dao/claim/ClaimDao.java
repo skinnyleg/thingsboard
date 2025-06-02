@@ -22,6 +22,8 @@ import org.thingsboard.server.dao.Dao;
 import org.thingsboard.server.common.data.id.ClaimId;
 import org.thingsboard.server.common.data.id.TenantId;
 
+import java.util.UUID;
+
 public interface ClaimDao extends Dao<Claim> {
     PageData<Claim> findTenantClaims(TenantId tenantId, PageLink pageLink);
 
@@ -30,4 +32,6 @@ public interface ClaimDao extends Dao<Claim> {
     Claim toggleClaim(TenantId tenantId, ClaimId claimId);
 
     Claim findTenantClaim(TenantId tenantId, ClaimId claimId);
+
+    Claim assignClaim(TenantId tenantId, UUID assigneeId, ClaimId claimId);
 }

@@ -21,6 +21,8 @@ import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.Claim;
 
+import java.util.UUID;
+
 public interface ClaimsService {
     PageData<Claim> findTenantClaims(TenantId tenantId, PageLink pageLink);
 
@@ -29,4 +31,6 @@ public interface ClaimsService {
     void deleteClaim(TenantId tenantId, ClaimId claimId);
 
     void toggleClaim(TenantId tenantId, ClaimId claimId);
+
+    void assignClaim(TenantId tenantId, UUID assigneeId, ClaimId claimId);
 }

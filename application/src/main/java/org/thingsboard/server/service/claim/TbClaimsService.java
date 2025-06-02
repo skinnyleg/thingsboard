@@ -23,10 +23,14 @@ import org.thingsboard.server.common.data.Claim;
 import org.thingsboard.server.common.data.User;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
 
+import java.util.UUID;
+
 public interface TbClaimsService extends SimpleTbEntityService<Claim> {
     PageData<Claim> findTenantClaims(TenantId tenantId, PageLink pageLink);
 
     void deleteForecast(Claim entity, User user);
 
     void toggleClaim(Claim entity, User user) throws ThingsboardException;
+
+    void assignClaim(Claim entity, UUID assigneeId, User user) throws ThingsboardException;
 }
