@@ -117,7 +117,7 @@ public class ClaimsController extends BaseController {
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
     @PatchMapping(value = "/claims/{claimId}/assign")
     @ResponseBody
-    public void assignClaim(@PathVariable("claimId") String strClaimId, @RequestBody Map<String, String> body) throws Exception {
+    public Claim assignClaim(@PathVariable("claimId") String strClaimId, @RequestBody Map<String, String> body) throws Exception {
         checkParameter("claimId", strClaimId);
         ClaimId claimId = new ClaimId(toUUID(strClaimId));
 
@@ -129,7 +129,7 @@ public class ClaimsController extends BaseController {
         UUID assigneeId = UUID.fromString(assigneeIdStr);
 
         try {
-            claimsService.assignClaim(new Claim(claimId), assigneeId, getCurrentUser());
+            return claimsService.assignClaim(new Claim(claimId), assigneeId, getCurrentUser());
         } catch (Exception e) {
             throw new ThingsboardException("Failed to assign Claim", e, ThingsboardErrorCode.GENERAL);
         }

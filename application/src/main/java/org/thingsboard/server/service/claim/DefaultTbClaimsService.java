@@ -82,7 +82,7 @@ public class DefaultTbClaimsService extends AbstractTbEntityService implements T
         this.claimsService.toggleClaim(user.getTenantId(), claim.getId());
     }
 
-    public void assignClaim(Claim claim, UUID assigneeId, User user) throws ThingsboardException {
-        this.claimsService.assignClaim(user.getTenantId(), assigneeId, claim.getId());
+    public Claim assignClaim(Claim claim, UUID assigneeId, User user) throws ThingsboardException {
+        return this.claimsService.assignClaim(user.getTenantId(), assigneeId, claim.getId());
     }
 }

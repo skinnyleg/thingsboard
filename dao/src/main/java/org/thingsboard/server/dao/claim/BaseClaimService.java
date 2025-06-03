@@ -65,10 +65,10 @@ public class BaseClaimService implements ClaimsService {
     }
 
     @Override
-    public void assignClaim(TenantId tenantId, UUID assigneeId, ClaimId claimId) {
+    public Claim assignClaim(TenantId tenantId, UUID assigneeId, ClaimId claimId) {
         try {
-            Claim result = claimDao.assignClaim(tenantId, assigneeId, claimId);
-            log.info("Assign claim: [{}]", result);
+            return claimDao.assignClaim(tenantId, assigneeId, claimId);
+            // log.info("Assign claim: [{}]", result);
         } catch (Exception e) {
             throw e;
         }

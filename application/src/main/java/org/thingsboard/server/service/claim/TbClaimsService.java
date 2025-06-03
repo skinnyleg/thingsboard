@@ -32,5 +32,5 @@ public interface TbClaimsService extends SimpleTbEntityService<Claim> {
 
     void toggleClaim(Claim entity, User user) throws ThingsboardException;
 
-    void assignClaim(Claim entity, UUID assigneeId, User user) throws ThingsboardException;
+    Claim assignClaim(Claim entity, UUID assigneeId, User user) throws ThingsboardException;
 }

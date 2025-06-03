@@ -32,5 +32,5 @@ public interface ClaimsService {
 
     void toggleClaim(TenantId tenantId, ClaimId claimId);
 
-    void assignClaim(TenantId tenantId, UUID assigneeId, ClaimId claimId);
+    Claim assignClaim(TenantId tenantId, UUID assigneeId, ClaimId claimId);
 }
