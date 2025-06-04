@@ -22,6 +22,7 @@ import requests
 import datetime
 import time
 from requests.auth import HTTPBasicAuth
+import smtplib
 
 app = FastAPI(
     root_path="/api/v1",
@@ -30,6 +31,8 @@ app = FastAPI(
 
 app.include_router(forecast_router, prefix="/forecast")
 
+EMAIL_ADDRESS = "exampledt6@gmail.com"
+APP_PASSWORD = "ohzqlettnpaqxwep"
 AccountSid = "xxxxxx"
 AccountToken = "xxxxxx"
 TwilioSmsFrom = "+xxxxxx"
@@ -46,27 +49,37 @@ def notify_alarm_assignee(body = Body(None)):
     try:
         result = session.execute(
             text(
-                f"SELECT phone from tb_user where id='{assignee}'"
+                f"SELECT phone, email from tb_user where id='{assignee}'"
             )
         )
         result = result.fetchone()
         phone = result[0]
-
+        email = result[1]
+        print("email", email)
+        print("phone", phone)
         time_fmt = datetime.datetime.fromtimestamp(alarm_start_ts / 1000).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
-        sms_body = (
+        body = (
             f"You got assigned a new alarm alert. {alarm_severity}.\nType: {alarm_type}\nStarted at: {time_fmt}"
         )
         try:
             print("phone ", phone)
-            print("sms_body ", sms_body)
+            print("sms_body ", body)
             print("from ", TwilioSmsFrom)
             print("AccountSid ", AccountSid)
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login(EMAIL_ADDRESS, APP_PASSWORD)
+                server.sendmail(
+                    EMAIL_ADDRESS,
+                    email,
+                    body
+                )
+
             res = requests.post(
                 f"https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages.json",
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
-                data={"From": TwilioSmsFrom, "To": phone, "Body": sms_body},
+                data={"From": TwilioSmsFrom, "To": phone, "Body": body},
                 auth=HTTPBasicAuth(AccountSid, AccountToken),
             )
             bod = res.json()
