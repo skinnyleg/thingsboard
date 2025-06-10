@@ -24,10 +24,28 @@ import time
 from requests.auth import HTTPBasicAuth
 import smtplib
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     root_path="/api/v1",
     debug=True,
 )
+
+origins = [
+    "http://10.152.116.10:8080",
+    "http://10.152.116.10:4200",
+    "http://localhost:8080",
+    "http://localhost:4200",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 app.include_router(forecast_router, prefix="/forecast")
 
@@ -37,6 +55,24 @@ AccountSid = "xxxxxx"
 AccountToken = "xxxxxx"
 TwilioSmsFrom = "+xxxxxx"
 
+
+
+@app.post("/api/notify-claim-assignee")
+def notify_claim_assignee(body = Body(None)):
+    email = body["email"]
+    body = body["body"]
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(EMAIL_ADDRESS, APP_PASSWORD)
+            server.sendmail(
+                EMAIL_ADDRESS,
+                email,
+                body
+            )
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Could not send email.\n {e}")
 
 @app.post("/api/notify-alarm-assignee")
 def notify_alarm_assignee(body = Body(None)):
@@ -55,19 +91,16 @@ def notify_alarm_assignee(body = Body(None)):
         result = result.fetchone()
         phone = result[0]
         email = result[1]
-        print("email", email)
-        print("phone", phone)
         time_fmt = datetime.datetime.fromtimestamp(alarm_start_ts / 1000).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
         body = (
-            f"You got assigned a new alarm alert. {alarm_severity}.\nType: {alarm_type}\nStarted at: {time_fmt}"
-        )
+            "Subject: New alarm assignment.\n\n"
+            + f"You got assigned a new alarm alert. {alarm_severity}.\nType: {alarm_type}\nStarted at: {time_fmt}"
+            + "\n\nAnalyticalBoard."
+)
+
         try:
-            print("phone ", phone)
-            print("sms_body ", body)
-            print("from ", TwilioSmsFrom)
-            print("AccountSid ", AccountSid)
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
                 server.login(EMAIL_ADDRESS, APP_PASSWORD)
                 server.sendmail(
