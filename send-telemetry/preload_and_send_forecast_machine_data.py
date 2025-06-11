@@ -19,15 +19,19 @@ engine = create_engine(DATABASE_URL, echo=True)
 # Create a session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-f = open("./machine_uuid.txt", "r")
+# f = open("./machine_uuid.txt", "r")
 
-machine_access_token = f.read().strip()
+# machine_access_token = f.read().strip()
 
 phones_f = open("./send_to_phones.txt", "r")
 phones = phones_f.read().strip()
 
+entities = {
+    "jxl8ni3f0em9zpmuq0oq": "03a88ca0-b63e-11ef-a198-07d41c920fc8",
+    "8PyIT47tVem2abB0zi5e": "120e1d10-469d-11f0-b3d7-d5827fb4609f",
+}
 
-print("machine_access_token=", machine_access_token)
+# print("machine_access_token=", machine_access_token)
 print("send_to_phones=", phones)
 logging.basicConfig()
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
@@ -37,36 +41,17 @@ conn = session.connection().connection
 cur = conn.cursor()
 
 try:
-    device = session.execute(
-        text(
-            "SELECT device_id FROM public.device_credentials\
-            WHERE credentials_id = :machine_access_token"
-        ),
-        {"machine_access_token": machine_access_token},
-    )
-    session.commit()
-    entity_id = str(device.scalars().all()[0])
     result = session.execute(text("DELETE FROM alarm"))
     result = session.execute(text("DELETE FROM notification"))
     result = session.execute(
         text(
-            "DELETE FROM public.ts_kv\
-                USING public.device_credentials, public.device\
-                WHERE ts_kv.entity_id = device.id\
-                AND device.id = device_credentials.device_id\
-                AND device_credentials.credentials_id = :machine_access_token",
+            "DELETE FROM public.ts_kv"
         ),
-        {"machine_access_token": machine_access_token},
     )
     result = session.execute(
         text(
-            "DELETE FROM public.ts_kv_latest\
-                USING public.device_credentials, public.device\
-                WHERE ts_kv_latest.entity_id = device.id\
-                AND device.id = device_credentials.device_id\
-                AND device_credentials.credentials_id = :machine_access_token"
+            "DELETE FROM public.ts_kv_latest"
         ),
-        {"machine_access_token": machine_access_token},
     )
     result = session.execute(
         text(
@@ -79,35 +64,39 @@ try:
         text(
             "SELECT KEY_ID FROM KEY_DICTIONARY WHERE KEY IN ('pressure', 'datetime', 'forecast')"
         )
-    )
+    )   
     session.commit()
     pressure, datetime, forecast = result.scalars().all()
-    if (
-        os.system(
-            f"bash ./preload_forecast_machine_csv.sh {entity_id} {pressure} {datetime} {forecast}"
-        )
-        != 0
-    ):
-        sys.exit("script has failed")
-    with open("datetime.csv") as file:
-        cur.copy_expert(
-            "COPY ts_kv(ts,str_v,entity_id,key) FROM STDIN WITH (FORMAT csv, DELIMITER ',', HEADER)",
-            file,
-        )
-        cur.connection.commit()
-    with open("./pressure.csv") as file:
-        cur.copy_expert(
-            "COPY ts_kv(ts,dbl_v,entity_id,key) FROM STDIN WITH (FORMAT csv, DELIMITER ',', HEADER)",
-            file,
-        )
-        cur.connection.commit()
-    with open("./forecast.csv") as file:
-        cur.copy_expert(
-            "COPY ts_kv(ts,dbl_v,entity_id,key) FROM STDIN WITH (FORMAT csv, DELIMITER ',', HEADER)",
-            file,
-        )
-        cur.connection.commit()
-    session.commit()
-    os.system(f"bash ./test_device_5_3.sh& python ./create_alarm.py 120 {phones}")
+
+
+    for token in entities.keys():
+        print("token ", token)
+        if (
+            os.system(
+                f"bash ./preload_forecast_machine_csv.sh {entities[token]} {token} {pressure} {datetime} {forecast}"
+            )
+            != 0
+        ):
+            sys.exit("script has failed")
+        with open(f"datetime_{token}.csv") as file:
+            cur.copy_expert(
+                "COPY ts_kv(ts,str_v,entity_id,key) FROM STDIN WITH (FORMAT csv, DELIMITER ',', HEADER)",
+                file,
+            )
+            cur.connection.commit()
+        with open(f"./pressure_{token}.csv") as file:
+            cur.copy_expert(
+                "COPY ts_kv(ts,dbl_v,entity_id,key) FROM STDIN WITH (FORMAT csv, DELIMITER ',', HEADER)",
+                file,
+            )
+            cur.connection.commit()
+        with open(f"./forecast_{token}.csv") as file:
+            cur.copy_expert(
+                "COPY ts_kv(ts,dbl_v,entity_id,key) FROM STDIN WITH (FORMAT csv, DELIMITER ',', HEADER)",
+                file,
+            )
+            cur.connection.commit()
+        session.commit()
+        os.system(f"bash ./test_device_5_3.sh {token} &")
 except Exception as e:
     print(e)

@@ -523,7 +523,7 @@ export class ForcastChartComponent
   connectToSocket() {
     this.forecastWs = webSocket({
       url:
-        "ws://localhost:8000/forecast/" +
+        "ws://10.152.116.10:8000/forecast/" +
         this.forecastId +
         "/ws?token=" +
         localStorage.getItem("jwt_token") +

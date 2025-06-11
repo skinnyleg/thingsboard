@@ -23,6 +23,18 @@ services:
       - postgres
     networks:
       - thingsboard
+  
+  ws-events:
+    build:
+      context: ./send-telemetry/
+      dockerfile: ws-events.Dockerfile
+    container_name: ws-events
+    depends_on:
+      - postgres
+    networks:
+      - thingsboard
+    volumes:
+      - application_source_code:/app
 
   dashboard-script:
     build:
@@ -91,7 +103,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ../psql_data/main/
+      device: ../psql_data/main
   application_source_code:
     driver: local
     driver_opts:

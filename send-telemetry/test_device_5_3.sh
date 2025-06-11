@@ -1,15 +1,28 @@
 #!/bin/bash
 
-COUNT=1000
+args=$@
 
-if [ -n "$1" ]; then
-  if [[ "$1" =~ ^-?[0-9]+$ ]]; then
-    COUNT=$((10#$1))
-  else
-    echo "Parameter is not a valid integer."
-    exit 1
-  fi
+echo args $args
+
+entity_token=$1
+
+path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
+forecast_path='./new_df.csv'
+
+if [ $entity_token == "jxl8ni3f0em9zpmuq0oq" ]; then
+  path='./PdM_telemetry_MachineID1.csv'
 fi
+
+# COUNT=1000
+
+# if [ -n "$1" ]; then
+#   if [[ "$1" =~ ^-?[0-9]+$ ]]; then
+#     COUNT=$((10#$1))
+#   else
+#     echo "Parameter is not a valid integer."
+#     exit 1
+#   fi
+# fi
 
 echo -e "DEVICE:\t\tDevice 5"
 echo -e "SENSOR:\t\tPressure 3"
@@ -21,14 +34,13 @@ echo -e 'COMMAND:\tmosquitto_pub
                     -h thingsboard
                     -p 1883
                     -t v1/devices/me/telemetry
-                    -u "jxl8ni3f0em9zpmuq0oq"
+                    -u "$entity_token"
                     -m "{pressure:$(seq 0.2625 .001 0.7875 | shuf | head -n1)}"
                     > /dev/null'
 
 trap 'echo -e "\Closed at LOOP: $i, PRESSURE: $VALUE"; exit' SIGINT
 
-path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
-forecast_path='./new_df.csv'
+
 
 echo ''
 while true; do
@@ -39,7 +51,7 @@ while true; do
   paste -d, "$path" "$forecast_path" | while IFS="," read -r datetime machineId volt rotate pressure vibration forecast; do
     printf "LOOP: $i, PRESSURE: $pressure, DATETIME: $datetime\r"
     sleep 1
-    mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "jxl8ni3f0em9zpmuq0oq" -m "{pressure:$pressure,datetime:'$datetime',forecast:'$forecast'}" >/dev/null
+    mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "$entity_token" -m "{pressure:$pressure,datetime:'$datetime',forecast:'$forecast'}" >/dev/null
   done
   echo "Restarting file read..."
 done
