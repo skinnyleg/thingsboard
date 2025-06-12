@@ -410,6 +410,22 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
     }
   }
 
+  isTitleSelect: boolean;
+  selectedAlarmsClaims: 'Alarms' | 'Claims' = 'Alarms';
+
+  onSelectChange = (event) => {
+    const value = event.value;
+    this.selectedAlarmsClaims = value;
+    this.widgetContext.$scope.isAlarm = !this.widgetContext.$scope
+    .isAlarm;
+
+    this.widgetContext.$scope.edit = false;
+    this.widgetContext.$scope.editData = {};
+    this.widgetContext.$scope.showList = false;
+    this.widgetContext.detectContainerChanges();
+    console.log({ctx: this.widgetContext})
+  }
+
   constructor(
     private dashboard: IDashboardComponent,
     public widget: Widget,
@@ -421,6 +437,20 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
     }
     this.widgetId = widget.id;
     this.updateWidgetParams(false);
+    this.title$.subscribe({
+      next: (x) => {
+        if (x == "alarm & claim") {
+          this.isTitleSelect = true;
+          if (this.widgetContext) {
+            this.widgetContext.detectContainerChanges();
+          }
+        }
+      },
+      error: (x) => {
+        console.log('got an error ', x)
+      },
+      complete: () => {}
+    })
   }
 
   gridsterItemComponent$(): Observable<GridsterItemComponentInterface> {

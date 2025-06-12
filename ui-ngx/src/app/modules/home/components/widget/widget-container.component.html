@@ -98,7 +98,7 @@
 <ng-template #widgetTitlePanel>
   <div *ngIf="widget.showWidgetTitlePanel"
        class="tb-widget-title">
-              <div *ngIf="widget.showTitle"
+              <div *ngIf="!widget.isTitleSelect && widget.showTitle"
                     [matTooltip]="widget.titleTooltip"
                     matTooltipClass="tb-tooltip-multiline"
                     matTooltipPosition="above"
@@ -107,6 +107,12 @@
                 <div class="mat-subtitle-1 title" [style]="widget.titleStyle">
                   {{widget.title$ | async}}
                 </div>
+              </div>
+              <div *ngIf="widget.isTitleSelect">
+                  <mat-select class="alarms-claims-selector" (selectionChange)="widget.onSelectChange($event)" [(value)]="widget.selectedAlarmsClaims">
+                    <mat-option value="Alarms">Alarms</mat-option>
+                    <mat-option value="Claims">Claims</mat-option>
+                  </mat-select>
               </div>
     <tb-timewindow *ngIf="widget.hasTimewindow"
                    aggregation="{{widget.hasAggregation}}"
