@@ -9,8 +9,9 @@ entity_token=$1
 path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
 forecast_path='./new_df.csv'
 
-if [ $entity_token == "jxl8ni3f0em9zpmuq0oq" ]; then
-  path='./PdM_telemetry_MachineID1.csv'
+if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
+  path='./PdM_telemetry_MachineID1_mod.csv'
+  forecast_path='./PdM_telemetry_MachineID1_mod_df.csv'
 fi
 
 # COUNT=1000

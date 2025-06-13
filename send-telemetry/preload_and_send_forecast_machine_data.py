@@ -41,7 +41,7 @@ conn = session.connection().connection
 cur = conn.cursor()
 
 try:
-    result = session.execute(text("DELETE FROM alarm"))
+    # result = session.execute(text("DELETE FROM alarm"))
     result = session.execute(text("DELETE FROM notification"))
     result = session.execute(
         text(

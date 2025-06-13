@@ -12,13 +12,14 @@ fi
 path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
 forecast_path='./new_df.csv'
 
-if [ $entity_token == "jxl8ni3f0em9zpmuq0oq" ]; then
+if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
   path='./PdM_telemetry_MachineID1.csv'
+  forecast_path='./PdM_telemetry_MachineID1_df.csv'
 fi
 
 lines=$(wc -l <$path)
 
-seconds_times=$((14 * 24 * 60 * 60 / $lines))
+seconds_times=$((1 * 24 * 60 * 60 / $lines))
 seconds=$(($lines * $seconds_times))
 
 end_date=$(($(date +%s%3N) + 2000))
