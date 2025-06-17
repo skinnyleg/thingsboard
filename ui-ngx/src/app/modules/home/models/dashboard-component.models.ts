@@ -416,14 +416,7 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
   onSelectChange = (event) => {
     const value = event.value;
     this.selectedAlarmsClaims = value;
-    this.widgetContext.$scope.isAlarm = !this.widgetContext.$scope
-    .isAlarm;
-
-    this.widgetContext.$scope.edit = false;
-    this.widgetContext.$scope.editData = {};
-    this.widgetContext.$scope.showList = false;
-    this.widgetContext.detectContainerChanges();
-    console.log({ctx: this.widgetContext})
+    this.widgetContext.$scope.switch();
   }
 
   constructor(
