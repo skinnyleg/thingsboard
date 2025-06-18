@@ -413,10 +413,11 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
   isTitleSelect: boolean;
   selectedAlarmsClaims: 'Alarms' | 'Claims' = 'Alarms';
 
-  onSelectChange = (event) => {
-    const value = event.value;
-    this.selectedAlarmsClaims = value;
-    this.widgetContext.$scope.switch();
+  onSelectChange = (value: 'Alarms' | 'Claims') => {
+    if (this.selectedAlarmsClaims != value) {
+      this.selectedAlarmsClaims = value;
+      this.widgetContext.$scope.switch();
+    }
   }
 
   constructor(

@@ -108,11 +108,9 @@
                   {{widget.title$ | async}}
                 </div>
               </div>
-              <div *ngIf="widget.isTitleSelect">
-                  <mat-select class="alarms-claims-selector" (selectionChange)="widget.onSelectChange($event)" [(value)]="widget.selectedAlarmsClaims">
-                    <mat-option value="Alarms">Alarms</mat-option>
-                    <mat-option value="Claims">Claims</mat-option>
-                  </mat-select>
+              <div *ngIf="widget.isTitleSelect" class="alarms-claims-container">
+                <div value="Alarms" (click)="widget.onSelectChange('Alarms')" [class.selected]="widget.selectedAlarmsClaims == 'Alarms'">Alarms</div>
+                <div value="Claims" (click)="widget.onSelectChange('Claims')" [class.selected]="widget.selectedAlarmsClaims == 'Claims'">Claims</div>
               </div>
     <tb-timewindow *ngIf="widget.hasTimewindow && widget.selectedAlarmsClaims == 'Alarms'"
                    aggregation="{{widget.hasAggregation}}"

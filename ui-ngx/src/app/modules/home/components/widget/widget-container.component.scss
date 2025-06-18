@@ -42,7 +42,7 @@ div.tb-widget {
     display: flex;
     flex-direction: row;
     place-content: flex-start space-between;
-    align-items: flex-start;
+    align-items: baseline;
   }
 
   .tb-widget-title {
@@ -59,6 +59,23 @@ div.tb-widget {
       color: rgba(0, 0, 0, 0.85);
       font-weight: bold;
       font-size: 20px;
+    }
+
+    .alarms-claims-container {
+      display: flex;
+      font-weight: 500;
+      color: #000000a3;
+    }
+
+    .alarms-claims-container div {
+      cursor: pointer;
+      padding: .3em 1em;
+      border-radius: 3px;
+      font-size: 20px;
+    }
+
+    .alarms-claims-container .selected {
+      background: rgba(0, 0, 0, 0.047);
     }
 
     tb-timewindow {
