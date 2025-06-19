@@ -14,8 +14,8 @@
 /// limitations under the License.
 ///
 
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { User } from '@shared/models/user.model';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { User, UserSettings } from '@shared/models/user.model';
 import { PageComponent } from '@shared/components/page.component';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
@@ -52,6 +52,7 @@ import { isDefinedAndNotNull, isEqual } from '@core/utils';
 import { AuthService } from '@core/auth/auth.service';
 import { UserPasswordPolicy } from '@shared/models/settings.models';
 import { MatCheckboxChange } from '@angular/material/checkbox';
+import { UserService } from '@app/core/public-api';
 
 @Component({
   selector: 'tb-security',
@@ -65,6 +66,7 @@ export class SecurityComponent extends PageComponent implements OnInit, OnDestro
 
   twoFactorAuth: UntypedFormGroup;
   changePassword: UntypedFormGroup;
+  wtVerifyCode: UntypedFormGroup;
 
   user: User;
   passwordPolicy: UserPasswordPolicy;
@@ -74,6 +76,10 @@ export class SecurityComponent extends PageComponent implements OnInit, OnDestro
   twoFactorAuthProviderType = TwoFactorAuthProviderType;
   useByDefault: TwoFactorAuthProviderType = null;
   activeSingleProvider = true;
+
+  userSettings: UserSettings;
+
+  verifyEdit = false;
 
   get jwtToken(): string {
     return `Bearer ${localStorage.getItem('jwt_token')}`;
@@ -97,7 +103,9 @@ export class SecurityComponent extends PageComponent implements OnInit, OnDestro
               public fb: UntypedFormBuilder,
               private datePipe: DatePipe,
               private authService: AuthService,
-              private clipboardService: ClipboardService) {
+              private clipboardService: ClipboardService,
+              private userService: UserService,
+              private cd: ChangeDetectorRef) {
     super(store);
   }
 
@@ -106,7 +114,14 @@ export class SecurityComponent extends PageComponent implements OnInit, OnDestro
     this.user = this.route.snapshot.data.user;
     this.twoFactorLoad(this.route.snapshot.data.providers);
     this.buildChangePasswordForm();
+    this.buildVerifyCode();
     this.loadPasswordPolicy();
+    this.userService.getUserSettings().subscribe({
+      next: (settings) => {
+        this.userSettings = settings;
+        this.cd.detectChanges();
+      }
+    })
   }
 
   ngOnDestroy() {
@@ -166,6 +181,12 @@ export class SecurityComponent extends PageComponent implements OnInit, OnDestro
       newPassword: ['', Validators.required],
       newPassword2: ['', this.samePasswordValidation(false, 'newPassword')]
     });
+  }
+
+  private buildVerifyCode() {
+    this.wtVerifyCode = this.fb.group({
+      code: ['']
+    })
   }
 
   private loadPasswordPolicy() {
@@ -371,6 +392,41 @@ export class SecurityComponent extends PageComponent implements OnInit, OnDestro
         });
     } else {
       this.changePassword.markAllAsTouched();
+    }
+  }
+
+  sendVerificationCode() {
+    this.userService.requestUserVerifyCode(this.user.phone).subscribe({
+      next: (res) => {
+        console.log({
+          res
+        })
+        return;
+        this.verifyEdit = true;
+        this.cd.detectChanges();
+      }
+    })
+  }
+
+  code: string;
+
+  onChangeVerifyCode(form: FormGroupDirective): void {
+    console.log('form', form);
+    console.log('wtVerifyCode', this.wtVerifyCode);
+    const code = this.wtVerifyCode.get("code");
+    if (code.value == this.code) {
+      console.log("code is correct");
+      this.userService.setUserSettings({
+        wt_verified: true
+      }).subscribe({
+        next: () => {
+          this.verifyEdit = false;
+          this.cd.detectChanges();
+        },
+        error: (err) => {
+          console.log('error', err);
+        }
+      })
     }
   }
 

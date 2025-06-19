@@ -32,6 +32,10 @@ export interface User extends BaseData<UserId>, HasTenantId {
   additionalInfo: any;
 }
 
+export interface UserSettings {
+  wt_verified: undefined | boolean;
+}
+
 export enum ActivationMethod {
   DISPLAY_ACTIVATION_LINK = 'DISPLAY_ACTIVATION_LINK',
   SEND_ACTIVATION_MAIL = 'SEND_ACTIVATION_MAIL'

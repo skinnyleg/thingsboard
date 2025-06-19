@@ -30,6 +30,44 @@
       </button>
     </div>
   </mat-card>
+  <mat-card class="profile-card" appearance="outlined" fxLayout="column" *ngIf="user.phone">
+    <mat-card-title style="margin-bottom: 8px">
+        <span class="mat-headline-5 card-title" translate>Verify Number (Whatsapp)</span>
+    </mat-card-title>
+    <div fxLayout="row" fxLayoutAlign="space-between center" *ngIf="!verifyEdit && userSettings.wt_verified">
+      You have verified your phone number
+    </div>
+    <div *ngIf="!verifyEdit && !userSettings.wt_verified" fxLayout="column" fxLayoutAlign="" style="display: block">
+      You must verify your Whatsapp number to recieve alarms and claims assignement
+        <div fxLayout="row" fxLayoutAlign="end start">
+          <button mat-raised-button
+          color="primary"
+          type="button"
+          (click)="sendVerificationCode()">
+            <span>Send Verification Code</span>
+          </button>
+        </div>
+    </div>
+    <div fxLayout="column" fxLayoutAlign="" *ngIf="verifyEdit" style="display: block">
+      <div style="margin-bottom: 8px;">
+        Enter the verification code
+      </div>
+      <form #wtVerifyCodeForm="ngForm" [formGroup]="wtVerifyCode" (ngSubmit)="onChangeVerifyCode(wtVerifyCodeForm)" >
+        <mat-form-field class="mat-block same-color" appearance="fill" color="primary">
+          <mat-label>Code</mat-label>
+          <input matInput name="whatsapp-verfication-code" formControlName="code" required/>
+        </mat-form-field>
+        <button mat-button color="primary" translate>Resend code</button>
+        <div fxLayout="row" fxLayoutAlign="end start">
+          <button mat-raised-button
+          color="primary"
+          type="submit">
+            <span>Verify</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </mat-card>
   <mat-card appearance="outlined" class="profile-card" fxLayout="column">
     <div class="change-password" tb-toast toastTarget="changePassword">
       <form #changePasswordForm="ngForm" [formGroup]="changePassword" (ngSubmit)="onChangePassword(changePasswordForm)">

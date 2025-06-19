@@ -16,13 +16,14 @@
 
 import { Injectable } from '@angular/core';
 import { defaultHttpOptionsFromConfig, RequestConfig } from './http-utils';
-import { User, UserEmailInfo } from '@shared/models/user.model';
-import { Observable } from 'rxjs';
+import { User, UserEmailInfo, UserSettings } from '@shared/models/user.model';
+import { Observable, of, throwError } from 'rxjs';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { PageLink } from '@shared/models/page/page-link';
 import { PageData } from '@shared/models/page/page-data';
 import { isDefined } from '@core/utils';
 import { InterceptorHttpParams } from '@core/interceptors/interceptor-http-params';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -94,4 +95,33 @@ export class UserService {
     return this.http.get<PageData<UserEmailInfo>>(`/api/users/info${pageLink.toQuery()}`, defaultHttpOptionsFromConfig(config));
   }
 
+  public getUserSettings() {
+    return this.http.get<UserSettings>(`/api/user/settings`)
+  }
+
+  public setUserSettings(body: UserSettings) {
+    return this.http.post<UserSettings>(`/api/user/settings`, body);
+  }
+
+  public validateUserVerifyCode(code: string) {
+    if (code != this.code) {
+      return throwError(() => new Error("code is not correct"));
+    }
+    return 
+  }
+
+  public requestUserVerifyCode(phone: string) {
+    return this.http.post(
+      `https://graph.facebook.com/v22.0/` + environment.phone_id +`/request_code`,
+      {
+        "code_method": "SMS",
+        "locale": "en_US"
+      },
+      {
+        headers: {
+          'Authorization': 'Bearer ' + environment.WT_ACCESS_TOKEN,
+        }
+      }
+    )
+  }
 }
