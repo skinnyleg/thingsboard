@@ -8,6 +8,7 @@ from requests.auth import HTTPBasicAuth
 
 machine_id = "03a88ca0-b63e-11ef-a198-07d41c920fc8"
 #machine_id = 'ea6210e0-6610-11ef-9061-853a958a524a'
+machine_id = "75d8bbb0-6611-11ef-9061-853a958a524a"
 alarm = None
 host = "thingsboard"
 TwilioSmsFrom = "+xxxxxxxxx"
@@ -38,7 +39,7 @@ def create_alarm(token):
     data = {
         "type": "pressure threshold",
         "originator": {
-            "id": "03a88ca0-b63e-11ef-a198-07d41c920fc8",
+            "id": machine_id,
             "entityType": "DEVICE",
         },
         "severity": "MAJOR",

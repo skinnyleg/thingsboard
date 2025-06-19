@@ -16,4 +16,4 @@ fclean:
 
 
 build:
-	$(DOCKER_CMD) mvn install -DskipTests -T28 -Dmaven.test.skip=true -o
+	$(DOCKER_CMD) mvn install -X -DskipTests -T28 -Dmaven.test.skip=true -o

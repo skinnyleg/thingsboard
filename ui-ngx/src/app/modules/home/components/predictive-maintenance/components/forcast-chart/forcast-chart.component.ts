@@ -41,6 +41,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatDatepickerModule } from "@angular/material/datepicker";
 import { FormControl } from "@angular/forms";
 import { FormGroup } from "@material-ui/core";
+import { environment } from "@env/environment";
 
 const Hours = Array.from(Array(24), (_, i) => i < 10 ? '0' + i : i.toString());
 const Minutes = Array.from(Array(60), (_, i) => i < 10 ? '0' + i : i.toString());
@@ -523,7 +524,7 @@ export class ForcastChartComponent
   connectToSocket() {
     this.forecastWs = webSocket({
       url:
-        "ws://10.152.116.10:8000/forecast/" +
+        "ws://" + environment.host + ":8000/forecast/" +
         this.forecastId +
         "/ws?token=" +
         localStorage.getItem("jwt_token") +

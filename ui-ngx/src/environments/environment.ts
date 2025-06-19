@@ -21,13 +21,14 @@
 export const environment = {
   appTitle: 'AnalyticBoard',
   production: false,
-// @ts-ignore
+  // @ts-ignore
   tbVersion: TB_VERSION,
-// @ts-ignore
+  // @ts-ignore
   supportedLangs: SUPPORTED_LANGS,
   defaultLang: 'en_US',
   WT_ACCESS_TOKEN: "xxxxxx",
-  phone_id: 'xxxxx'
+  phone_id: 'xxxxx',
+  host: 'localhost', // 10.152.116.10
 };
 
 /*

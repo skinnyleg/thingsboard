@@ -378,25 +378,18 @@ export class MenuService {
         icon: 'home'
       },
       {
-        id: 'dashboards',
-        name: 'dashboard.dashboards',
-        type: 'link',
-        path: '/dashboards',
-        icon: 'dashboards'
-      },
-      // {
-      //   id: 'help',
-      //   name: 'help.help',
-      //   type: 'link',
-      //   path: '/help',
-      //   icon: 'help'
-      // },
-      {
         id: 'alarms',
         name: 'alarm.alarms',
         type: 'link',
         path: '/alarms',
         icon: 'mdi:alert-outline'
+      },
+      {
+        id: 'dashboards',
+        name: 'dashboard.dashboards',
+        type: 'link',
+        path: '/dashboards',
+        icon: 'dashboards'
       },
       {
         id: 'devices',
@@ -412,14 +405,6 @@ export class MenuService {
         path: '/entities',
         icon: 'category',
         pages: [
-
-          {
-            id: 'assets',
-            name: 'asset.assets',
-            type: 'link',
-            path: '/entities/assets',
-            icon: 'domain'
-          },
           {
             id: 'entity_views',
             name: 'entity-view.entity-views',
@@ -435,6 +420,13 @@ export class MenuService {
             icon: 'mdi:alpha-d-box'
           },
           {
+            id: 'assets',
+            name: 'asset.assets',
+            type: 'link',
+            path: '/entities/assets',
+            icon: 'domain'
+          },
+          {
             id: 'asset_profiles',
             name: 'asset-profile.asset-profiles',
             type: 'link',
@@ -443,17 +435,6 @@ export class MenuService {
           }
         ]
       },
-
-      // {
-      //   id: 'profiles',
-      //   name: 'profiles.profiles',
-      //   type: 'toggle',
-      //   path: '/profiles',
-      //   icon: 'badge',
-      //   pages: [
-
-      //   ]
-      // },
       {
         id: 'rule_chains',
         name: 'rulechain.rulechains',
@@ -514,6 +495,14 @@ export class MenuService {
           }
         ]
       },
+      {
+        id: 'version_control',
+        name: 'version-control.version-control',
+        type: 'link',
+        path: '/features/vc',
+        icon: 'history'
+      },
+
     );
     // if (authState.edgesSupportEnabled) {
     //   sections.push(
