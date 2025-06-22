@@ -5,11 +5,16 @@ import pandas as pd
 import numpy as np
 from copy import deepcopy
 import datetime
+import tensorflow as tf
 
 Data = NewType("Data", Dict[str, List[Union[int, str]]])
 MODEL_PATH = "data/models/model.h5"
 
 model = load_model(MODEL_PATH)
+print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"
 scaler = MinMaxScaler()
 
 import logging
@@ -68,7 +73,7 @@ def predict(tm_data: Data, forecastWindow: int) -> Data:
         }
     )
     X_seq, _, scaler = create_feature(df)
-    logger.warning(f"shape {X_seq.shape}")
+    # logger.warning(f"shape {X_seq.shape}")
     X_seq = shape_sequence(X_seq, 5, 0)
     y_pred_future = deepcopy(X_seq[-1:])
     recursive_pred = {"pressure": [], "datetime": []}
@@ -90,9 +95,11 @@ def predict(tm_data: Data, forecastWindow: int) -> Data:
     except Exception as e:
         logger.warning(f"Exception: {e}")
         return recursive_pred
-    recursive_pred["pressure"] = scaler.inverse_transform(
-        np.array(recursive_pred["pressure"])
-    ).flatten().tolist()
+    recursive_pred["pressure"] = (
+        scaler.inverse_transform(np.array(recursive_pred["pressure"]))
+        .flatten()
+        .tolist()
+    )
     current_date = df["datetime"].iloc[-1]
     for _ in range(0, forecastWindow):
         current_date = current_date + datetime.timedelta(hours=1)

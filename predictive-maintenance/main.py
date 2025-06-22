@@ -56,26 +56,22 @@ AccountToken = "xxxxxx"
 TwilioSmsFrom = "+xxxxxx"
 
 
-
 @app.post("/api/notify-claim-assignee")
-def notify_claim_assignee(body = Body(None)):
+def notify_claim_assignee(body=Body(None)):
     email = body["email"]
     body = body["body"]
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(EMAIL_ADDRESS, APP_PASSWORD)
-            server.sendmail(
-                EMAIL_ADDRESS,
-                email,
-                body
-            )
+            server.sendmail(EMAIL_ADDRESS, email, body)
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=f"Could not send email.\n {e}")
 
+
 @app.post("/api/notify-alarm-assignee")
-def notify_alarm_assignee(body = Body(None)):
+def notify_alarm_assignee(body=Body(None)):
     assignee = body["assigneeId"]
     alarm_type = body["type"]
     alarm_severity = body["severity"]
@@ -84,9 +80,7 @@ def notify_alarm_assignee(body = Body(None)):
     session = SessionLocal()
     try:
         result = session.execute(
-            text(
-                f"SELECT phone, email from tb_user where id='{assignee}'"
-            )
+            text(f"SELECT phone, email from tb_user where id='{assignee}'")
         )
         result = result.fetchone()
         phone = result[0]
@@ -98,16 +92,12 @@ def notify_alarm_assignee(body = Body(None)):
             "Subject: New alarm assignment.\n\n"
             + f"You got assigned a new alarm alert. {alarm_severity}.\nType: {alarm_type}\nStarted at: {time_fmt}"
             + "\n\nAnalyticalBoard."
-)
+        )
 
         try:
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
                 server.login(EMAIL_ADDRESS, APP_PASSWORD)
-                server.sendmail(
-                    EMAIL_ADDRESS,
-                    email,
-                    body
-                )
+                server.sendmail(EMAIL_ADDRESS, email, body)
 
             res = requests.post(
                 f"https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages.json",
@@ -119,10 +109,13 @@ def notify_alarm_assignee(body = Body(None)):
             print(f"Twilio Response {res.status_code} - {bod}")
         except Exception as e:
             print(f"Error: {e}")
-            raise HTTPException(status_code=500, detail=f"Could not reach sms provider.\n {e}")            
+            raise HTTPException(
+                status_code=500, detail=f"Could not reach sms provider.\n {e}"
+            )
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=404, detail=f"User was not found.\n {e}")
+
 
 @app.get("/api/predictiveMaintenance")
 def read_root():

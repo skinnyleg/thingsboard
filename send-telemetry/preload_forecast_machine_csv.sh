@@ -12,7 +12,7 @@ fi
 path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
 forecast_path='./new_df.csv'
 
-if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
+if [ $entity_token == "JfZdCJQMZ6KW1xgHanyN" ]; then
   path='./PdM_telemetry_MachineID1.csv'
   forecast_path='./PdM_telemetry_MachineID1_df.csv'
 fi

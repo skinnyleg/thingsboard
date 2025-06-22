@@ -1,3 +1,4 @@
+import requests
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import os
@@ -19,16 +20,22 @@ engine = create_engine(DATABASE_URL, echo=True)
 # Create a session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# f = open("./machine_uuid.txt", "r")
+f = open("./time-between-forecast.txt", "r")
 
-# machine_access_token = f.read().strip()
+time_between_forecasts = f.read().strip()
 
 phones_f = open("./send_to_phones.txt", "r")
 phones = phones_f.read().strip()
 
 entities = {
-    "jxl8ni3f0em9zpmuq0oq": "03a88ca0-b63e-11ef-a198-07d41c920fc8",
-    "8PyIT47tVem2abB0zi5e": "120e1d10-469d-11f0-b3d7-d5827fb4609f",
+    "jxl8ni3f0em9zpmuq0oq": [
+        "03a88ca0-b63e-11ef-a198-07d41c920fc8",
+        "8f14e9f0-d358-11ef-881a-c57f1baedda2",
+    ],
+    "JfZdCJQMZ6KW1xgHanyN": [
+        "f9128fe0-4d49-11f0-adce-4f57de262f63",
+        "b53d47f0-4efd-11f0-9172-e9777f6c6d64",
+    ],
 }
 
 # print("machine_access_token=", machine_access_token)
@@ -41,18 +48,6 @@ conn = session.connection().connection
 cur = conn.cursor()
 
 try:
-    # result = session.execute(text("DELETE FROM alarm"))
-    result = session.execute(text("DELETE FROM notification"))
-    result = session.execute(
-        text(
-            "DELETE FROM public.ts_kv"
-        ),
-    )
-    result = session.execute(
-        text(
-            "DELETE FROM public.ts_kv_latest"
-        ),
-    )
     result = session.execute(
         text(
             "INSERT INTO key_dictionary (key)\
@@ -64,16 +59,24 @@ try:
         text(
             "SELECT KEY_ID FROM KEY_DICTIONARY WHERE KEY IN ('pressure', 'datetime', 'forecast')"
         )
-    )   
+    )
     session.commit()
     pressure, datetime, forecast = result.scalars().all()
 
-
     for token in entities.keys():
         print("token ", token)
+        result = session.execute(
+            text(f"DELETE FROM public.ts_kv where entity_id = '{entities[token][0]}'"),
+        )
+        result = session.execute(
+            text(
+                f"DELETE FROM public.ts_kv_latest where entity_id = '{entities[token][0]}'"
+            ),
+        )
+        session.commit()
         if (
             os.system(
-                f"bash ./preload_forecast_machine_csv.sh {entities[token]} {token} {pressure} {datetime} {forecast}"
+                f"bash ./preload_forecast_machine_csv.sh {entities[token][0]} {token} {pressure} {datetime} {forecast}"
             )
             != 0
         ):
@@ -97,6 +100,13 @@ try:
             )
             cur.connection.commit()
         session.commit()
+        try:
+            requests.post(
+                f"http://fastapi:8000/forecast/{entities[token][1]}/routine/activate?time_between_forecast="
+                + time_between_forecasts
+            )
+        except Exception as e:
+            print(f"Error: {e}")
         os.system(f"bash ./test_device_5_3.sh {token} &")
 except Exception as e:
     print(e)

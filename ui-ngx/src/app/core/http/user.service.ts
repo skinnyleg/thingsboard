@@ -104,9 +104,7 @@ export class UserService {
   }
 
   public validateUserVerifyCode(code: string) {
-    if (code != this.code) {
-      return throwError(() => new Error("code is not correct"));
-    }
+    
     return 
   }
 

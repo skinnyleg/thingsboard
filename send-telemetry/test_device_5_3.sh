@@ -7,11 +7,8 @@ echo args $args
 entity_token=$1
 
 path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
-forecast_path='./new_df.csv'
-
-if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
+if [ $entity_token == "JfZdCJQMZ6KW1xgHanyN" ]; then
   path='./PdM_telemetry_MachineID1_mod.csv'
-  forecast_path='./PdM_telemetry_MachineID1_mod_df.csv'
 fi
 
 # COUNT=1000
@@ -41,7 +38,7 @@ echo -e 'COMMAND:\tmosquitto_pub
 
 trap 'echo -e "\Closed at LOOP: $i, PRESSURE: $VALUE"; exit' SIGINT
 
-
+time=$(cat ./time-between-forecast.txt)
 
 echo ''
 while true; do
@@ -49,10 +46,10 @@ while true; do
   # for (( ; ; )); do
   # VALUE=$(seq 0.2625 .001 0.7875 | shuf | head -n1)
   # echo -ne "LOOP: $i, PRESSURE: $VALUE\r"
-  paste -d, "$path" "$forecast_path" | while IFS="," read -r datetime machineId volt rotate pressure vibration forecast; do
+  paste -d, "$path" | while IFS="," read -r datetime machineId volt rotate pressure vibration; do
     printf "LOOP: $i, PRESSURE: $pressure, DATETIME: $datetime\r"
-    sleep 1
-    mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "$entity_token" -m "{pressure:$pressure,datetime:'$datetime',forecast:'$forecast'}" >/dev/null
+    sleep "$time"
+    mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "$entity_token" -m "{pressure:$pressure,datetime:'$datetime'}" >/dev/null
   done
   echo "Restarting file read..."
 done

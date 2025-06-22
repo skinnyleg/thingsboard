@@ -33,7 +33,7 @@ import {
   LegendComponent,
   MarkAreaComponent,
 } from "echarts/components";
-import { LineChart } from "echarts/charts";
+import { LineChart, ScatterChart } from "echarts/charts";
 import { UniversalTransition } from "echarts/features";
 import { MatButtonModule } from "@angular/material/button";
 import { CanvasRenderer } from "echarts/renderers";
@@ -206,6 +206,7 @@ const selectionOptions = [
 export class ForcastChartComponent
   implements OnInit, OnChanges, OnDestroy, AfterViewInit {
   public forecastWs: WebSocketSubject<any>;
+  public dataWs: WebSocketSubject<any>;
 
   public selected = { ...selectionOptions.find((a) => a.seconds === 60) };
 
@@ -386,6 +387,7 @@ export class ForcastChartComponent
           {
             name: "Pressure",
             data: history["pressure"].map((e) => [e.ts, parseFloat(e.value)]),
+            type: 'line',
             markArea: {
               itemStyle: {
                 color: 'rgba(255, 173, 177, 0.4)',
@@ -396,6 +398,7 @@ export class ForcastChartComponent
           {
             name: "Pressure Historical Forecast",
             data: history["forecast"].map((e) => [e.ts, parseFloat(e.value)]),
+            type: 'line'
           },
         ],
       });
@@ -521,7 +524,73 @@ export class ForcastChartComponent
     });
   }
 
-  connectToSocket() {
+  async connectToSocket() {
+    const series = this.chartInstance.getOption().series;
+    let pressureData = [...series.find((e) => e.name.toLowerCase() == "pressure").data];
+    let historyForecastData = [...series.find((e) => e.name.toLowerCase() == "pressure historical forecast").data];
+    this.dataWs = webSocket({
+      url: "ws://" + environment.host + ":8080/api/ws"
+    })
+    this.dataWs.subscribe({
+      next: ((tmp = null) => (data) => {
+        Object.keys(data.data).forEach((key) => {
+          let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
+          values.sort((a, b) => a[0] - b[0]);
+          const list = key == "pressure" ? pressureData : historyForecastData;
+          if (key == "pressure" && tmp) {
+            historyForecastData.push(tmp);
+            tmp = null;
+          }
+          values = list.concat([values[values.length - 1]]);
+          values.sort((a, b) => a[0] - b[0]);
+          if (key == "forecast") {
+            tmp = values.pop();
+          }
+
+          values = values.slice(
+            -Math.floor(
+              (this.selected.seconds / this.selected.interval) * 1000
+            ) + 20
+          );
+
+          pressureData = key == "pressure" ? values : [...pressureData];
+          historyForecastData = key == "forecast" ? values : [...historyForecastData];
+        })
+      })()
+    });
+    const headers = {
+      "x-authorization": "Bearer " + localStorage.getItem("jwt_token"),
+      "content-type": "application/json",
+    };
+    const forecast = await fetch("/api/forecasts/" + this.forecastId, {
+      headers,
+    })
+      .then(async (res) =>
+        !res.ok ? { error: res.statusText } : { data: await res.json() }
+      )
+      .catch((err) => ({ error: err }));
+    if (forecast.error) return Promise.reject(forecast.error);
+    // @ts-ignore
+    const device_id = forecast.data.deviceId?.id;
+    this.dataWs.next({
+      authCmd: {
+        cmdId: 0,
+        token: localStorage.getItem("jwt_token")
+      },
+      cmds: [
+        {
+          cmdId: 10,
+          entityType: "DEVICE",
+          entityId: device_id,
+          keys: "pressure,forecast",
+          startTs: Date.now(),
+          timeWindow: Date.now(),
+          scope: "LATEST_TELEMETRY",
+          type: "TIMESERIES",
+
+        }
+      ]
+    })
     this.forecastWs = webSocket({
       url:
         "ws://" + environment.host + ":8000/forecast/" +
@@ -537,96 +606,43 @@ export class ForcastChartComponent
     });
     this.forecastWs.subscribe({
       next: (msg) => {
-        // return;
+        if (!pressureData.length) return;
         let data;
         try {
           data = JSON.parse(msg);
         } catch { }
         if (data && this.displayData) {
-          Object.keys(data.data).forEach((key) => {
-            if (key === "datetime") return;
-            if (key === "forecast") {
-              const series = this.chartInstance.getOption().series;
-              let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
-              values.sort((a, b) => a[0] - b[0]);
-              let keyOldForecastIndex = series.findIndex(
-                (serie) =>
-                  serie.name.toLowerCase() === "pressure historical forecast"
-              );
-              values = series[keyOldForecastIndex].data.concat([
-                values[values.length - 1],
-              ]);
-              values.sort((a, b) => a[0] - b[0]);
-              values = values.slice(
-                -Math.floor(
-                  (this.selected.seconds / this.selected.interval) * 1000
-                ) + 20
-              );
-              this.chartInstance.setOption({
-                series: [
-                  {
-                    name: "Pressure Historical Forecast",
-                    data: values,
-                  },
-                ],
-              });
-              return;
-            }
-            const series = this.chartInstance.getOption().series;
-            let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
-            values.sort((a, b) => a[0] - b[0]);
-            let keyIndex = series.findIndex(
-              (series) => series.name.toLowerCase() === key.toLowerCase()
-            );
-            // let keyForecastIndex = series.findIndex(
-            //   (series) =>
-            //     series.name.toLowerCase() === key.toLowerCase() + " forecast"
-            // );
-            values = series[keyIndex].data.concat([values[values.length - 1]]);
-            values.sort((a, b) => a[0] - b[0]);
-            values = values.slice(
-              -Math.floor(
-                (this.selected.seconds / this.selected.interval) * 1000
-              ) + 20
-            );
-            let forecast = values.length ? [values[values.length - 1]] : [];
-            if (values.length) {
-              let currentDate = values[values.length - 1][0];
-              forecast = [
-                ...forecast,
-                ...data.forecast[key].map((point) => {
-                  currentDate += 1000;
-                  return [currentDate, point];
-                }),
-              ];
-            }
-            // if (series[keyForecastIndex].data.length) {
-            //   this.oldForecastSeries[key].push([
-            //     values[values.length - 1][0],
-            //     series[keyForecastIndex].data[
-            //     series[keyForecastIndex].data.length - 20
-            //     ][1]
-            //   ]);
-            //   this.oldForecastSeries[key] = this.oldForecastSeries[key]
-            //     .slice(-Math.floor(this.selected.seconds / this.selected.interval * 1000) + 20)
-            // }
-            this.chartInstance.setOption({
-              series: [
-                {
-                  name: "Pressure",
-                  data: values,
-                },
-                {
-                  name: "Pressure Forecast",
-                  data: forecast,
-                },
-                // {
-                //   name: "Pressure Historical Forecast",
-                //   data: this.oldForecastSeries[key]
-                // }
-              ],
-            });
-            // this.forecastWs.complete();
+          let currentDate = pressureData[pressureData.length - 1][0];
+          let _data = [];
+          if (data.forecast["pressure"]) {
+            _data = data.forecast["pressure"];
+          }
+          const values = pressureData;
+          let forecast = values.length ? [values[values.length - 1]] : [];
+          forecast = forecast.concat(_data.map((point) => {
+            currentDate += 1000;
+            return [currentDate, point];
+          }))
+          // const maxv = historyForecastData.reduce((max, [a]) => Math.max(max, a), -Infinity)
+          this.chartInstance.setOption({
+            series: [
+              {
+                name: "Pressure Forecast",
+                // data: forecast.filter(([x]) => x >= maxv),
+                data: forecast,
+                type: 'line'
+              },
+              {
+                name: "Pressure",
+                data: pressureData,
+                type: 'line'
+              },
+              {
+                name: "Pressure Historical Forecast",
+                data: historyForecastData,
+                type: 'line'
+              },
+            ]
           });
         }
       },
@@ -655,6 +671,7 @@ export class ForcastChartComponent
         UniversalTransition,
         LegendComponent,
         MarkAreaComponent,
+        ScatterChart,
       ]);
       this.chartInstance = echarts.init(chart);
       const option = {
