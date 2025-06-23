@@ -2,7 +2,7 @@ FROM python:3.12
 
 RUN apt update
 
-RUN apt install -y mosquitto-clients less
+RUN apt install -y mosquitto-clients less bc
 
 WORKDIR /app
 

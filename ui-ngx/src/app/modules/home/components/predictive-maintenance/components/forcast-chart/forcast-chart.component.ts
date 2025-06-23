@@ -500,6 +500,7 @@ export class ForcastChartComponent
     this.alarmsWs$.subscribe({
       next: (msg) => {
         const data = msg.data?.data ?? msg.update;
+        console.log({ data })
         data.forEach((alarm) => alarms.set(alarm.id.id, alarm));
         const areas = Array
           .from(alarms.values())

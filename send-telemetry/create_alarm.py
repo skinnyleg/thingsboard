@@ -33,11 +33,11 @@ def clear_alarm(data):
     return send_request(data, "/" + data["id"]["id"] + "/clear")
 
 
-def create_alarm(token):
+def create_alarm(token, machine_id, alarm_type):
     print(f"Alarm created.")
     current_time = time.time() * 1000
     data = {
-        "type": "pressure threshold",
+        "type": alarm_type,
         "originator": {
             "id": machine_id,
             "entityType": "DEVICE",
@@ -105,10 +105,11 @@ if __name__ == "__main__":
     token = authenticate()
     sleep_time = int(sys.argv[1])
     time.sleep(sleep_time)
-    alarm = create_alarm(token)
+    alarm = create_alarm(token, machine_id=machine_id, alarm_type="pressure threshold")
     phones = sys.argv[2:]
-    #send_to_sms(phones, alarm["type"], alarm["startTs"], alarm["severity"])
-    for i in range(1, 15):
+    # send_to_sms(phones, alarm["type"], alarm["startTs"], alarm["severity"])
+    # for i in range(1, 15):
+    while True:
         time.sleep(1)
         if alarm is None:
             sys.exit(f"Fatal: alarm value is not set. {alarm}")
