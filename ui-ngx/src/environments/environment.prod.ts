@@ -22,5 +22,5 @@ export const environment = {
   // @ts-ignore
   supportedLangs: SUPPORTED_LANGS,
   defaultLang: 'en_US',
-  host: 'localhost', // 10.152.116.10
+  host: '10.152.116.10', // 10.152.116.10
 };

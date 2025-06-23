@@ -40,15 +40,15 @@ time_alarm = 20  # seconds
 entities = {
     "jxl8ni3f0em9zpmuq0oq": [
         "03a88ca0-b63e-11ef-a198-07d41c920fc8",
-        "8f14e9f0-d358-11ef-881a-c57f1baedda2",
+        "2dc30d80-b63e-11ef-a198-07d41c920fc8",
     ],
-    "JfZdCJQMZ6KW1xgHanyN": [
-        "f9128fe0-4d49-11f0-adce-4f57de262f63",
-        "b53d47f0-4efd-11f0-9172-e9777f6c6d64",
+    "8PyIT47tVem2abB0zi5e": [
+        "120e1d10-469d-11f0-b3d7-d5827fb4609f",
+        "981b9280-46c9-11f0-ab5d-fb22e3eaf82e",
     ],
 }
 
-machine_to_set_alarm = entities["JfZdCJQMZ6KW1xgHanyN"][0]
+machine_to_set_alarm = entities["8PyIT47tVem2abB0zi5e"][0]
 
 # print("machine_access_token=", machine_access_token)
 print("send_to_phones=", phones)

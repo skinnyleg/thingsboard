@@ -8,7 +8,7 @@ from requests.auth import HTTPBasicAuth
 
 machine_id = "03a88ca0-b63e-11ef-a198-07d41c920fc8"
 #machine_id = 'ea6210e0-6610-11ef-9061-853a958a524a'
-machine_id = "75d8bbb0-6611-11ef-9061-853a958a524a"
+machine_id = "120e1d10-469d-11f0-b3d7-d5827fb4609f"
 alarm = None
 host = "thingsboard"
 TwilioSmsFrom = "+xxxxxxxxx"
@@ -108,8 +108,8 @@ if __name__ == "__main__":
     alarm = create_alarm(token, machine_id=machine_id, alarm_type="pressure threshold")
     phones = sys.argv[2:]
     # send_to_sms(phones, alarm["type"], alarm["startTs"], alarm["severity"])
-    # for i in range(1, 15):
-    while True:
+    for i in range(1, 15):
+    # while True:
         time.sleep(1)
         if alarm is None:
             sys.exit(f"Fatal: alarm value is not set. {alarm}")

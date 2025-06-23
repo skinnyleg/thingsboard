@@ -28,7 +28,7 @@ export const environment = {
   defaultLang: 'en_US',
   WT_ACCESS_TOKEN: "xxxxxx",
   phone_id: 'xxxxx',
-  host: 'localhost', // 10.152.116.10
+  host: '10.152.116.10', // 10.152.116.10
 };
 
 /*

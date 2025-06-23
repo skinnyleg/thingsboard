@@ -8,7 +8,7 @@ entity_token=$1
 
 path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
 increment_value=40
-if [ $entity_token == "JfZdCJQMZ6KW1xgHanyN" ]; then
+if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
   path='./PdM_telemetry_MachineID1.csv'
 fi
 
@@ -50,7 +50,7 @@ while true; do
   paste -d, "$path" | while IFS="," read -r datetime machineId volt rotate pressure vibration; do
     # printf "LOOP: $i, PRESSURE: $pressure, DATETIME: $datetime\r"
     sleep "$time"
-    if [ $entity_token == "JfZdCJQMZ6KW1xgHanyN" ]; then
+    if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
       set_alarm=$(cat ./set-alarm.txt)
       if [ "$set_alarm" -eq 1 ]; then
         pressure=$(echo "$pressure + $increment_value" | bc)
