@@ -78,6 +78,8 @@ def main():
         session.commit()
         pressure, datetime, forecast = result.scalars().all()
 
+        os.system("python ./create_alarm.py 30 0 &")
+
         for token in entities.keys():
             print("token ", token)
             result = session.execute(
