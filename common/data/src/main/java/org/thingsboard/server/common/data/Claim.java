@@ -24,6 +24,9 @@ import org.thingsboard.server.common.data.validation.Length;
 import org.thingsboard.server.common.data.validation.NoXss;
 import org.thingsboard.server.common.data.id.ClaimId;
 import org.thingsboard.server.common.data.id.UserId;
+import org.thingsboard.server.common.data.claim.ClaimTags;
+import jakarta.validation.Valid;
+
 
 @Schema
 @Data
@@ -45,6 +48,7 @@ public class Claim extends BaseData<ClaimId> implements HasTenantId, HasName {
         this.body = claim.getBody();
         this.done = claim.isDone();
         this.assigneeId = claim.getAssigneeId();
+        this.tags = claim.getTags();
     }
 
     @NoXss
@@ -65,4 +69,8 @@ public class Claim extends BaseData<ClaimId> implements HasTenantId, HasName {
 
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Tenant Id.")
     private UserId assigneeId;
+
+    @Valid
+    @Schema(description = "JSON array of tags")
+    private transient ClaimTags[] tags;
 }

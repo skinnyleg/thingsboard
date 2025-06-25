@@ -28,6 +28,12 @@ import org.thingsboard.server.common.data.Claim;
 import org.thingsboard.server.common.data.id.ClaimId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.id.UserId;
+import org.thingsboard.common.util.JacksonUtil;
+import org.thingsboard.server.dao.util.mapping.JsonConverter;
+import jakarta.persistence.Convert;
+import org.hibernate.annotations.JdbcType;
+import com.fasterxml.jackson.databind.JsonNode;
+
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -49,6 +55,11 @@ public final class ClaimEntity extends BaseSqlEntity<Claim> {
     @Column(name = "assignee_id")
     private UUID assigneeId;
 
+    @Convert(converter = JsonConverter.class)
+    @JdbcType(PostgreSQLJsonPGObjectJsonbType.class)
+    @Column(name = "tags", columnDefinition = "jsonb")
+    private JsonNode tags;
+
     public ClaimEntity() {
         super();
     }
@@ -67,6 +78,7 @@ public final class ClaimEntity extends BaseSqlEntity<Claim> {
         if (claim.getAssigneeId() != null) {
           this.assigneeId = claim.getAssigneeId().getId();
         }
+        claim.tags = JacksonUtil.valueToTree(claim.getTags());
     }
 
     @Override
@@ -82,6 +94,7 @@ public final class ClaimEntity extends BaseSqlEntity<Claim> {
         if (assigneeId != null) {
           claim.setAssigneeId(new UserId(assigneeId));
         }
+        claim.setTags(JacksonUtil.convertValue(tags, ClaimTags[].class));
         return claim;
     }
 }
