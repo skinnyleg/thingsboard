@@ -23,7 +23,7 @@ services:
       - postgres
     networks:
       - thingsboard
-  
+
   ws-events:
     build:
       context: ./send-telemetry/
@@ -75,7 +75,8 @@ services:
     ports:
       - "8080:8080"
       - "1883:1883"
-      # - "7071:7071"
+      - "7071:7071"
+      - "8883:8883"
     networks:
       - thingsboard
     depends_on:
