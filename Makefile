@@ -5,7 +5,7 @@ all: clean build
 backup:
 	-cp ./application/target/thingsboard-3.7.0-boot.jar ../thingsboard-3.7.0-boot.jar
 
-clean: backup
+clean:
 	$(DOCKER_CMD) mvn clean
 	rm -rf **/target
 	rm -rf ./ui-ngx/.angular

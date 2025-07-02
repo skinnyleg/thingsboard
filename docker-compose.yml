@@ -52,6 +52,8 @@ services:
       dockerfile: .Dockerfile
     container_name: fastapi
     restart: always
+    volumes:
+      - application_source_code:/app
     depends_on:
       - postgres
       - tb_application

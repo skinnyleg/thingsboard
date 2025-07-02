@@ -54,6 +54,9 @@ APP_PASSWORD = "ohzqlettnpaqxwep"
 AccountSid = "xxxxxx"
 AccountToken = "xxxxxx"
 TwilioSmsFrom = "+xxxxxx"
+PhoneNumberID = 752442567942557
+Version = "v22.0"
+WB_TOKEN = ""
 
 
 @app.post("/api/notify-claim-assignee")
@@ -107,6 +110,49 @@ def notify_alarm_assignee(body=Body(None)):
             )
             bod = res.json()
             print(f"Twilio Response {res.status_code} - {bod}")
+
+            res = requests.post(
+                f"https://graph.facebook.com/{Version}/{PhoneNumberID}/messages",
+                headers={
+                    "Authorization": f"Bearer {WB_TOKEN}"
+                },
+                json={
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
+                    "to": str(phone),
+                    "type": "template",
+                    "template": {
+                        "name": "alarms",
+                        "language": {
+                            "code": "en"
+                        },
+                        "components": [
+                            {
+                                "type": "BODY",
+                                "parameters": [
+                                    {
+                                        "parameter_name": "severity",
+                                        "type": "text",
+                                        "text": str(alarm_severity)
+                                    },
+                                    {
+                                        "parameter_name": "type",
+                                        "type": "text",
+                                        "text": str(alarm_type)
+                                    },
+                                    {
+                                        "parameter_name": "start_at",
+                                        "type": "text",
+                                        "text": str(time_fmt)
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                },
+            )
+            bod = res.json()
+            print(f"WB Response {res.status_code} - {bod}")
         except Exception as e:
             print(f"Error: {e}")
             raise HTTPException(

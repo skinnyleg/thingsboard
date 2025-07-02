@@ -4,13 +4,13 @@ RUN apt update
 
 RUN apt install -y mosquitto-clients less
 
-WORKDIR /app
+WORKDIR /app/predictive-maintenance
 
-COPY requirements.txt /app/
+COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app/
+# COPY . /app/
 
 EXPOSE 8000
 
