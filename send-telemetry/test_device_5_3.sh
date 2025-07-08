@@ -52,7 +52,8 @@ while true; do
     sleep "$time"
     if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
       set_alarm=$(cat ./set-alarm.txt)
-      if [ "$set_alarm" -eq 1 ]; then
+      echo "set_alarm: $set_alarm"
+      if [ "$set_alarm" == "1" ]; then
         pressure=$(echo "$pressure + $increment_value" | bc)
       fi
     fi

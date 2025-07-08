@@ -32,8 +32,8 @@ app = FastAPI(
 )
 
 origins = [
-    "http://10.152.116.10:8080",
-    "http://10.152.116.10:4200",
+    "http://10.152.116.13:8080",
+    "http://10.152.116.13:4200",
     "http://localhost:8080",
     "http://localhost:4200",
 ]
@@ -56,7 +56,7 @@ AccountToken = "xxxxxx"
 TwilioSmsFrom = "+xxxxxx"
 PhoneNumberID = 752442567942557
 Version = "v22.0"
-WB_TOKEN = ""
+WB_TOKEN = "EAAZARhu4hGY8BOxJqTiMcXWZBZBFZCKemBmHhsMDtmDYV9rvV4EXzukO0eX6obPdctqZCAEfV1JYZBX8TkkSygELJwkeCE8kQ09HW9Oihv2UFRbGfNAzZCyx9zeZCa8tiPCSdgUcPzLwygi64ky0w2c1kZCsh29V9z8aiWO8ZAK2MZAWDs9wxS5aK13qqVANcfIsAZDZD"
 
 
 @app.post("/api/notify-claim-assignee")

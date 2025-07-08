@@ -1,13 +1,10 @@
-import asyncio
 import requests
-from create_alarm import authenticate, create_alarm
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import os
 import logging
 import sys
-import json
-import time
+from entities import entities
 
 DB_NAME = "thingsboard"
 DB_USER = "postgres"
@@ -37,18 +34,7 @@ phones = phones_f.read().strip()
 
 time_alarm = 20  # seconds
 
-entities = {
-    "jxl8ni3f0em9zpmuq0oq": [
-        "03a88ca0-b63e-11ef-a198-07d41c920fc8",
-        "2dc30d80-b63e-11ef-a198-07d41c920fc8",
-    ],
-    "8PyIT47tVem2abB0zi5e": [
-        "120e1d10-469d-11f0-b3d7-d5827fb4609f",
-        "981b9280-46c9-11f0-ab5d-fb22e3eaf82e",
-    ],
-}
 
-machine_to_set_alarm = entities["8PyIT47tVem2abB0zi5e"][0]
 
 # print("machine_access_token=", machine_access_token)
 print("send_to_phones=", phones)
@@ -128,65 +114,8 @@ def main():
             except Exception as e:
                 print(f"Error: {e}")
             os.system(f"bash ./test_device_5_3.sh {token} &")
-        os.system(f"sleep {time_alarm} && echo 1 > ./set-alarm.txt &")
+        #os.system(f"sleep {time_alarm} && echo 1 > ./set-alarm.txt &")
 
-        token = authenticate()
-        token = token.split(" ")[1]
-
-        def check_alarm():
-            async def _coroutine():
-                while True:
-                    try:
-                        with open("./set-alarm.txt", "r") as f:
-                            if f.read(1).strip() == "1":
-                                break
-                    except FileNotFoundError:
-                        return
-                    time.sleep(0.5)
-                try:
-                    time.sleep(2)
-                    alarm = create_alarm(
-                        token="Bearer " + token,
-                        machine_id=machine_to_set_alarm,
-                        alarm_type="pressure threshold",
-                    )
-
-                except Exception as e:
-                    print(f"Cannot create alarm {e}")
-                    return
-                try:
-                    while True:
-                        try:
-                            alarm["endTs"] += 1000
-                            requests.post(
-                                f"http://{THINGSBOARD_WS_HOST_ADDR}:8080/api/alarm",
-                                headers={
-                                    "X-Authorization": "Bearer " + token,
-                                    "Content-Type": "application/json",
-                                    "accept": "application/json",
-                                },
-                                data=json.dumps(alarm),
-                            )
-
-                            res = requests.get(
-                                f"http://{THINGSBOARD_WS_HOST_ADDR}:8080/api/alarm/info/{alarm['id']['id']}",
-                                headers={"X-Authorization": "Bearer " + token},
-                            )
-                            body = res.json()
-                            if body["cleared"]:
-                                with open("./set-alarm.txt", "w") as f:
-                                    f.write("0")
-                                break
-                            time.sleep(1)
-                        except Exception as e:
-                            logging.warning(f"Error: {e}")
-                            continue
-                except Exception as e:
-                    print(f"Error: {e}")
-
-            asyncio.run(_coroutine())
-
-        check_alarm()
     except Exception as e:
         print(e)
 
