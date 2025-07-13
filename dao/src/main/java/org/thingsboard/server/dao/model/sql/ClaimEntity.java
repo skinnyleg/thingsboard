@@ -28,12 +28,13 @@ import org.thingsboard.server.common.data.Claim;
 import org.thingsboard.server.common.data.id.ClaimId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.id.UserId;
+import org.thingsboard.server.common.data.claim.ClaimTags;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.dao.util.mapping.JsonConverter;
 import jakarta.persistence.Convert;
 import org.hibernate.annotations.JdbcType;
 import com.fasterxml.jackson.databind.JsonNode;
-
+import org.hibernate.dialect.PostgreSQLJsonPGObjectJsonbType;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -78,7 +79,7 @@ public final class ClaimEntity extends BaseSqlEntity<Claim> {
         if (claim.getAssigneeId() != null) {
           this.assigneeId = claim.getAssigneeId().getId();
         }
-        claim.tags = JacksonUtil.valueToTree(claim.getTags());
+        this.tags = JacksonUtil.valueToTree(claim.getTags());
     }
 
     @Override
