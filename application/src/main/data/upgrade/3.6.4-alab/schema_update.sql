@@ -36,3 +36,6 @@ CREATE TABLE IF NOT EXISTS claim (
 
 ALTER TABLE claim
 ADD COLUMN IF NOT EXISTS assignee_id uuid CONSTRAINT fk_claims_assignee_id REFERENCES tb_user(id);
+
+ALTER TABLE claim
+ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]'::jsonb;
