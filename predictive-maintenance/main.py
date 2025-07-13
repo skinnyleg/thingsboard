@@ -56,7 +56,7 @@ AccountToken = "xxxxxx"
 TwilioSmsFrom = "+xxxxxx"
 PhoneNumberID = 752442567942557
 Version = "v22.0"
-WB_TOKEN = "EAAZARhu4hGY8BOxJqTiMcXWZBZBFZCKemBmHhsMDtmDYV9rvV4EXzukO0eX6obPdctqZCAEfV1JYZBX8TkkSygELJwkeCE8kQ09HW9Oihv2UFRbGfNAzZCyx9zeZCa8tiPCSdgUcPzLwygi64ky0w2c1kZCsh29V9z8aiWO8ZAK2MZAWDs9wxS5aK13qqVANcfIsAZDZD"
+WB_TOKEN = "xxxxxx"
 
 
 def send_notification(phone, body):
@@ -194,18 +194,23 @@ def notify_alarm_assignee(body=Body(None)):
         )
 
         try:
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                server.login(EMAIL_ADDRESS, APP_PASSWORD)
-                server.sendmail(EMAIL_ADDRESS, email, body)
+            if email is not None and email not in (
+                "tenant@thingsboard.org",
+                "sysadmin@thingsboard.org",
+            ):
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                    server.login(EMAIL_ADDRESS, APP_PASSWORD)
+                    server.sendmail(EMAIL_ADDRESS, email, body)
 
-            send_notification(
-                phone,
-                {
-                    "severity": alarm_severity,
-                    "type": alarm_type,
-                    "startTs": alarm_start_ts,
-                },
-            )
+            if phone is not None:
+                send_notification(
+                    phone,
+                    {
+                        "severity": alarm_severity,
+                        "type": alarm_type,
+                        "startTs": alarm_start_ts,
+                    },
+                )
 
         except Exception as e:
             print(f"Error: {e}")
