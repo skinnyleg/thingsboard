@@ -276,6 +276,11 @@ export class ForcastChartComponent
     this.handleTimeChangeDate();
   }
 
+  updateEndDate() {
+    this.endDate = new Date();
+    this.handleTimeChangeDate();
+  }
+
   toggleDatePicker(el) {
     el.style.display = el.style.display === 'block' ? "none" : "block";
   }

@@ -10,9 +10,21 @@
     </button>
     <div style="position:relative">
       <div class="datepicker-container" #datepicker>
-        <div style="display:flex; align-items:end">
+        <div style="justify-content: space-around; display: flex; align-items: center; height: 3em;">
           <div>
             Start Date
+          </div>
+          <div style="display: flex; align-items: center;">
+            <div style="display:flex; align-items:center; flex-direction:column; margin-left: 20px;">
+              End Date
+            </div>
+            <button mat-icon-button (click)="updateEndDate()" [disabled]="!endDate" style="position: absolute; right: 0;">
+              <mat-icon>update</mat-icon>
+            </button>
+          </div>
+        </div>
+        <div style="display:flex;">
+          <div>
             <mat-calendar [(selected)]="startDate" [(startAt)]="startDate" #dateStartRange>
             </mat-calendar>
             <div style="display:flex">
@@ -28,7 +40,6 @@
             </div>
           </div>
           <div>
-            End Date
             <mat-calendar [(selected)]="endDate" [(startAt)]="endDate" #dateEndRange>
             </mat-calendar>
             <div style="display:flex">
