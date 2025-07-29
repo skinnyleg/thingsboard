@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import os
 from fastapi import FastAPI, Body, HTTPException
 from src.forecast.forecast import router as forecast_router
 from src.db_connector import SessionLocal
@@ -23,6 +24,21 @@ import datetime
 import time
 from requests.auth import HTTPBasicAuth
 import smtplib
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Access environment variables
+Version = "v22.0"
+AccountSid= os.getenv("AccountSid")
+AccountToken = os.getenv("AccountToken")
+TwilioSmsFrom = os.getenv("TwilioSmsFrom")
+PhoneNumberID = int(os.getenv("PhoneNumberID"))
+WB_TOKEN = os.getenv("WB_TOKEN")
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+APP_PASSWORD = os.getenv("APP_PASSWORD")
+
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -48,16 +64,6 @@ app.add_middleware(
 
 
 app.include_router(forecast_router, prefix="/forecast")
-
-EMAIL_ADDRESS = "exampledt6@gmail.com"
-APP_PASSWORD = "ohzqlettnpaqxwep"
-AccountSid = "xxxxxx"
-AccountToken = "xxxxxx"
-TwilioSmsFrom = "+xxxxxx"
-PhoneNumberID = 752442567942557
-Version = "v22.0"
-WB_TOKEN = "xxxxxx"
-
 
 def send_notification(phone, body):
     try:
