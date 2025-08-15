@@ -85,7 +85,7 @@ import { coerceBoolean } from '@shared/decorators/coercion';
 import { basicWidgetConfigComponentsMap } from '@home/components/widget/config/basic/basic-widget-config.module';
 import { TimewindowConfigData } from '@home/components/widget/config/timewindow-config-panel.component';
 import Timeout = NodeJS.Timeout;
-import { DataKeySettingsFunction } from '@home/components/widget/config/data-keys.component.models';
+import { DataKeySettingsFunction } from "@home/components/widget/config/data-keys.component.models";
 
 const emptySettingsSchema: JsonSchema = {
   type: 'object',
@@ -200,12 +200,12 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
   private defaultConfigFormsType: widgetType;
 
   constructor(protected store: Store<AppState>,
-              private utils: UtilsService,
-              private entityService: EntityService,
-              private dialog: MatDialog,
-              public translate: TranslateService,
-              private cfr: ComponentFactoryResolver,
-              private fb: UntypedFormBuilder,
+    private utils: UtilsService,
+    private entityService: EntityService,
+    private dialog: MatDialog,
+    public translate: TranslateService,
+    private cfr: ComponentFactoryResolver,
+    private fb: UntypedFormBuilder,
               private cd: ChangeDetectorRef) {
     super(store);
   }
@@ -296,19 +296,19 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
     );
     this.targetDeviceSettingsSubscription = this.targetDeviceSettings.valueChanges.subscribe(
       () => this.updateTargetDeviceSettings()
-    );
+      );
     this.widgetSettingsSubscription = this.widgetSettings.valueChanges.subscribe(
       () => this.updateWidgetSettings()
-    );
+      );
     this.layoutSettingsSubscription = this.layoutSettings.valueChanges.subscribe(
       () => this.updateLayoutSettings()
-    );
+      );
     this.advancedSettingsSubscription = this.advancedSettings.valueChanges.subscribe(
       () => this.updateAdvancedSettings()
-    );
+      );
     this.actionsSettingsSubscription = this.actionsSettings.valueChanges.subscribe(
       () => this.updateActionSettings()
-    );
+      );
   }
 
   private buildHeader() {
@@ -358,9 +358,9 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
     this.advancedSettings = this.fb.group({});
     if (this.widgetType === widgetType.timeseries || this.widgetType === widgetType.alarm || this.widgetType === widgetType.latest) {
       this.dataSettings.addControl('timewindowConfig', this.fb.control({
-        useDashboardTimewindow: true,
-        displayTimewindow: true,
-        timewindow: null,
+          useDashboardTimewindow: true,
+          displayTimewindow: true,
+          timewindow: null,
         timewindowStyle: null
       }));
       if (this.widgetType === widgetType.alarm) {
@@ -420,7 +420,7 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
       if (this.hasBasicModeDirective && this.widgetConfigMode === WidgetConfigMode.basic) {
         this.setupBasicModeConfig(isAdd);
       } else {
-        this.setupDefaultConfig();
+        this.setupDefaultConfig(isAdd);
       }
     }
   }
@@ -439,10 +439,10 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
         this.basicModeComponent.isAdd = isAdd;
         this.basicModeComponent.widgetConfig = this.modelValue;
         this.basicModeComponentChangeSubscription = this.basicModeComponent.widgetConfigChanged.subscribe((data) => {
-          this.modelValue = data;
-          this.propagateChange(this.modelValue);
-          this.cd.markForCheck();
-        });
+            this.modelValue = data;
+            this.propagateChange(this.modelValue);
+            this.cd.markForCheck();
+          });
         if (this.basicModeComponent$) {
           this.basicModeComponent$.next(this.basicModeComponent);
           this.basicModeComponent$.complete();
@@ -473,7 +473,7 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
     }
   }
 
-  private setupDefaultConfig() {
+  private setupDefaultConfig(isAdd = false) {
     if (this.defaultConfigFormsType !== this.widgetType) {
       this.defaultConfigFormsType = this.widgetType;
       this.buildForms();
@@ -493,7 +493,11 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
           iconSize: isDefined(config.iconSize) ? config.iconSize : '24px',
           titleTooltip: isDefined(config.titleTooltip) ? config.titleTooltip : '',
           showTitle: displayWidgetTitle,
-          dropShadow: isDefined(config.dropShadow) ? config.dropShadow : true,
+          dropShadow: isAdd
+            ? true
+            : isDefined(config.dropShadow)
+            ? config.dropShadow
+            : true,
           enableFullscreen: isDefined(config.enableFullscreen) ? config.enableFullscreen : true,
           backgroundColor: config.backgroundColor,
           color: config.color,
@@ -505,7 +509,7 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
           titleStyle: isDefined(config.titleStyle) ? config.titleStyle : {
             fontSize: '16px',
             fontWeight: 400
-          },
+              },
           pageSize: isDefined(config.pageSize) ? config.pageSize : 1024,
           units: config.units,
           decimals: config.decimals,
@@ -524,10 +528,10 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
         const useDashboardTimewindow = isDefined(config.useDashboardTimewindow) ?
           config.useDashboardTimewindow : true;
         this.dataSettings.get('timewindowConfig').patchValue({
-          useDashboardTimewindow,
+            useDashboardTimewindow,
           displayTimewindow: isDefined(config.displayTimewindow) ?
             config.displayTimewindow : true,
-          timewindow: config.timewindow,
+            timewindow: config.timewindow,
           timewindowStyle: config.timewindowStyle
         }, {emitEvent: false});
       }
@@ -799,47 +803,47 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
     const singleEntityAlias: EntityAlias = {id: null, alias, filter: {resolveMultiple: false}};
     return this.dialog.open<EntityAliasDialogComponent, EntityAliasDialogData,
       EntityAlias>(EntityAliasDialogComponent, {
-      disableClose: true,
+          disableClose: true,
       panelClass: ['tb-dialog', 'tb-fullscreen-dialog'],
-      data: {
-        isAdd: true,
-        allowedEntityTypes,
-        entityAliases: this.dashboard.configuration.entityAliases,
+          data: {
+            isAdd: true,
+            allowedEntityTypes,
+            entityAliases: this.dashboard.configuration.entityAliases,
         alias: singleEntityAlias
-      }
+        }
     }).afterClosed().pipe(
-      tap((entityAlias) => {
-        if (entityAlias) {
+        tap((entityAlias) => {
+          if (entityAlias) {
           this.dashboard.configuration.entityAliases[entityAlias.id] = entityAlias;
           this.aliasController.updateEntityAliases(this.dashboard.configuration.entityAliases);
-        }
-      })
-    );
+          }
+        })
+      );
   }
 
   private createFilter(filter: string): Observable<Filter> {
     const singleFilter: Filter = {id: null, filter, keyFilters: [], editable: true};
     return this.dialog.open<FilterDialogComponent, FilterDialogData,
       Filter>(FilterDialogComponent, {
-      disableClose: true,
+          disableClose: true,
       panelClass: ['tb-dialog', 'tb-fullscreen-dialog'],
-      data: {
-        isAdd: true,
-        filters: this.dashboard.configuration.filters,
+          data: {
+            isAdd: true,
+            filters: this.dashboard.configuration.filters,
         filter: singleFilter
-      }
-    }).afterClosed().pipe(
-      tap((result) => {
-        if (result) {
-          this.dashboard.configuration.filters[result.id] = result;
-          this.aliasController.updateFilters(this.dashboard.configuration.filters);
         }
-      })
-    );
+    }).afterClosed().pipe(
+        tap((result) => {
+          if (result) {
+            this.dashboard.configuration.filters[result.id] = result;
+          this.aliasController.updateFilters(this.dashboard.configuration.filters);
+          }
+        })
+      );
   }
 
   private fetchEntityKeysForDevice(deviceId: string, dataKeyTypes: Array<DataKeyType>): Observable<Array<DataKey>> {
-      const entityFilter = singleEntityFilterFromDeviceId(deviceId);
+    const entityFilter = singleEntityFilterFromDeviceId(deviceId);
       return this.entityService.getEntityKeysByEntityFilter(
         entityFilter,
         dataKeyTypes, [EntityType.DEVICE],
@@ -852,7 +856,7 @@ export class WidgetConfigComponent extends PageComponent implements OnInit, OnDe
   private fetchEntityKeys(entityAliasId: string, dataKeyTypes: Array<DataKeyType>): Observable<Array<DataKey>> {
     return this.aliasController.getAliasInfo(entityAliasId).pipe(
       mergeMap((aliasInfo) => this.entityService.getEntityKeysByEntityFilter(
-          aliasInfo.entityFilter,
+            aliasInfo.entityFilter,
           dataKeyTypes,  [],
           {ignoreLoading: true, ignoreErrors: true}
         ).pipe(
