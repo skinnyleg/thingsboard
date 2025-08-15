@@ -735,6 +735,12 @@ spring.jpa.properties.hibernate.dialect: "${SPRING_JPA_DIALECT:org.thingsboard.s
 
 # SQL DAO Configuration parameters
 spring:
+  autoconfigure:
+    exclude:
+      # Exclude SystemMetricsAutoConfiguration to prevent ProcessorMetrics bean creation issues in Docker
+      - org.springframework.boot.actuate.autoconfigure.metrics.SystemMetricsAutoConfiguration
+      # Exclude TomcatMetricsAutoConfiguration to prevent TomcatMetrics cgroup access issues in Docker
+      - org.springframework.boot.actuate.autoconfigure.metrics.web.tomcat.TomcatMetricsAutoConfiguration
   data:
     jpa:
       repositories:
