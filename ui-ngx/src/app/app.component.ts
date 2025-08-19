@@ -35,6 +35,13 @@ import { AuthService } from "@core/auth/auth.service";
 import { svgIcons, svgIconsUrl } from "@shared/models/icon.models";
 import { ActionSettingsChangeLanguage } from "@core/settings/settings.actions";
 import { SETTINGS_KEY } from "@core/settings/settings.effects";
+import {
+    enable as enableDarkMode,
+        disable as disableDarkMode,    auto as distributedmColorScheme,
+            exportGeneratedCSS as collectCSS,
+                isEnabled as isDarkReaderEnabled
+                } from 'darkreader';
+
 
 @Component({
   selector: "tb-root",
@@ -117,6 +124,18 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {}
+
+  ngAfterViewInit() {
+enableDarkMode({
+          brightness: 100,
+          contrast: 90,
+          sepia: 10,
+    });
+    const isEnabled = isDarkReaderEnabled();
+    console.log({
+      isEnabled
+    })
+  }
 
   onActivateComponent($event: any) {
     const loadingElement = $("div#tb-loading-spinner");

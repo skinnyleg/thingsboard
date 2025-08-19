@@ -53,6 +53,7 @@
         "apexcharts": "4.5.0",
         "canvas-gauges": "^2.1.7",
         "core-js": "^3.29.1",
+        "darkreader": "^4.9.109",
         "date-fns": "2.0.0-alpha.27",
         "dayjs": "1.11.4",
         "echarts": "https://github.com/thingsboard/echarts/archive/5.5.0-TB.tar.gz",
