@@ -5,37 +5,34 @@
       <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#F8F8F8;stop-opacity:1" />
     </linearGradient>
-    
+
     <!-- Subtle gradient for text -->
     <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#F8F8F8;stop-opacity:1" />
     </linearGradient>
   </defs>
-  
-  <!-- Include the icon -->
-  <use xlink:href="analytic-board-icon.svg#icon" x="35" y="26" width="48" height="48"/>
-  
+
   <!-- Fallback icon if external reference doesn't work -->
-  <g transform="translate(35, 26) scale(1.5)">
+  <g transform="translate(10, 25) scale(1.8)">
     <!-- Grid base -->
     <rect x="0" y="0" width="24" height="24" rx="3" fill="none" stroke="url(#iconGradient)" stroke-width="1.5"/>
     <rect x="3" y="3" width="7" height="7" rx="1" fill="url(#iconGradient)" opacity="0.8"/>
     <rect x="14" y="3" width="7" height="7" rx="1" fill="url(#iconGradient)" opacity="0.6"/>
     <rect x="3" y="14" width="7" height="7" rx="1" fill="url(#iconGradient)" opacity="0.4"/>
-    
+
     <!-- Chart elements -->
     <path d="M14 14 L17 11 L20 13 L21 12" stroke="url(#iconGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
     <circle cx="17" cy="11" r="1.5" fill="url(#iconGradient)"/>
     <circle cx="20" cy="13" r="1.5" fill="url(#iconGradient)"/>
   </g>
-  
+
   <!-- Main logo text -->
-  <text x="95" y="50" 
-        font-family="'Poppins', 'Montserrat', 'Inter', 'Segoe UI', sans-serif" 
-        font-size="48" 
-        font-weight="500" 
-        fill="url(#textGradient)" 
+  <text x="70" y="50"
+        font-family="'Poppins', 'Montserrat', 'Inter', 'Segoe UI', sans-serif"
+        font-size="48"
+        font-weight="500"
+        fill="url(#textGradient)"
         letter-spacing="0.5px"
         dominant-baseline="middle">AnalyticBoard</text>
 </svg>
