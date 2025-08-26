@@ -102,7 +102,26 @@ services:
     depends_on:
       - tb_application
 
+  backup_logs:
+    image: bash:5.0-alpine3.22
+    entrypoint:
+      - /usr/local/bin/bash
+      - /app/backup-logs.sh
+    environment:
+      OUT_DIRECTORY: backup-logs
+      READFILE: /app/logs/thingsboard.log
+    volumes:
+      - /var/log/thingsboard/:/app/logs
+      - ./scripts/:/app
+      - ../backup-logs:/app/backup-logs
+
 volumes:
+  logs_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../application_logs
   postgres_data:
     driver: local
     driver_opts:
