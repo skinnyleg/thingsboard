@@ -328,6 +328,10 @@ export class ForcastChartComponent
         color: ["#FF5733"],
         symbol: "none",
         data: [],
+        // label: {
+        //   show: true,
+        //   color: 'black'
+        // }
       },
       {
         name: "Pressure Historical Forecast",
@@ -335,6 +339,10 @@ export class ForcastChartComponent
         color: ["#989898"],
         symbol: "none",
         data: [],
+        // label: {
+        //   show: true,
+        //   color: 'red'
+        // }
       },
     ];
     const realtime_series = [
@@ -344,6 +352,10 @@ export class ForcastChartComponent
         color: ["#FF5733"],
         symbol: "none",
         data: [],
+        // label: {
+        //   show: true,
+        //   color: 'black'
+        // }
       },
       {
         name: "Pressure Forecast",
@@ -351,6 +363,10 @@ export class ForcastChartComponent
         color: ["#0000FF50"],
         symbol: "none",
         data: [],
+        // label: {
+        //   show: true,
+        //   color: 'black'
+        // }
       },
       {
         name: "Pressure Historical Forecast",
@@ -358,6 +374,10 @@ export class ForcastChartComponent
         color: ["#989898"],
         symbol: "none",
         data: [],
+        // label: {
+        //   show: true,
+        //   color: 'white'
+        // }
       },
     ];
     if (this.graphtype === "history") {
@@ -725,7 +745,11 @@ export class ForcastChartComponent
           },
         ],
         animation: false,
-        legend: {},
+        legend: {
+          textStyle: {
+            color: 'rgba(255, 255, 255, 0.8)'
+          }
+        },
       };
       this.chartInstance.setOption(option);
       window.onresize = () => {
