@@ -30,7 +30,8 @@ $tb-mat-indigo: (
   500: $tb-primary-color,
   600: $tb-secondary-color,
   700: #303f9f,
-  800: #283593,
+  // 800: #283593,
+  800: #1d263c,
   900: #1a237e,
   A100: $tb-hue3-color,
   A200: #536dfe,
@@ -80,58 +81,158 @@ $tb-theme: map_merge($tb-mat-theme, $color);
 $primary: mat.get-color-from-palette($tb-primary);
 $accent: mat.get-color-from-palette($tb-accent);
 
+:root {
+  #{--tb-dark-mat-50}: blue;
+  #{--tb-dark-mat-100}: blue;
+  #{--tb-dark-mat-200}: blue;
+  #{--tb-dark-mat-300}: blue;
+  #{--tb-dark-mat-400}: blue;
+  #{--tb-dark-mat-500}: #363638;
+  #{--tb-dark-mat-600}: blue;
+  #{--tb-dark-mat-700}: blue;
+  #{--tb-dark-mat-800}: blue;
+  #{--tb-dark-mat-900}: blue;
+  #{--tb-dark-mat-A100}: blue;
+  #{--tb-dark-mat-A200}: blue;
+  #{--tb-dark-mat-A400}: blue;
+  #{--tb-dark-mat-A700}: blue;
+  #{--tb-dark-mat-text-50}: white;
+  #{--tb-dark-mat-text-100}: white;
+  #{--tb-dark-mat-text-200}: white;
+  #{--tb-dark-mat-text-300}: white;
+  #{--tb-dark-mat-text-400}: white;
+  #{--tb-dark-mat-text-500}: white;
+  #{--tb-dark-mat-text-600}: white;
+  #{--tb-dark-mat-text-700}: white;
+  #{--tb-dark-mat-text-800}: white;
+  #{--tb-dark-mat-text-900}: white;
+  #{--tb-dark-mat-text-A100}: white;
+  #{--tb-dark-mat-text-A200}: white;
+  #{--tb-dark-mat-text-A400}: white;
+  #{--tb-dark-mat-text-A700}: white;
+
+  #{--tb-dark-status-bar}: black;
+  // #{--tb-dark-app-bar}: map_get($tb-dark-mat-indigo, 500);
+   #{--tb-dark-app-bar}: var(--tb-dark-mat-500);
+  #{--tb-dark-background}: #1f2022;
+  #{--tb-dark-hover}: #848484;
+  #{--tb-dark-card}: black;
+  // #{--tb-dark-dialog}:     map_get($tb-dark-mat-indigo, 800);
+    #{--tb-dark-dialog}:    var(--tb-dark-mat-800);
+  #{--tb-dark-disabled-button}: rgba(white, 0.12);
+  // #{--tb-dark-raised-button}: map-get($tb-dark-mat-indigo, 50);
+  #{--tb-dark-raised-button}: var(--tb-dark-mat-50);
+  #{--tb-dark-focused-button}: rgba(white, 0.12);
+  // #{--tb-dark-selected-button}: map_get($tb-dark-mat-indigo, 500);
+  #{--tb-dark-selected-button}: var(--tb-dark-mat-500);
+  // #{--tb-dark-selected-disabled-button}: map_get($tb-dark-mat-indigo, 800);
+  #{--tb-dark-selected-disabled-button}: var(--tb-dark-mat-800);
+  #{--tb-dark-disabled-button-toggle}: black;
+  // #{--tb-dark-unselected-chip}: map_get($tb-dark-mat-indigo, 700);
+  #{--tb-dark-unselected-chip}: var(--tb-dark-mat-700);
+  #{--tb-dark-disabled-list-option}: black;
+  // #{--tb-dark-tooltip}: map_get(mat.$grey-palette, 700);
+  #{--tb-dark-tooltip}: grey;
+}
+
 $tb-dark-mat-indigo: (
-  50: #e8eaf6,
-  100: #c5cae9,
-  200: #9fa8da,
-  300: #7986cb,
-  400: #5c6bc0,
-  500: $tb-dark-primary-color,
-  600: $tb-secondary-color,
-  700: #303f9f,
-  800: $tb-primary-color,
-  900: #1a237e,
-  A100: $tb-hue3-color,
-  A200: #536dfe,
-  A400: #3d5afe,
-  A700: #304ffe,
+  50: var(--tb-dark-mat-50),
+  100: var(--tb-dark-mat-100),
+  200: var(--tb-dark-mat-200),
+
+  300: var(--tb-dark-mat-300),
+
+  400: var(--tb-dark-mat-400),
+
+  500: var(--tb-dark-mat-500),
+
+  600: var(--tb-dark-mat-600),
+
+  700: var(--tb-dark-mat-700),
+  800: var(--tb-dark-mat-800),
+
+  900: var(--tb-dark-mat-900),
+
+  A100: var(--tb-dark-mat-A100),
+
+  A200: var(--tb-dark-mat-A200),
+
+  A400: var(--tb-dark-mat-A400),
+
+  A700: var(--tb-dark-mat-A700),
   contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: rgba(black, 0.87),
-    400: rgba(black, 0.87),
-    500: map_get($tb-mat-indigo, 900),
-    600: white,
-    700: white,
-    800: white,
-    900: white,
-    A100: rgba(black, 0.87),
-    A200: rgba(black, 0.87),
-    A400: rgba(black, 0.87),
-    A700: rgba(black, 0.87),
+  50: var(--tb-dark-mat-text-50),
+
+  100: var(--tb-dark-mat-text-100),
+  200: var(--tb-dark-mat-text-200),
+  300: var(--tb-dark-mat-text-300),
+
+  400: var(--tb-dark-mat-text-400),
+  500: var(--tb-dark-mat-text-500),
+
+  600: var(--tb-dark-mat-text-600),
+  700: var(--tb-dark-mat-text-700),
+
+  800: var(--tb-dark-mat-text-800),
+  900: var(--tb-dark-mat-text-900),
+
+  A100: var(--tb-dark-mat-text-A100),
+  A200: var(--tb-dark-mat-text-A200),
+
+  A400: var(--tb-dark-mat-text-A400),
+  A700: var(--tb-dark-mat-text-A700),
+
   )
 );
 
 $tb-dark-primary: mat.define-palette($tb-dark-mat-indigo);
 
+:root {
+  // #{--tb-dark-status-bar}: black;
+  // #{--tb-dark-app-bar}: map_get($tb-dark-mat-indigo, 500);
+  // #{--tb-dark-background}: #1d263c;
+  // #{--tb-dark-hover}: rbga(white, 0.04);
+  // #{--tb-dark-card}: black;
+  // #{--tb-dark-dialog}:     map_get($tb-dark-mat-indigo, 800);
+  // #{--tb-dark-disabled-button}: rgba(white, 0.12);
+  // #{--tb-dark-raised-button}: map-get($tb-dark-mat-indigo, 50);
+  // #{--tb-dark-focused-button}: rgba(white, 0.12);
+  // #{--tb-dark-selected-button}: map_get($tb-dark-mat-indigo, 500);
+  // #{--tb-dark-selected-disabled-button}: map_get($tb-dark-mat-indigo, 800);
+  // #{--tb-dark-disabled-button-toggle}: black;
+  // #{--tb-dark-unselected-chip}: map_get($tb-dark-mat-indigo, 700);
+  // #{--tb-dark-disabled-list-option}: black;
+  // #{--tb-dark-tooltip}: map_get(mat.$grey-palette, 700);
+}
+
 $tb-dark-theme-background: (
-  status-bar: black,
-  app-bar:    map_get($tb-dark-mat-indigo, 900),
-  background: map_get($tb-dark-mat-indigo, 800),
-  hover:      rgba(white, 0.04),
-  card:       map_get($tb-dark-mat-indigo, 800),
-  dialog:     map_get($tb-dark-mat-indigo, 800),
-  disabled-button: rgba(white, 0.12),
-  raised-button: map-get($tb-dark-mat-indigo, 50),
-  focused-button: rgba(white, 0.12),
-  selected-button: map_get($tb-dark-mat-indigo, 900),
-  selected-disabled-button: map_get($tb-dark-mat-indigo, 800),
-  disabled-button-toggle: black,
-  unselected-chip: map_get($tb-dark-mat-indigo, 700),
-  disabled-list-option: black,
-  tooltip: map_get(mat.$grey-palette, 700),
+  status-bar: var(--tb-dark-status-bar),
+  app-bar:  var(--tb-dark-app-bar),
+  // background: map_get($tb-dark-mat-indigo, 800),
+  background: var(--tb-dark-background),
+  hover:     var(--tb-dark-hover),
+  // card:       map_get($tb-dark-mat-indigo, 800),
+  card: #363638,
+  // card: white,
+  dialog:     var(--tb-dark-dialog),
+  disabled-button: var(--tb-dark-disabled-button),
+  raised-button: var(--tb-dark-raised-button),
+  focused-button: var(--tb-dark-focused-button),
+  selected-button: var(--tb-dark-selected-button),
+  selected-disabled-button: var(--tb-dark-selected-disabled-button),
+  disabled-button-toggle: var(--tb-dark-disabled-button-toggle),
+  unselected-chip: var(--tb-dark-unselected-chip),
+  disabled-list-option: var(--tb-dark-disabled-list-option),
+  tooltip: var(--tb-dark-tooltip),
 );
+
+.tb-entity-table-content {
+
+  border-color: #ffffff2e !important;
+  .table-container {
+    background: mat.get-color-from-palette($tb-dark-theme-background, card);
+  }
+}
 
 $tb-dark-theme: mat.define-dark-theme((
   color: (
@@ -264,5 +365,10 @@ $tb-dark-theme: map_merge($tb-dark-theme, $color);
 }
 
 .tb-dark {
-  @include mat.all-component-colors($tb-dark-theme);
+  // @include mat.all-component-colors($tb-dark-theme);
+  @include mat.all-component-themes($tb-dark-theme);
+  @include mat-datetimepicker-theme($tb-dark-theme);
+  @include tb-components-theme($tb-dark-theme);
+  @include overwrites.theme-overwrites($tb-primary, $tb-dark-theme);
+  @include mat.typography-hierarchy($tb-dark-theme);
 }

@@ -22,6 +22,7 @@
 @import './scss/animations';
 @import './scss/mixins';
 @import './scss/fonts';
+@import './styles-dark-mode.scss';
 
 body,
 html {
@@ -731,7 +732,7 @@ mat-icon {
     padding: 0 24px;
 
     &:not(.mat-primary) {
-      background: #fff;
+      // background: #fff;
     }
 
     .mat-toolbar-tools {
