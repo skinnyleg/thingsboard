@@ -115,7 +115,7 @@ $accent: mat.get-color-from-palette($tb-accent);
   // #{--tb-dark-app-bar}: map_get($tb-dark-mat-indigo, 500);
    #{--tb-dark-app-bar}: var(--tb-dark-mat-500);
   #{--tb-dark-background}: #1f2022;
-  #{--tb-dark-hover}: #848484;
+  #{--tb-dark-hover}: #11a07f;
   #{--tb-dark-card}: black;
   // #{--tb-dark-dialog}:     map_get($tb-dark-mat-indigo, 800);
     #{--tb-dark-dialog}:    var(--tb-dark-mat-800);
@@ -231,6 +231,11 @@ $tb-dark-theme-background: (
   border-color: #ffffff2e !important;
   .table-container {
     background: mat.get-color-from-palette($tb-dark-theme-background, card);
+     mat-row {
+      &:hover {
+        background: #2e2e30 !important;
+      }
+    }
   }
 }
 
