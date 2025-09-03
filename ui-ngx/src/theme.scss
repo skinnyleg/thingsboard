@@ -87,9 +87,9 @@ $accent: mat.get-color-from-palette($tb-accent);
   #{--tb-dark-mat-200}: blue;
   #{--tb-dark-mat-300}: blue;
   #{--tb-dark-mat-400}: blue;
-  #{--tb-dark-mat-500}: #363638;
-  #{--tb-dark-mat-600}: blue;
-  #{--tb-dark-mat-700}: blue;
+  #{--tb-dark-mat-500}: var(--tb-dark-primary-color);
+  #{--tb-dark-mat-600}: black;
+  #{--tb-dark-mat-700}: black;
   #{--tb-dark-mat-800}: blue;
   #{--tb-dark-mat-900}: blue;
   #{--tb-dark-mat-A100}: blue;
@@ -230,10 +230,10 @@ $tb-dark-theme-background: (
 
   border-color: #ffffff2e !important;
   .table-container {
-    background: mat.get-color-from-palette($tb-dark-theme-background, card);
+    // background: mat.get-color-from-palette($tb-dark-theme-background, card);
      mat-row {
       &:hover {
-        background: #2e2e30 !important;
+        // background: #2e2e30 !important;
       }
     }
   }
@@ -242,6 +242,7 @@ $tb-dark-theme-background: (
 $tb-dark-theme: mat.define-dark-theme((
   color: (
     primary: $tb-dark-primary,
+    // primary: $tb-dark-primary-color,
     accent: $tb-accent
   ),
   typography: mat.define-typography-config(),
@@ -263,17 +264,20 @@ $tb-dark-theme: map_merge($tb-dark-theme, $color);
   mat-fab-toolbar {
     .mat-fab-toolbar-background {
       background: mat.get-color-from-palette($background, app-bar);
+      // background: green;
       color: mat.get-color-from-palette($foreground, text);
     }
     &.mat-primary {
       .mat-fab-toolbar-background {
         background: mat.get-color-from-palette($primary);
+        // background: green;
         color: mat.get-color-from-palette($primary, default-contrast);
       }
     }
     &.mat-accent {
       .mat-fab-toolbar-background {
         background: mat.get-color-from-palette($accent);
+        // background: green;
         color: mat.get-color-from-palette($accent, default-contrast);
       }
     }
@@ -301,6 +305,7 @@ $tb-dark-theme: map_merge($tb-dark-theme, $color);
   mat-fab-toolbar {
     .mat-fab-toolbar-background {
       background: mat.get-color-from-palette($background, app-bar);
+      // background: green;
       color: mat.get-color-from-palette($foreground, text);
     }
     &.mat-primary {
@@ -357,6 +362,16 @@ $tb-dark-theme: map_merge($tb-dark-theme, $color);
     background: rgba(203, 203, 203, 0.8);
     &:hover {
       background: rgba(165, 165, 165, 0.65);
+    }
+  }
+}
+
+mat-drawer-container {
+  background: unset !important;
+
+  mat-drawer-content {
+    .table-container {
+      background: var(--tb-dark-primary-color);
     }
   }
 }
