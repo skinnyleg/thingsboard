@@ -4,4 +4,25 @@
   // div.tb-widget {
   //   background: rgb(20, 23, 24) !important;
   // }
+  //
+
+}
+
+mat-icon, tb-icon {
+    color: rgba(255, 255, 255, 0.84) !important;
+    // color: white !important;
+}
+
+mat-drawer-content {
+  mat-row:hover {
+    background: #2e2e30 !important;
+  }
+}
+
+.tb-dark .mat-mdc-tab:not(.mat-mdc-tab-disabled).mdc-tab--active .mdc-tab__text-label {
+  color: var(--tb-dark-mat-text-500) !important;
+}
+
+.tb-dark .mat-mdc-tab .mdc-tab__text-label {
+  color: var(--tb-dark-mat-text-300) !important;
 }
