@@ -725,7 +725,12 @@ export class ForcastChartComponent
           },
         ],
         animation: false,
-        legend: {},
+        legend: {
+          textStyle: {
+            color: 'rgba(255, 255, 255, 0.8)',
+          },
+          inactiveColor: 'grey',
+        },
       };
       this.chartInstance.setOption(option);
       window.onresize = () => {

@@ -1,5 +1,36 @@
+.tb-dark {
+  :host {
+    // background: none;
+    .anomaly-detection-tabs {
+      color: blue;
+      :hover {
+        // color: white;
+      }
+
+      .active {
+        // color: white;
+      }
+    }
+  }
+}
+
+.tb-default {
 :host {
   background-color: rgba(255, 255, 255, 0.715);
+.anomaly-detection-tabs {
+:hover {
+      color: #333333;
+    }
+
+    .active {
+      color: #333333;
+    }
+
+}
+}
+}
+
+:host {
   height: 94%;
   display: block;
   overflow: scroll;
@@ -24,7 +55,7 @@ ul {
   text-align: center;
 }
   .end-date {
-      background: #e0e0e0;
+      // background: #e0e0e0;
   width: fit-content;
         .mat-form-field {
         width: auto !important;
@@ -64,6 +95,16 @@ font-size: 1.3em;
   padding-right: 3em;
   padding-left: 6em;
 
+  button {
+    background: var(--tb-dark-dialog);
+    border: 1px solid gray;
+    border-radius: 5px;
+  }
+}
+
+.datepicker-container {
+  // background: #f4f4f4;
+  background: var(--tb-dark-mat-500);
 }
   .datepicker-container {
     // display:flex;
@@ -72,7 +113,6 @@ font-size: 1.3em;
     right: 0;
     z-index: 1000;
     width:max-content;
-    background: #f4f4f4;
     padding: .9em 1.1em;
     border-radius: 10px;
     border: 1px solid #b0b0b0;
@@ -86,7 +126,7 @@ font-size: 1.3em;
   }
 
 .history {
-  background: #e0e0e0;
+  // background: #e0e0e0;
   width: fit-content;
         .mat-form-field {
         width: auto !important;

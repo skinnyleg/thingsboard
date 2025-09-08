@@ -230,7 +230,7 @@ $tb-dark-theme-background: (
 
   border-color: #ffffff2e !important;
   .table-container {
-    // background: mat.get-color-from-palette($tb-dark-theme-background, card);
+    background: mat.get-color-from-palette($tb-dark-theme-background, card);
      mat-row {
       &:hover {
         // background: #2e2e30 !important;

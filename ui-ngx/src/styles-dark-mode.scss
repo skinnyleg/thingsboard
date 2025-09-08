@@ -26,3 +26,7 @@ mat-drawer-content {
 .tb-dark .mat-mdc-tab .mdc-tab__text-label {
   color: var(--tb-dark-mat-text-300) !important;
 }
+
+.tb-dark .mdc-data-table__row:hover {
+  background: #2e2e30 !important;
+}

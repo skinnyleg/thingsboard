@@ -1,3 +1,25 @@
+.tb-default {
+  :host {
+    .model-select {
+      background-color: rgba(255, 255, 255, 0.715);
+      color: #333;
+
+    }
+  }
+}
+
+.tb-dark {
+  :host {
+
+  .model-select {
+    color: #f0e5e5;
+      background: var(--tb-dark-selected-button);
+        border: 1px solid #3f4449;
+  }
+  }
+}
+
+
 :host {
   padding: 0 0.5em;
 
@@ -9,9 +31,7 @@
     width: 100%;
     padding: 0.5em;
     border-radius: 5px;
-    background-color: rgba(255, 255, 255, 0.715);
     outline: none;
-    color: #333;
   }
 
 
@@ -21,7 +41,7 @@
 
   .model-select-label {
     font-size: 0.7em;
-    color: #333;
+    // color: #333;
     padding: 0 0.5em;
   }
 
@@ -52,15 +72,15 @@
     padding-left: 0.5em;
     gap: 1.5em;
     cursor: pointer;
-    color: rgba(51, 51, 51, 0.59);
+    // color: rgba(51, 51, 51, 0.59);
 
-    :hover {
-      color: #333333;
-    }
-
-    .active {
-      color: #333333;
-    }
+    // :hover {
+    //   color: #333333;
+    // }
+    //
+    // .active {
+    //   color: #333333;
+    // }
   }
 
   .anomaly-detection-tabs p {
