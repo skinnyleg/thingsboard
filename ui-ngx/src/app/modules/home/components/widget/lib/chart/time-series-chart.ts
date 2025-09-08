@@ -173,7 +173,8 @@ export class TbTimeSeriesChart {
     }
     const $dashboardPageElement = this.ctx.$containerParent.parents('.tb-dashboard-page');
     const dashboardPageElement = $dashboardPageElement.length ? $($dashboardPageElement[$dashboardPageElement.length-1]) : null;
-    this.darkMode = this.settings.darkMode || dashboardPageElement?.hasClass('dark');
+    // this.darkMode = this.settings.darkMode || dashboardPageElement?.hasClass('dark');
+    this.darkMode = true;
     this.setupXAxes();
     this.setupYAxes();
     this.setupData();
@@ -346,6 +347,8 @@ export class TbTimeSeriesChart {
   }
 
   public setDarkMode(darkMode: boolean): void {
+
+    darkMode = true;
     if (this.darkMode !== darkMode) {
       this.darkMode = darkMode;
       if (this.timeSeriesChart) {
@@ -587,14 +590,16 @@ export class TbTimeSeriesChart {
   }
 
   private drawChart() {
+    // return;
     echartsModule.init();
     this.renderer.setStyle(this.chartElement, 'letterSpacing', 'normal');
     this.timeSeriesChart = echarts.init(this.chartElement,  null, {
       renderer: 'canvas'
     });
     this.timeSeriesChartOptions = {
-      darkMode: this.darkMode,
-      backgroundColor: 'transparent',
+      // darkMode: this.darkMode,
+      darkMode: true,
+      // backgroundColor: 'transparent',
       tooltip: [{
         trigger: this.settings.tooltipTrigger === TimeSeriesChartTooltipTrigger.axis ? 'axis' : 'item',
         confine: true,
