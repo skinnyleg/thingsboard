@@ -366,6 +366,7 @@ export function noDataMessage(noDataDisplayMessage: string, defaultMessage: stri
 }
 
 export function constructTableCssString(widgetConfig: WidgetConfig): string {
+  return "";
   const origColor = widgetConfig.color || 'rgba(0, 0, 0, 0.87)';
   // default widget background
   const origBackgroundColor = widgetConfig.backgroundColor;
