@@ -56,7 +56,8 @@ div.tb-widget {
     overflow: hidden;
 
     .alarms-claims-selector .mat-mdc-select-value {
-      color: rgba(0, 0, 0, 0.85);
+      // color: rgba(0, 0, 0, 0.85);
+      // color: blue;
       font-weight: bold;
       font-size: 20px;
     }
@@ -64,7 +65,8 @@ div.tb-widget {
     .alarms-claims-container {
       display: flex;
       font-weight: 500;
-      color: #000000a3;
+      // color: #000000a3;
+      color: white;
     }
 
     .alarms-claims-container div {
