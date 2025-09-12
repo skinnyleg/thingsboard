@@ -88,3 +88,6 @@ mat-drawer-content {
   color:  var(--tb-dark-mat-text-300);
 }
 
+.mat-toolbar.mat-primary {
+  background: var(--tb-dark-app-bar) !important;
+}

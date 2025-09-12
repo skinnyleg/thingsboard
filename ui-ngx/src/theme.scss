@@ -330,7 +330,7 @@ $tb-dark-theme: map_merge($tb-dark-theme, $color);
     }
     .mat-mdc-fab {
       &.mat-primary {
-        background: mat.get-color-from-palette($primary, default-contrast);
+        // background: mat.get-color-from-palette($primary, default-contrast);
         color: mat.get-color-from-palette($primary);
       }
     }
