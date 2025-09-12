@@ -18,8 +18,9 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 
 const routes: Routes = [
-  { path: '',
-    redirectTo: 'home',
+  {
+    path: '',
+    redirectTo: 'dashboards',
     pathMatch: 'full',
     data: {
       breadcrumb: {

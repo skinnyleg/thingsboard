@@ -1,14 +1,45 @@
 .mat-content {
-  background: rgb(34, 37, 39) !important;
+  background: var(--tb-dark-background) !important;
 
   div.tb-widget {
     // background: rgb(20, 23, 24) !important;
-    background: var(--tb-dark-primary-color) !important;
+    // background: var(--tb-dark-primary-color) !important;
     color: white !important;
     border-radius: 10px;
   }
 
 
+}
+
+tb-home-links {
+  .tb-widget {
+    background: var(--tb-dark-widget) !important;
+    color: white !important;
+
+    .tb-home-widget-link {
+      color: var(--tb-dark-mat-text-500) !important;
+    }
+  }
+}
+
+tb-dashboard-page {
+  tb-dashboard-toolbar {
+    .mat-toolbar {
+      background: var(--tb-dark-app-bar) !important;
+    }
+  }
+
+  tb-widget-container {
+    .tb-widget {
+      background: var(--tb-dark-widget);
+    }
+  }
+
+  .tb-dashboard-title {
+    &, label, mat-label {
+      color: var(--tb-dark-mat-text-500) !important;
+    }
+  }
 }
 
 mat-icon, tb-icon {
@@ -33,3 +64,27 @@ mat-drawer-content {
 .tb-dark .mdc-data-table__row:hover {
   background: #2e2e30 !important;
 }
+
+.mdc-button--unelevated[color="primary"] {
+  color: black !important;
+}
+
+.tb-entity-table-content {
+
+  border-color: #ffffff2e !important;
+  .table-container {
+    // background: mat.get-color-from-palette($tb-dark-theme-background, card);
+    background: map_get($tb-dark-mat-indigo, card);
+     mat-row {
+      &:hover {
+        // background: #2e2e30 !important;
+      }
+    }
+  }
+}
+
+.tb-popover-inner-content {
+  background: var(--tb-dark-app-bar);
+  color:  var(--tb-dark-mat-text-300);
+}
+

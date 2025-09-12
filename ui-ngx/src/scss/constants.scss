@@ -32,7 +32,9 @@ $mat-md-lg: "screen and (min-width: 960px) and (max-width: 1819px)";
 $primary-hue-3: rgb(207, 216, 220) !default;
 
 :root {
-  #{--tb-dark-primary-color}: #363638;
+  // #{--tb-dark-primary-color}: #363638;
+  // #{--tb-dark-primary-color}: #4a1a99;
+  #{--tb-dark-primary-color}: #ffffff;
 }
 
 $tb-primary-color: var(--tb-dark-primary-color);

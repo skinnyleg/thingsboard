@@ -136,8 +136,8 @@ export class DashboardWidgets implements Iterable<DashboardWidget> {
   }
 
   constructor(private dashboard: IDashboardComponent,
-              private widgetsDiffer: IterableDiffer<Widget>,
-              private widgetLayoutsDiffer: KeyValueDiffer<string, WidgetLayout>) {
+    private widgetsDiffer: IterableDiffer<Widget>,
+    private widgetLayoutsDiffer: KeyValueDiffer<string, WidgetLayout>) {
   }
 
   doCheck() {
@@ -203,7 +203,7 @@ export class DashboardWidgets implements Iterable<DashboardWidget> {
             if (index > -1) {
               const prevDashboardWidget = this.dashboardWidgets[index];
               if (!isEqual(prevDashboardWidget.widget, record.widget) ||
-                  !isEqual(prevDashboardWidget.widgetLayout, record.widgetLayout)) {
+                !isEqual(prevDashboardWidget.widgetLayout, record.widgetLayout)) {
                 this.dashboardWidgets[index] = new DashboardWidget(this.dashboard, record.widget, record.widgetLayout,
                   this.parentDashboard, this.popoverComponent);
                 this.dashboardWidgets[index].highlighted = prevDashboardWidget.highlighted;
@@ -443,7 +443,7 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
       error: (x) => {
         console.log('got an error ', x)
       },
-      complete: () => {}
+      complete: () => { }
     })
   }
 
@@ -457,7 +457,7 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
 
   updateWidgetParams(detectChanges = true) {
     this.color = this.widget.config.color || 'rgba(0, 0, 0, 0.87)';
-    this.backgroundColor = this.widget.config.backgroundColor || '#fff';
+    this.backgroundColor = this.widget.config.backgroundColor || 'none';
     this.padding = this.widget.config.padding || '8px';
     this.margin = this.widget.config.margin || '0px';
     this.borderRadius = this.widget.config.borderRadius;
@@ -469,7 +469,7 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
       && this.widgetContext.widgetTitleTooltip.length ? this.widgetContext.widgetTitleTooltip : this.widget.config.titleTooltip;
     this.titleTooltip = this.dashboard.utils.customTranslation(this.titleTooltip, this.titleTooltip);
     this.showTitle = isDefined(this.widget.config.showTitle) ? this.widget.config.showTitle : true;
-    this.titleStyle = {...(this.widget.config.titleStyle || {}), ...textStyle(this.widget.config.titleFont)};
+    this.titleStyle = { ...(this.widget.config.titleStyle || {}), ...textStyle(this.widget.config.titleFont) };
     if (this.widget.config.titleColor) {
       this.titleStyle.color = this.widget.config.titleColor;
     }
@@ -511,9 +511,10 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
       backgroundColor: this.backgroundColor,
       padding: this.padding,
       margin: this.margin,
-      borderRadius: this.borderRadius };
+      borderRadius: this.borderRadius
+    };
     if (!isEmpty(this.widget.config.widgetStyle)) {
-      this.style = {...this.style, ...convertKeysToCamelCase(this.widget.config.widgetStyle)};
+      this.style = { ...this.style, ...convertKeysToCamelCase(this.widget.config.widgetStyle) };
     }
 
     this.showWidgetTitlePanel = this.widgetContext.hideTitlePanel ? false :
