@@ -91,3 +91,9 @@ mat-drawer-content {
 .mat-toolbar.mat-primary {
   background: var(--tb-dark-app-bar) !important;
 }
+
+table {
+  mat-header-row {
+    background: var(--tb-dark-app-bar) !important;
+  }
+}
