@@ -65,8 +65,10 @@ mat-drawer-content {
   background: #2e2e30 !important;
 }
 
-.mdc-button--unelevated[color="primary"] {
-  color: black !important;
+.mdc-button--unelevated[color="primary"][ng-reflect-disabled="false"] {
+  &, mat-icon {
+    color: var(--tb-dark-mat-text-A100) !important;
+  }
 }
 
 .tb-entity-table-content {
@@ -95,5 +97,17 @@ mat-drawer-content {
 table {
   mat-header-row {
     background: var(--tb-dark-app-bar) !important;
+  }
+}
+
+tb-timewindow-panel {
+  background: var(--tb-dark-background) !important;
+}
+
+.mdc-button--raised:not([ng-reflect-disabled="true"]):not([ng-reflect-color="accent"]) {
+  color: var(--tb-dark-mat-text-A100) !important;
+
+  & mat-icon {
+    color: unset !important;
   }
 }

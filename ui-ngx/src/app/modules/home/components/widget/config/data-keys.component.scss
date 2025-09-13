@@ -43,7 +43,8 @@
   }
   .tb-attribute-chip {
     max-width: 100%;
-    color: rgb(66, 66, 66);
+    // color: rgb(66, 66, 66);
+    color: var(--tb-dark-mat-text-500);
     .tb-chip-drag-handle {
       padding: 3px;
       height: 24px;
