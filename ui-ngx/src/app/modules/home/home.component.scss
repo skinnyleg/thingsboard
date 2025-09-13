@@ -27,10 +27,12 @@
   }
   mat-sidenav.tb-site-sidenav {
     // background: black;
-    width: 250px;
-    @media (max-width:456px) {
-      width: calc(100% - 56px);
-    }
+    // width: 250px;
+    // @media (max-width:456px) {
+    //   width: calc(100% - 56px);
+    // }
+
+    width: 0;
     .tb-nav-header {
       z-index: 2;
       flex-shrink: 0;
