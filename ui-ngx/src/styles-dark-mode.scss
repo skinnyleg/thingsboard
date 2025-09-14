@@ -1,3 +1,8 @@
+body {
+  color: var(--tb-dark-mat-text-500);
+}
+
+
 .mat-content {
   background: var(--tb-dark-background) !important;
 
@@ -72,17 +77,25 @@ mat-drawer-content {
 }
 
 .tb-entity-table-content {
+  &.tb-outlined-border {
+    border: solid 1px var(--tb-dark-mat-800);
+  }
+}
 
-  border-color: #ffffff2e !important;
-  .table-container {
-    // background: mat.get-color-from-palette($tb-dark-theme-background, card);
-    background: map_get($tb-dark-mat-indigo, card);
-     mat-row {
-      &:hover {
-        // background: #2e2e30 !important;
-      }
+.table-container {
+  // border: solid 1px var(--tb-dark-mat-800);
+  // background: mat.get-color-from-palette($tb-dark-theme-background, card);
+  background: map_get($tb-dark-mat-indigo, card);
+    mat-row {
+    &:hover {
+      // background: #2e2e30 !important;
     }
   }
+}
+
+
+.mat-toolbar {
+  // border-bottom: solid 1px var(--tb-dark-mat-800);
 }
 
 .tb-popover-inner-content {

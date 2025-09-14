@@ -31,12 +31,11 @@ $tb-button-selected-color: rgb(255, 110, 64) !default;
   .tb-images-content {
     width: 100%;
     height: 100%;
-    background: #fff;
     overflow: hidden;
 
     &.tb-outlined-border {
       box-shadow: 0 0 0 0 rgb(0 0 0 / 20%), 0 0 0 0 rgb(0 0 0 / 14%), 0 0 0 0 rgb(0 0 0 / 12%);
-      border: solid 1px #e0e0e0;
+      border: solid 1px var(--tb-dark-mat-800);
       border-radius: 4px;
     }
 
