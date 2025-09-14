@@ -65,8 +65,7 @@ div.tb-widget {
     .alarms-claims-container {
       display: flex;
       font-weight: 500;
-      // color: #000000a3;
-      color: white;
+      color: var(--tb-dark-mat-text-500);
     }
 
     .alarms-claims-container div {

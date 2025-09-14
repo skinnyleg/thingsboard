@@ -82,7 +82,7 @@ $primary: mat.get-color-from-palette($tb-primary);
 $accent: mat.get-color-from-palette($tb-accent);
 
 :root {
-  #{--tb-dark-mat-50}: blue;
+  #{--tb-dark-mat-50}: #00000070;
   #{--tb-dark-mat-100}: blue;
   #{--tb-dark-mat-200}: blue;
   #{--tb-dark-mat-300}: blue;
@@ -92,10 +92,10 @@ $accent: mat.get-color-from-palette($tb-accent);
   #{--tb-dark-mat-700}: black;
   #{--tb-dark-mat-800}: #444446;
   #{--tb-dark-mat-900}: blue;
-  #{--tb-dark-mat-A100}: blue;
-  #{--tb-dark-mat-A200}: blue;
-  #{--tb-dark-mat-A400}: blue;
-  #{--tb-dark-mat-A700}: blue;
+  #{--tb-dark-mat-A100}: white;
+  #{--tb-dark-mat-A200}: white;
+  #{--tb-dark-mat-A400}: white;
+  #{--tb-dark-mat-A700}: white;
   #{--tb-dark-mat-text-50}: white;
   #{--tb-dark-mat-text-100}: white;
   #{--tb-dark-mat-text-200}: white;

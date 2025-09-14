@@ -584,7 +584,8 @@
     height: 48px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.12);
     &-cell {
-      color: rgba(0, 0, 0, 0.54);
+      // color: rgba(0, 0, 0, 0.54);
+      color: var(--tb-dark-mat-text-500);
     }
   }
 

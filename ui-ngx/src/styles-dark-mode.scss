@@ -111,3 +111,18 @@ tb-timewindow-panel {
     color: unset !important;
   }
 }
+
+.mat-expansion-panel {
+  background: none !important;
+}
+
+.mat-mdc-chip-selected {
+  .mdc-evolution-chip__checkmark,
+  .mat-mdc-chip-action-label {
+    color: var(--tb-dark-mat-text-A100) !important;
+  }
+}
+
+.mat-drawer-backdrop.mat-drawer-shown {
+  background: var(--tb-dark-mat-50) !important;
+}
