@@ -101,7 +101,7 @@ $accent: mat.get-color-from-palette($tb-accent);
   #{--tb-dark-mat-text-200}: white;
   #{--tb-dark-mat-text-300}: #ffffff94;
   #{--tb-dark-mat-text-400}: white;
-  #{--tb-dark-mat-text-500}: #fffffff0;
+  #{--tb-dark-mat-text-500}: white;
   #{--tb-dark-mat-text-600}: white;
   #{--tb-dark-mat-text-700}: white;
   #{--tb-dark-mat-text-800}: white;
@@ -111,10 +111,10 @@ $accent: mat.get-color-from-palette($tb-accent);
   #{--tb-dark-mat-text-A400}: black;
   #{--tb-dark-mat-text-A700}: black;
 
-  #{--tb-dark-status-bar}: #0e0e0e;
+  #{--tb-dark-status-bar}: #1c1c1c;
   // #{--tb-dark-app-bar}: map_get($tb-dark-mat-indigo, 500);
-  #{--tb-dark-app-bar}: #0e0e0e;
-  #{--tb-dark-widget}: #0e0e0e;
+  #{--tb-dark-app-bar}: #1c1c1c;
+  #{--tb-dark-widget}: #1c1c1c;
   #{--tb-dark-background}: #222527;
   #{--tb-dark-hover}: var(--tb-dark-mat-800);
 
@@ -153,7 +153,7 @@ $tb-dark-mat-indigo: (
   800: var(--tb-dark-mat-800),
 
   900: var(--tb-dark-mat-900),
-  card: #0e0e0e,
+  card: #1c1c1c,
 
   A100: var(--tb-dark-mat-A100),
 
@@ -215,7 +215,7 @@ $tb-dark-theme-background: (
   hover:     var(--tb-dark-hover),
   // card:       map_get($tb-dark-mat-indigo, 800),
   // card: map_get($tb-dark-mat-indigo, card),
-  card: #0e0e0e,
+  card: #1c1c1c,
   dialog:     var(--tb-dark-dialog),
   disabled-button: var(--tb-dark-disabled-button),
   raised-button: var(--tb-dark-raised-button),

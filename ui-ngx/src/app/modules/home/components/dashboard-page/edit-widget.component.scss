@@ -20,7 +20,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: #fff;
+    // background: #fff;
+    background: var(--tb-dark-background);
     z-index: 5;
   }
   .widget-preview-section {
