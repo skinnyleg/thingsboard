@@ -61,6 +61,7 @@ export class AnomalyDetectionComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe((result) => {
+
       console.log("Dialog closed", result);
     });
   }

@@ -16,6 +16,16 @@ services:
     env_file:
       - ./.env
 
+  anomalies-script:
+    build:
+      context: ./send-telemetry/
+      dockerfile: anomalies-script.Dockerfile
+    container_name: anomalies-script
+    depends_on:
+      - postgres
+    networks:
+      - thingsboard
+
   forecast-script:
     build:
       context: ./send-telemetry/

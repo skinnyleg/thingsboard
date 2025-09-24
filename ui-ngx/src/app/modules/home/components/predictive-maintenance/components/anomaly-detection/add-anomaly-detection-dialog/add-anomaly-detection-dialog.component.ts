@@ -50,6 +50,7 @@ export class AddAnomalyDetectionDialogComponent {
   fields: string[] = [];
 
   selectedDevice: string | null = null;
+  selectedAlgorithm: string;
 
   constructor(public dialogRef: MatDialogRef<AddAnomalyDetectionDialogComponent>) {}
 
@@ -77,6 +78,7 @@ export class AddAnomalyDetectionDialogComponent {
 
   onConfirm(): void {
     // TODO: Perform save operation
+    console.log({algorithm: this.selectedAlgorithm })
     this.dialogRef.close({ name: 'Forecast', device: this.selectedDevice, fields: this.fields });
   }
 }

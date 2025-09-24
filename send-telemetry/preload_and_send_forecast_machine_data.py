@@ -46,7 +46,7 @@ conn = session.connection().connection
 cur = conn.cursor()
 
 
-def main():
+def main(): 
     try:
         result = session.execute(text("delete from alarm"))
         result = session.execute(

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.thingsboard.server.queue.util.TbCoreComponent;
 import org.thingsboard.server.service.predictive.FastAPIService;
 import org.thingsboard.server.service.predictive.TbForecastsService;
+import org.thingsboard.server.service.predictive.TbAnomalyDetectorService;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -37,10 +38,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.thingsboard.server.common.data.exception.ThingsboardErrorCode;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.common.data.id.ForecastId;
+import org.thingsboard.server.common.data.id.DetectorId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.Forecast;
+import org.thingsboard.server.common.data.Detector;
 import org.thingsboard.server.config.annotations.ApiOperation;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -61,6 +64,9 @@ public class PredictiveMaintenanceController extends BaseController {
 
     @Autowired
     protected TbForecastsService forecastsService;
+
+    @Autowired
+    protected TbAnomalyDetectorService anomalyDetectorService;
 
     @ApiOperation(value = "Get predictiveMaintenance Hello World", notes = "access the hello world in predictive maintenance route directive")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
@@ -136,4 +142,45 @@ public class PredictiveMaintenanceController extends BaseController {
         }
     }
 
+    // create anomaly detector apis
+    @ApiOperation(value = "Get predictiveMaintenance detectors", notes = "access the detectors in predictive maintenance route directive")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @GetMapping(value = "/detectors", params = { "pageSize", "page" })
+    @ResponseBody
+    public PageData<Detector> getDetectors(
+            @Parameter(description = "The number of items to return", required = true) @RequestParam int pageSize,
+            @Parameter(description = "The page number", required = true) @RequestParam int page,
+            @Parameter(description = "The sort property", schema = @Schema(allowableValues = { "name", "createdTime",
+                    "entityId" })) @RequestParam(required = false) String sortProperty,
+            @Parameter(description = "The sort order", schema = @Schema(allowableValues = { "ASC",
+                    "DESC" })) @RequestParam(required = false) String sortOrder,
+            @Parameter(description = "The text search") @RequestParam(required = false) String textSearch)
+            throws ThingsboardException {
+        TenantId tenantId = getCurrentUser().getTenantId();
+        PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);
+        return checkNotNull(anomalyDetectorService.findTenantDetectors(tenantId, pageLink));
+    }
+
+    @ApiOperation(value = "Get predictiveMaintenance detector by id", notes = "access the detector by id")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @GetMapping(value = "/detectors/{detectorId}")
+    @ResponseBody
+    public Detector getDetector(
+            @Parameter(description = "Detector Id") @PathVariable("detectorId") String strDetectorId)
+            throws ThingsboardException {
+        checkParameter("detectorId", strDetectorId);
+        DetectorId detectorId = new DetectorId(toUUID(strDetectorId));
+        return checkNotNull(anomalyDetectorService.findTenantDetector(getTenantId(), detectorId));
+    }
+
+    @ApiOperation(value = "Post predictiveMaintenance detector", notes = "access the detectors in predictive maintenance route directive")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @PostMapping(value = "/detectors", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Detector saveDetector(@RequestBody Detector detector) throws Exception {
+        TenantId tenantId = getCurrentUser().getTenantId();
+        detector.setId(null);
+        detector.setTenantId(tenantId);
+        return checkNotNull(anomalyDetectorService.save(detector, getCurrentUser()));
+    }
 }
