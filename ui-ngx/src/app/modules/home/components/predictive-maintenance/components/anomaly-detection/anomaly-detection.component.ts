@@ -1,4 +1,5 @@
 import { Component, OnInit, ViewChild } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
 import { MatTableDataSource } from "@angular/material/table";
 import { MatPaginator } from "@angular/material/paginator";
 import { MatSort } from "@angular/material/sort";
@@ -49,7 +50,7 @@ export class AnomalyDetectionComponent implements OnInit {
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
-  constructor(public dialog: MatDialog, private router: Router) {}
+  constructor(public dialog: MatDialog, private router: Router, private http: HttpClient) {}
 
   ngOnInit() {
     this.dataSource.paginator = this.paginator;
@@ -62,9 +63,13 @@ export class AnomalyDetectionComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe((result) => {
 
+      this.http.post<object>(`/api/detectors`, result).subscribe((res) => {
+        console.log(res)
+      })
       console.log("Dialog closed", result);
     });
   }
+
 
   openAnomalyDetectionModel(row: Order) {
     this.router.navigateByUrl(`/PM/anomaly-detection/${row.id}`);

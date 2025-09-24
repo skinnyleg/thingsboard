@@ -39,3 +39,14 @@ ADD COLUMN IF NOT EXISTS assignee_id uuid CONSTRAINT fk_claims_assignee_id REFER
 
 ALTER TABLE claim
 ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+CREATE TABLE IF NOT EXISTS anomaly_detector (
+    id uuid NOT NULL CONSTRAINT anomaly_detector_pkey PRIMARY KEY,
+    created_time bigint NOT NULL,
+    tenant_id uuid NOT NULL CONSTRAINT fk_claims_tenant_id REFERENCES tenant (id) ON DELETE CASCADE,
+    device_id uuid NOT NULL CONSTRAINT fk_forecasts_entity_id REFERENCES device (id) ON DELETE CASCADE,
+    name varchar(255) not null,
+    attributes jsonb NOT NULL,
+    start_date bigint NOT NULL,
+    end_date bigint NOT NULL
+);

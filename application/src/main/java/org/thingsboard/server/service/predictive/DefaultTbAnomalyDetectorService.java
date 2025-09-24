@@ -77,12 +77,12 @@ public class DefaultTbAnomalyDetectorService extends AbstractTbEntityService imp
             this.anomalyDetectorService.deleteDetector(tenantId, detectorId);
             logEntityActionService.logEntityAction(tenantId, detectorId, actionType, user, null);
         } catch (Exception e) {
-            logEntityActionService.logEntityAction(tenantId, forecastId, actionType, user, e);
+            logEntityActionService.logEntityAction(tenantId, detectorId, actionType, user, e);
             throw e;
         }
     }
 
-    public void activate(Detector forecast, User user) throws ThingsboardException {
-        this.forecastsService.activateForecast(user.getTenantId(), forecast.getId());
-    }
+    //public void activate(Detector forecast, User user) throws ThingsboardException {
+    //    this.forecastsService.activateForecast(user.getTenantId(), forecast.getId());
+    //}
 }

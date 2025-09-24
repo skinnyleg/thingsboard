@@ -1,7 +1,5 @@
 DOCKER_CMD=docker run -v .:/app/ -v /home/samy/work-projects/thingsboard_m2_cache:/root/.m2 -v /home/samy/work-projects/thingsboard_npm_cache:/root/.npm -v /home/samy/work-projects/thingsboard_gradle:/root/.gradle thingsboard-tb_application:latest
 
-docker run -v .:/app/ -v ..\thingsboard_m2_cache:/root/.m2 -v ..\thingsboard_npm_cache:/root/.npm -v ..\thingsboard_gradle:/root/.gradle thingsboard-tb_application:latest
-
 all: clean build
 
 backup:
