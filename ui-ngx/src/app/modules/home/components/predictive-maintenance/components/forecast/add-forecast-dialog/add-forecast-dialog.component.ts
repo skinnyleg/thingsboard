@@ -191,11 +191,7 @@ export class AddForecastDialogComponent implements OnInit {
   get isFormValid(): boolean {
     return (
       this.forecastNameControl.valid &&
-      this.selectedDevice != null && // Ensure a device is selected
-      this.fields.length > 0 && // Ensure at least one field is added
-      this.fields.every(
-        (field) => field.key && field.startDate && field.endDate
-      )
+      this.selectedDevice != null // Ensure a device is selected
     );
   }
 

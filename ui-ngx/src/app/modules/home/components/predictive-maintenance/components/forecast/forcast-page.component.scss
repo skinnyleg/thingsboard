@@ -16,16 +16,18 @@
 mat-card {
     display: flex;
     flex-direction: column;
-    height: 80vh; /* Full viewport height */
+    // height: 80vh; /* Full viewport height */
     padding: 20px;
+    height: 100%;
     margin: 0;
 }
 
 .container {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline;
     margin-bottom: 20px;
+    // justify-content: end;
 }
 
 .table-container {
@@ -43,13 +45,10 @@ mat-paginator {
     align-self: flex-end; /* Pagination stays at the bottom */
 }
 
-.custom-form-field {
-    width: 400px;
-}
-
 .custom-input {
-    height: 32px;
-    border-radius: 8px;
+    border-bottom: 2px solid #3f51b5; /* Example border color */
+    flex-grow: 1;
+    height: 1em;
 }
 
 mat-form-field {

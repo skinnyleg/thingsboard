@@ -149,3 +149,7 @@ input[type="number"] {
 tb-widget-preview {
   background: none !important;
 }
+
+.message, .time {
+  color: var(--tb-dark-mat-text-300) !important;
+}

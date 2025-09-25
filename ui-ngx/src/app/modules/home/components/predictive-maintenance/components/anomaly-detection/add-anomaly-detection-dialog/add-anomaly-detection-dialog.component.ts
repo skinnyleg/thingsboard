@@ -66,7 +66,7 @@ export class AddAnomalyDetectionDialogComponent {
   selectedAlgorithm: string;
   selectedName: string;
 
-  ViewChild('searchBox')
+  // ViewChild('searchBox')
 
   constructor(public dialogRef: MatDialogRef<AddAnomalyDetectionDialogComponent>, private http: HttpClient) {}
 

@@ -384,7 +384,7 @@ export class ForcastChartComponent
     this.oldForecastSeries["pressure"] = [];
     this.getHistoricalData().then(([history, alarms]) => {
       if (!history?.pressure) {
-        return alert("No Data Found.");
+        // return alert("No Data Found.");
       }
       history["pressure"].sort((a, b) => a.ts - b.ts);
       this.chartInstance.setOption({

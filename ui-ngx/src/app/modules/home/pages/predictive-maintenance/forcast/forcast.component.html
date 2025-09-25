@@ -1,4 +1,4 @@
-<label class="model-select-label">Anomaly tasks</label>
+<label class="model-select-label">Other models</label>
 <select (change)="changeModel($event.target.value)" class="model-select">
     <option *ngFor="let model of models" [value]="model.trueId" [selected]="model.trueId === id">
         {{ model.id }} - {{ model.device }} - {{ model.user }} -
@@ -6,7 +6,7 @@
     </option>
 </select>
 <div class="anomaly-detection-container">
-    <div class="anomaly-detection-header">
+    <!-- <div class="anomaly-detection-header">
         <div class="anomaly-detection-tabs">
             <p class="active">Anomaly Details</p>
             <p>Anomaly Summary</p>
@@ -17,6 +17,9 @@
             <button mat-raised-button color="primary">Apply To</button>
         </div>
         <div class="anomaly-detection-header-divider"> </div>
-    </div>
+    </div> -->
     <tb-forcast-chart [deviceId]="deviceId" [Attributes]="Attributes" [forecastId]="trueId"></tb-forcast-chart>
+    <div style="padding-left: 3em;">
+        <h4>Anomalies</h4>
+    </div>
 </div>
