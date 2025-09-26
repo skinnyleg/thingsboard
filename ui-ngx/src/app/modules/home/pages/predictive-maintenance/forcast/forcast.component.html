@@ -1,10 +1,31 @@
-<label class="model-select-label">Other models</label>
-<select (change)="changeModel($event.target.value)" class="model-select">
-    <option *ngFor="let model of models" [value]="model.trueId" [selected]="model.trueId === id">
-        {{ model.id }} - {{ model.device }} - {{ model.user }} -
-        {{ model.date }} - {{ model.status }}
-    </option>
-</select>
+<!-- New forecast info container -->
+<div class="forecast-info-container">
+    <div class="forecast-name">
+        <span class="model-label">Model:</span>
+        <h3>
+            {{ forecastName || id }}
+            <!-- Debug: Status is "{{ status }}" -->
+            <mat-icon *ngIf="status?.toLowerCase()?.includes('completed') || status?.toLowerCase() === 'complete'"
+                class="status-completed-icon" [title]="status">done</mat-icon>
+        </h3>
+    </div>
+    <div class="forecast-actions">
+        <div class="left-actions">
+            <div class="model-select-container">
+                <button mat-outlined-button (click)="openModelSelectionDialog()" class="model-select-button">
+                    <mat-icon>list</mat-icon>
+                    Other Models
+                </button>
+            </div>
+            <div class="button-container">
+                <button mat-raised-button color="primary" (click)="openCreateModelDialog()">
+                    <mat-icon>add</mat-icon>New Model
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="anomaly-detection-container">
     <!-- <div class="anomaly-detection-header">
         <div class="anomaly-detection-tabs">

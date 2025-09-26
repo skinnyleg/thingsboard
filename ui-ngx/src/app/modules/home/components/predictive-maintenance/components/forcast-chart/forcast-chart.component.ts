@@ -1,6 +1,7 @@
 import { CommonModule } from "@angular/common";
 import {
   AfterViewInit,
+  ChangeDetectorRef,
   Component,
   Input,
   NgZone,
@@ -43,78 +44,79 @@ import { FormControl } from "@angular/forms";
 import { FormGroup } from "@material-ui/core";
 import { environment } from "@env/environment";
 
-const Hours = Array.from(Array(24), (_, i) => i < 10 ? '0' + i : i.toString());
-const Minutes = Array.from(Array(60), (_, i) => i < 10 ? '0' + i : i.toString());
+const Hours = Array.from(Array(24), (_, i) =>
+  i < 10 ? "0" + i : i.toString()
+);
+const Minutes = Array.from(Array(60), (_, i) =>
+  i < 10 ? "0" + i : i.toString()
+);
 const Seconds = Array.from(Minutes);
 
 const getAlarmSubscriptionCmd = (token, device_id) => ({
-  "authCmd": {
-    "cmdId": 0,
-    "token": token
+  authCmd: {
+    cmdId: 0,
+    token: token,
   },
-  "cmds": [
+  cmds: [
     {
-      "type": "ALARM_DATA",
-      "query": {
-        "entityFilter": {
-          "type": "singleEntity",
-          "singleEntity": {
-            "entityType": "DEVICE",
-            "id": device_id
-          }
+      type: "ALARM_DATA",
+      query: {
+        entityFilter: {
+          type: "singleEntity",
+          singleEntity: {
+            entityType: "DEVICE",
+            id: device_id,
+          },
         },
-        "pageLink": {
-          "page": 0,
-          "pageSize": 10,
-          "textSearch": null,
-          "typeList": [],
-          "severityList": [],
-          "statusList": [
-            "ACTIVE",
-            "CLEARED"
-          ],
-          "searchPropagatedAlarms": false,
-          "sortOrder": {
-            "key": {
-              "key": "createdTime",
-              "type": "ALARM_FIELD"
+        pageLink: {
+          page: 0,
+          pageSize: 10,
+          textSearch: null,
+          typeList: [],
+          severityList: [],
+          statusList: ["ACTIVE", "CLEARED"],
+          searchPropagatedAlarms: false,
+          sortOrder: {
+            key: {
+              key: "createdTime",
+              type: "ALARM_FIELD",
             },
-            "direction": "DESC"
+            direction: "DESC",
           },
-          "timeWindow": 2592000000
+          timeWindow: 2592000000,
         },
-        "alarmFields": [
+        alarmFields: [
           {
-            "type": "ALARM_FIELD",
-            "key": "createdTime"
+            type: "ALARM_FIELD",
+            key: "createdTime",
           },
           {
-            "type": "ALARM_FIELD",
-            "key": "originator"
+            type: "ALARM_FIELD",
+            key: "originator",
           },
           {
-            "type": "ALARM_FIELD",
-            "key": "type"
+            type: "ALARM_FIELD",
+            key: "type",
           },
           {
-            "type": "ALARM_FIELD",
-            "key": "severity"
+            type: "ALARM_FIELD",
+            key: "severity",
           },
           {
-            "type": "ALARM_FIELD",
-            "key": "type"
+            type: "ALARM_FIELD",
+            key: "type",
           },
           {
-            "type": "ALARM_FIELD",
-            "key": "status"
-          }
+            type: "ALARM_FIELD",
+            key: "status",
+          },
         ],
-        "entityFields": [],
-        "latestValues": []
+        entityFields: [],
+        latestValues: [],
       },
-      "cmdId": 3
-    }
-  ]
+      cmdId: 3,
+    },
+  ],
 });
 
 const selectionOptions = [
@@ -204,7 +206,8 @@ const selectionOptions = [
   ],
 })
 export class ForcastChartComponent
-  implements OnInit, OnChanges, OnDestroy, AfterViewInit {
+  implements OnInit, OnChanges, OnDestroy, AfterViewInit
+{
   public forecastWs: WebSocketSubject<any>;
   public dataWs: WebSocketSubject<any>;
 
@@ -252,15 +255,27 @@ export class ForcastChartComponent
   }
 
   graphtype = "realtime";
+  public isHistoryMode = false;
+  public isRealtimeMode = true;
 
   constructor(
     private attributeService: AttributeService,
     private telemetryWsService: TelemetryWebsocketService,
     private translate: TranslateService,
-    private zone: NgZone
-  ) { }
+    private zone: NgZone,
+    private cdr: ChangeDetectorRef
+  ) {}
 
-  handleHistoryTimeChange(start, end, shours, smin, sseconds, ehours, emin, eseconds) {
+  handleHistoryTimeChange(
+    start,
+    end,
+    shours,
+    smin,
+    sseconds,
+    ehours,
+    emin,
+    eseconds
+  ) {
     start = new Date(start.selected);
     end = new Date(end.selected);
     start.setHours(+shours.value, +smin.value, +sseconds.value);
@@ -282,10 +297,10 @@ export class ForcastChartComponent
   }
 
   toggleDatePicker(el) {
-    el.style.display = el.style.display === 'block' ? "none" : "block";
+    el.style.display = el.style.display === "block" ? "none" : "block";
   }
 
-  ngAfterViewInit() { }
+  ngAfterViewInit() {}
 
   onSelectTimeChange(event) {
     this.selected = {
@@ -296,7 +311,13 @@ export class ForcastChartComponent
 
   handleGraphChange(event) {
     this.graphtype = event.value;
-    this.handleTimeChangeDate();
+    this.isHistoryMode = event.value === "history";
+    this.isRealtimeMode = event.value === "realtime";
+    // Trigger change detection to prevent ExpressionChangedAfterItHasBeenCheckedError
+    setTimeout(() => {
+      this.handleTimeChangeDate();
+      this.cdr.detectChanges();
+    });
   }
 
   handleTimeChangeDate() {
@@ -306,20 +327,20 @@ export class ForcastChartComponent
     if (this.alarmsWs$) {
       this.alarmsWs$.complete();
     }
-    if (this.graphtype === 'history') {
+    if (this.graphtype === "history") {
       this.chartInstance.setOption({
         xAxis: {
           min: +this.startDate,
-          max: +this.endDate
-        }
-      })
+          max: +this.endDate,
+        },
+      });
     } else {
       this.chartInstance.setOption({
         xAxis: {
-          min: 'dataMin',
-          max: 'dataMax'
-        }
-      })
+          min: "dataMin",
+          max: "dataMax",
+        },
+      });
     }
     const history_series = [
       {
@@ -392,18 +413,21 @@ export class ForcastChartComponent
           {
             name: "Pressure",
             data: history["pressure"].map((e) => [e.ts, parseFloat(e.value)]),
-            type: 'line',
+            type: "line",
             markArea: {
               itemStyle: {
-                color: 'rgba(255, 173, 177, 0.4)',
+                color: "rgba(255, 173, 177, 0.4)",
               },
-              data: alarms.data.map((alarm) => [{ xAxis: alarm.startTs }, { xAxis: alarm.endTs }])
-            }
+              data: alarms.data.map((alarm) => [
+                { xAxis: alarm.startTs },
+                { xAxis: alarm.endTs },
+              ]),
+            },
           },
           {
             name: "Pressure Historical Forecast",
             data: history["forecast"].map((e) => [e.ts, parseFloat(e.value)]),
-            type: 'line'
+            type: "line",
           },
         ],
       });
@@ -456,23 +480,28 @@ export class ForcastChartComponent
     return await Promise.all([
       fetch(
         `/api/plugins/telemetry/DEVICE/${device_id}/values/timeseries?` +
-        "keys=pressure,forecast&startTs=" +
-        startTs +
-        "&endTs=" +
-        endTs +
-        "&interval=" +
-        interval +
-        "&limit=" +
-        limit +
-        "&agg=" +
-        agg,
+          "keys=pressure,forecast&startTs=" +
+          startTs +
+          "&endTs=" +
+          endTs +
+          "&interval=" +
+          interval +
+          "&limit=" +
+          limit +
+          "&agg=" +
+          agg,
         { headers }
       ),
       fetch(
-        '/api/alarm/DEVICE/' + device_id + '?pageSize=1&page=0&sortProperty=createdTime',
+        "/api/alarm/DEVICE/" +
+          device_id +
+          "?pageSize=1&page=0&sortProperty=createdTime",
         { headers }
-      )])
-      .then(async ([history, alarms]) => [await history.json(), await alarms.json()]);
+      ),
+    ]).then(async ([history, alarms]) => [
+      await history.json(),
+      await alarms.json(),
+    ]);
   }
 
   alarmsWs$;
@@ -485,7 +514,10 @@ export class ForcastChartComponent
     };
     const forecast = await fetch("/api/forecasts/" + this.forecastId, {
       headers,
-    }).then(async (res) => !res.ok ? { error: res.statusText } : { data: await res.json() })
+    })
+      .then(async (res) =>
+        !res.ok ? { error: res.statusText } : { data: await res.json() }
+      )
       .catch((err) => ({ error: err }));
     if (forecast.error) return Promise.reject(forecast.error);
     // @ts-ignore
@@ -493,11 +525,10 @@ export class ForcastChartComponent
     if (typeof device_id != "string")
       return Promise.reject("Didnt find device id");
     this.alarmsWs$ = webSocket({
-      url: '/api/ws',
+      url: "/api/ws",
       // deserializer: (e) => e.data,
       openObserver: {
-        next: (e) => {
-        },
+        next: (e) => {},
       },
     });
     this.alarmsWs$.next(getAlarmSubscriptionCmd(token, device_id));
@@ -505,64 +536,72 @@ export class ForcastChartComponent
     this.alarmsWs$.subscribe({
       next: (msg) => {
         const data = msg.data?.data ?? msg.update;
-        console.log({ data })
+        console.log({ data });
         data.forEach((alarm) => alarms.set(alarm.id.id, alarm));
-        const areas = Array
-          .from(alarms.values())
-          .map((alarm) => ([
-            { xAxis: alarm.startTs },
-            { xAxis: alarm.endTs }
-          ]));
+        const areas = Array.from(alarms.values()).map((alarm) => [
+          { xAxis: alarm.startTs },
+          { xAxis: alarm.endTs },
+        ]);
         this.chartInstance.setOption({
           series: [
             {
               name: "Pressure",
               markArea: {
                 itemStyle: {
-                  color: 'rgba(255, 173, 177, 0.4)'
+                  color: "rgba(255, 173, 177, 0.4)",
                 },
-                data: areas
-              }
-            }
-          ]
-        })
-      }
+                data: areas,
+              },
+            },
+          ],
+        });
+      },
     });
   }
 
   async connectToSocket() {
     const series = this.chartInstance.getOption().series;
-    let pressureData = [...series.find((e) => e.name.toLowerCase() == "pressure").data];
-    let historyForecastData = [...series.find((e) => e.name.toLowerCase() == "pressure historical forecast").data];
+    let pressureData = [
+      ...series.find((e) => e.name.toLowerCase() == "pressure").data,
+    ];
+    let historyForecastData = [
+      ...series.find(
+        (e) => e.name.toLowerCase() == "pressure historical forecast"
+      ).data,
+    ];
     this.dataWs = webSocket({
-      url: "ws://" + environment.host + ":8080/api/ws"
-    })
+      url: "ws://" + environment.host + ":8080/api/ws",
+    });
     this.dataWs.subscribe({
-      next: ((tmp = null) => (data) => {
-        Object.keys(data.data).forEach((key) => {
-          let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
-          values.sort((a, b) => a[0] - b[0]);
-          const list = key == "pressure" ? pressureData : historyForecastData;
-          if (key == "pressure" && tmp) {
-            historyForecastData.push(tmp);
-            tmp = null;
-          }
-          values = list.concat([values[values.length - 1]]);
-          values.sort((a, b) => a[0] - b[0]);
-          if (key == "forecast") {
-            tmp = values.pop();
-          }
+      next: (
+        (tmp = null) =>
+        (data) => {
+          Object.keys(data.data).forEach((key) => {
+            let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
+            values.sort((a, b) => a[0] - b[0]);
+            const list = key == "pressure" ? pressureData : historyForecastData;
+            if (key == "pressure" && tmp) {
+              historyForecastData.push(tmp);
+              tmp = null;
+            }
+            values = list.concat([values[values.length - 1]]);
+            values.sort((a, b) => a[0] - b[0]);
+            if (key == "forecast") {
+              tmp = values.pop();
+            }
 
-          values = values.slice(
-            -Math.floor(
-              (this.selected.seconds / this.selected.interval) * 1000
-            ) + 20
-          );
+            values = values.slice(
+              -Math.floor(
+                (this.selected.seconds / this.selected.interval) * 1000
+              ) + 20
+            );
 
-          pressureData = key == "pressure" ? values : [...pressureData];
-          historyForecastData = key == "forecast" ? values : [...historyForecastData];
-        })
-      })()
+            pressureData = key == "pressure" ? values : [...pressureData];
+            historyForecastData =
+              key == "forecast" ? values : [...historyForecastData];
+          });
+        }
+      )(),
     });
     const headers = {
       "x-authorization": "Bearer " + localStorage.getItem("jwt_token"),
@@ -581,7 +620,7 @@ export class ForcastChartComponent
     this.dataWs.next({
       authCmd: {
         cmdId: 0,
-        token: localStorage.getItem("jwt_token")
+        token: localStorage.getItem("jwt_token"),
       },
       cmds: [
         {
@@ -593,13 +632,14 @@ export class ForcastChartComponent
           timeWindow: Date.now(),
           scope: "LATEST_TELEMETRY",
           type: "TIMESERIES",
-
-        }
-      ]
-    })
+        },
+      ],
+    });
     this.forecastWs = webSocket({
       url:
-        "ws://" + environment.host + ":8000/forecast/" +
+        "ws://" +
+        environment.host +
+        ":8000/forecast/" +
         this.forecastId +
         "/ws?token=" +
         localStorage.getItem("jwt_token") +
@@ -607,7 +647,7 @@ export class ForcastChartComponent
         (Date.now() - (this.forecast_chart_seconds_away + 60) * 1000),
       deserializer: (e) => e.data,
       openObserver: {
-        next: () => { },
+        next: () => {},
       },
     });
     this.forecastWs.subscribe({
@@ -616,7 +656,7 @@ export class ForcastChartComponent
         let data;
         try {
           data = JSON.parse(msg);
-        } catch { }
+        } catch {}
         if (data && this.displayData) {
           let currentDate = pressureData[pressureData.length - 1][0];
           let _data = [];
@@ -625,10 +665,12 @@ export class ForcastChartComponent
           }
           const values = pressureData;
           let forecast = values.length ? [values[values.length - 1]] : [];
-          forecast = forecast.concat(_data.map((point) => {
-            currentDate += 1000;
-            return [currentDate, point];
-          }))
+          forecast = forecast.concat(
+            _data.map((point) => {
+              currentDate += 1000;
+              return [currentDate, point];
+            })
+          );
           // const maxv = historyForecastData.reduce((max, [a]) => Math.max(max, a), -Infinity)
           this.chartInstance.setOption({
             series: [
@@ -636,24 +678,24 @@ export class ForcastChartComponent
                 name: "Pressure Forecast",
                 // data: forecast.filter(([x]) => x >= maxv),
                 data: forecast,
-                type: 'line'
+                type: "line",
               },
               {
                 name: "Pressure",
                 data: pressureData,
-                type: 'line'
+                type: "line",
               },
               {
                 name: "Pressure Historical Forecast",
                 data: historyForecastData,
-                type: 'line'
+                type: "line",
               },
-            ]
+            ],
           });
         }
       },
-      error: (err) => { },
-      complete: () => { },
+      error: (err) => {},
+      complete: () => {},
     });
   }
 
@@ -707,7 +749,7 @@ export class ForcastChartComponent
           type: "time",
           boundaryGap: false,
           min: null,
-          max: null
+          max: null,
         },
         yAxis: {
           type: "value",
@@ -727,9 +769,9 @@ export class ForcastChartComponent
         animation: false,
         legend: {
           textStyle: {
-            color: 'rgba(255, 255, 255, 0.8)',
+            color: "rgba(255, 255, 255, 0.8)",
           },
-          inactiveColor: 'grey',
+          inactiveColor: "grey",
         },
       };
       this.chartInstance.setOption(option);
@@ -740,15 +782,19 @@ export class ForcastChartComponent
     }
   }
 
-  ngOnInit(): void { }
+  ngOnInit(): void {}
 
   ngOnDestroy(): void {
     clearInterval(this.setIntervalId);
     if (this.chartInstance) {
       this.chartInstance.dispose();
     }
-    this.alarmsWs$.complete();
-    this.forecastWs.complete();
+    if (this.alarmsWs$) {
+      this.alarmsWs$.complete();
+    }
+    if (this.forecastWs) {
+      this.forecastWs.complete();
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }

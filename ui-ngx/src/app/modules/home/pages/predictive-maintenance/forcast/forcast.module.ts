@@ -5,6 +5,9 @@ import { ForecastService } from "@app/core/http/forecast.service";
 import { Order } from "@app/modules/home/models/predictive-maintenance.models";
 import { PageComponent } from "@app/shared/public-api";
 import { Store } from "@ngrx/store";
+import { MatDialog } from "@angular/material/dialog";
+import { AddForecastDialogComponent } from "../../../components/predictive-maintenance/components/forecast/add-forecast-dialog/add-forecast-dialog.component";
+import { ModelSelectionDialogComponent } from "./model-selection-dialog/model-selection-dialog.component";
 
 @Component({
   selector: "forcast",
@@ -17,9 +20,11 @@ export class ForcastComponent extends PageComponent implements Order {
   forecastData: Order[];
 
   models: Order[];
+  modelNames: Map<string, string> = new Map(); // Cache for model names
   id: string;
   trueId: string;
   device: string;
+  forecastName: string;
   date: string;
   status: string;
 
@@ -27,7 +32,8 @@ export class ForcastComponent extends PageComponent implements Order {
     protected store: Store<AppState>,
     protected route: ActivatedRoute,
     private forecastService: ForecastService,
-    protected router: Router
+    protected router: Router,
+    public dialog: MatDialog
   ) {
     super(store);
   }
@@ -39,6 +45,23 @@ export class ForcastComponent extends PageComponent implements Order {
     this.Attributes = [];
     this.trueId = value;
     this.fetchForcast(value);
+  }
+
+  openModelSelectionDialog(): void {
+    const dialogRef = this.dialog.open(ModelSelectionDialogComponent, {
+      width: "600px",
+      data: {
+        models: this.models,
+        currentModelId: this.id,
+        getModelDisplayName: (model: any) => this.getModelDisplayName(model),
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((selectedModel: Order) => {
+      if (selectedModel && selectedModel.trueId !== this.id) {
+        this.changeModel(selectedModel.trueId);
+      }
+    });
   }
   ngOnInit(): void {
     // Check if data was passed via the router's state
@@ -62,15 +85,46 @@ export class ForcastComponent extends PageComponent implements Order {
         if (this.models === undefined || this.models.length === 0) {
           return this.router.navigateByUrl("/PM");
         }
+
+        // Fetch names for all models
+        this.fetchModelNames();
+
         const forecast = this.models.find(
           (element) => element.trueId === this.id
         );
         if (!forecast) return this.router.navigateByUrl("");
         this.device = forecast.device;
+        this.forecastName = forecast.id; // Use the forecast ID as the name
         this.date = forecast.date;
         this.status = forecast.status;
       }
     });
+  }
+
+  private fetchModelNames() {
+    if (this.models && this.models.length > 0) {
+      this.models.forEach((model) => {
+        this.forecastService.getForecast(model.trueId).subscribe(
+          (data) => {
+            const name = data.name || data.id.id.split("-")[0];
+            this.modelNames.set(model.trueId, name);
+          },
+          (error) => {
+            console.error(
+              "Error fetching forecast name for",
+              model.trueId,
+              error
+            );
+            // Fallback to the existing ID
+            this.modelNames.set(model.trueId, model.id);
+          }
+        );
+      });
+    }
+  }
+
+  getModelDisplayName(model: any): string {
+    return this.modelNames.get(model.trueId) || model.id;
   }
 
   fetchForcast(forcastId: string): any {
@@ -81,9 +135,36 @@ export class ForcastComponent extends PageComponent implements Order {
           return attr.key;
         });
         this.trueId = data.id.id;
+        this.forecastName = data.name || data.id.id.split("-")[0]; // Use name if available, fallback to ID
       },
       (error) => {
         console.error("Error fetching forecast:", error);
+      }
+    );
+  }
+
+  openCreateModelDialog(): void {
+    const dialogRef = this.dialog.open(AddForecastDialogComponent, {
+      width: "600px",
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.addForecast(result); // Call addForecast if a result is returned
+      }
+    });
+  }
+
+  addForecast(forecast: any): void {
+    // Call the service to add a forecast
+    this.forecastService.addForecast(forecast).subscribe(
+      (response) => {
+        console.log("Forecast created successfully:", response);
+        // Navigate back to the forecast list to see the new model
+        this.router.navigateByUrl("/PM");
+      },
+      (error) => {
+        console.error("Error adding forecast:", error);
       }
     );
   }

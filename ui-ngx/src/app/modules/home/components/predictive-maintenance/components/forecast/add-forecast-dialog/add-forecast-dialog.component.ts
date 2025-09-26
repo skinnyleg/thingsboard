@@ -77,6 +77,48 @@ export class AddForecastDialogComponent implements OnInit {
   devicesList: DeviceInfo[] = []; // To store the fetched devices
   noTelemetryMessage: string | null = null; // Message to show if no telemetry is available
 
+  // Step navigation properties
+  currentStep: number = 1;
+  totalSteps: number = 2;
+
+  // Global date range properties (renamed for forecast)
+  globalStartDate: Date | null = null;
+  globalEndDate: Date | null = null;
+
+  // Anomalies date range properties
+  anomaliesStartDate: Date | null = null;
+  anomaliesEndDate: Date | null = null;
+
+  // Algorithm form controls
+  forecastAlgorithmControl = new FormControl("", Validators.required);
+  anomaliesAlgorithmControl = new FormControl("", Validators.required);
+
+  // Algorithm options
+  forecastAlgorithmOptions = [
+    {
+      value: "arima",
+      label: "ARIMA (Auto Regressive Integrated Moving Average)",
+    },
+    { value: "lstm", label: "LSTM (Long Short-Term Memory)" },
+    { value: "linear_regression", label: "Linear Regression" },
+    { value: "polynomial_regression", label: "Polynomial Regression" },
+    { value: "exponential_smoothing", label: "Exponential Smoothing" },
+    { value: "prophet", label: "Prophet" },
+    { value: "sarima", label: "SARIMA (Seasonal ARIMA)" },
+    { value: "random_forest", label: "Random Forest" },
+  ];
+
+  anomaliesAlgorithmOptions = [
+    { value: "isolation_forest", label: "Isolation Forest" },
+    { value: "one_class_svm", label: "One-Class SVM" },
+    { value: "local_outlier_factor", label: "Local Outlier Factor (LOF)" },
+    { value: "elliptic_envelope", label: "Elliptic Envelope" },
+    { value: "statistical_outlier", label: "Statistical Outlier Detection" },
+    { value: "dbscan", label: "DBSCAN Clustering" },
+    { value: "autoencoder", label: "Autoencoder Neural Network" },
+    { value: "seasonal_decompose", label: "Seasonal Decomposition" },
+  ];
+
   constructor(
     public dialogRef: MatDialogRef<AddForecastDialogComponent>,
     private deviceService: DeviceService,
@@ -86,6 +128,16 @@ export class AddForecastDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Initialize forecast dates with default values (last 30 days)
+    this.globalEndDate = new Date();
+    this.globalStartDate = new Date();
+    this.globalStartDate.setDate(this.globalStartDate.getDate() - 30);
+
+    // Initialize anomalies dates with default values (last 60 days)
+    this.anomaliesEndDate = new Date();
+    this.anomaliesStartDate = new Date();
+    this.anomaliesStartDate.setDate(this.anomaliesStartDate.getDate() - 60);
+
     // Load the first page with only one device to get the total count
     const firstPageLink = new PageLink(1, 0, null, {
       property: "createdTime",
@@ -182,17 +234,89 @@ export class AddForecastDialogComponent implements OnInit {
   }
   //  && this.selectedDevice != null
   get canAddField(): boolean {
+    if (!this.selectedDevice) {
+      return false; // Cannot add fields without a selected device
+    }
     if (this.availableTelemetry.length === 0) {
-      return true; // Disable adding fields if no telemetry is available
+      return false; // Disable adding fields if no telemetry is available
     }
     return this.fields.length < this.availableTelemetry.length;
   }
 
   get isFormValid(): boolean {
+    const isForecastDateRangeValid =
+      this.globalStartDate != null &&
+      this.globalEndDate != null &&
+      this.globalStartDate < this.globalEndDate;
+
+    const isAnomaliesDateRangeValid =
+      this.anomaliesStartDate != null &&
+      this.anomaliesEndDate != null &&
+      this.anomaliesStartDate < this.anomaliesEndDate;
+
+    // Validate telemetry attributes only if they exist
+    const areAttributesValid =
+      this.fields.length === 0 ||
+      this.fields.every((field) => field.key && field.key.trim() !== "");
+
     return (
       this.forecastNameControl.valid &&
-      this.selectedDevice != null // Ensure a device is selected
+      this.selectedDevice != null && // Ensure a device is selected
+      isForecastDateRangeValid && // Ensure valid forecast date range
+      isAnomaliesDateRangeValid && // Ensure valid anomalies date range
+      this.forecastAlgorithmControl.valid && // Ensure forecast algorithm is selected
+      this.anomaliesAlgorithmControl.valid && // Ensure anomalies algorithm is selected
+      areAttributesValid // Validate attributes only if they exist
     );
+  }
+
+  // Step-specific validation
+  isCurrentStepValid(): boolean {
+    switch (this.currentStep) {
+      case 1:
+        // Validate telemetry attributes only if they exist
+        const areAttributesValid =
+          this.fields.length === 0 ||
+          this.fields.every((field) => field.key && field.key.trim() !== "");
+
+        return (
+          this.forecastNameControl.valid &&
+          this.selectedDevice != null &&
+          areAttributesValid // Attributes are optional but must be valid if present
+        );
+      case 2:
+        const isForecastDateRangeValid =
+          this.globalStartDate != null &&
+          this.globalEndDate != null &&
+          this.globalStartDate < this.globalEndDate;
+
+        const isAnomaliesDateRangeValid =
+          this.anomaliesStartDate != null &&
+          this.anomaliesEndDate != null &&
+          this.anomaliesStartDate < this.anomaliesEndDate;
+
+        return (
+          isForecastDateRangeValid &&
+          isAnomaliesDateRangeValid &&
+          this.forecastAlgorithmControl.valid &&
+          this.anomaliesAlgorithmControl.valid
+        );
+      default:
+        return false;
+    }
+  }
+
+  // Step navigation methods
+  nextStep(): void {
+    if (this.currentStep < this.totalSteps && this.isCurrentStepValid()) {
+      this.currentStep++;
+    }
+  }
+
+  previousStep(): void {
+    if (this.currentStep > 1) {
+      this.currentStep--;
+    }
   }
 
   // Add a new field with telemetry autocomplete
@@ -224,15 +348,24 @@ export class AddForecastDialogComponent implements OnInit {
       return;
     }
     const deviceId = this.selectedDevice.id;
-    const attributes: ForecastFieldRequest[] = this.fields.map((el) => ({
-      key: el.key,
-      startDate: el.startDate.toISOString().slice(0, 10),
-      endDate: el.endDate.toISOString().slice(0, 10),
-    }));
+
+    // Only include attributes if they exist and are valid
+    const attributes: ForecastFieldRequest[] = this.fields
+      .filter((field) => field.key && field.key.trim() !== "")
+      .map((el) => ({
+        key: el.key,
+        startDate: this.globalStartDate.toISOString().slice(0, 10), // Use forecast start date
+        endDate: this.globalEndDate.toISOString().slice(0, 10), // Use forecast end date
+      }));
+
     this.dialogRef.close({
       name: this.forecastNameControl.value,
       deviceId: deviceId,
-      attributes: attributes,
+      attributes: attributes, // This can now be an empty array
+      forecastAlgorithm: this.forecastAlgorithmControl.value,
+      anomaliesAlgorithm: this.anomaliesAlgorithmControl.value,
+      anomaliesStartDate: this.anomaliesStartDate.toISOString().slice(0, 10),
+      anomaliesEndDate: this.anomaliesEndDate.toISOString().slice(0, 10),
     });
   }
 }

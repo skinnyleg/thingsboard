@@ -3,8 +3,8 @@
     <div class="title">
       Forecast Chart
     </div>
-    <button mat-flat-button class="history" *ngIf="group.value == 'realtime'">
-      <mat-select [disabled]="group.value == 'history'" (selectionChange)="onSelectTimeChange($event)" [(value)]="selected.value">
+    <button mat-flat-button class="history" *ngIf="isRealtimeMode">
+      <mat-select [disabled]="isHistoryMode" (selectionChange)="onSelectTimeChange($event)" [(value)]="selected.value">
         <mat-option *ngFor="let option of selectionOptions" [(value)]="option.value">{{ option.name }}</mat-option>
       </mat-select>
     </button>
@@ -18,7 +18,8 @@
             <div style="display:flex; align-items:center; flex-direction:column; margin-left: 20px;">
               End Date
             </div>
-            <button mat-icon-button (click)="updateEndDate()" [disabled]="!endDate" style="position: absolute; right: 0;">
+            <button mat-icon-button (click)="updateEndDate()" [disabled]="!endDate"
+              style="position: absolute; right: 0;">
               <mat-icon>update</mat-icon>
             </button>
           </div>
@@ -28,13 +29,19 @@
             <mat-calendar [(selected)]="startDate" [(startAt)]="startDate" #dateStartRange>
             </mat-calendar>
             <div style="display:flex">
-              <mat-select [value]="startDate.getHours() < 10 ? '0' + startDate.getHours(): startDate.getHours().toString()" #startDateHours>
+              <mat-select
+                [value]="startDate.getHours() < 10 ? '0' + startDate.getHours(): startDate.getHours().toString()"
+                #startDateHours>
                 <mat-option *ngFor="let option of getHours()" [value]="option">{{ option }}</mat-option>
               </mat-select>
-              <mat-select [value]="startDate.getMinutes() < 10 ? '0' + startDate.getMinutes() : startDate.getMinutes().toString()" #startDateMinutes>
+              <mat-select
+                [value]="startDate.getMinutes() < 10 ? '0' + startDate.getMinutes() : startDate.getMinutes().toString()"
+                #startDateMinutes>
                 <mat-option *ngFor="let option of getMinutes()" [value]="option">{{ option }}</mat-option>
               </mat-select>
-              <mat-select [value]="startDate.getSeconds() < 10 ? '0' + startDate.getSeconds() : startDate.getSeconds().toString()" #startDateSeconds>
+              <mat-select
+                [value]="startDate.getSeconds() < 10 ? '0' + startDate.getSeconds() : startDate.getSeconds().toString()"
+                #startDateSeconds>
                 <mat-option *ngFor="let option of getSeconds()" [value]="option">{{ option }}</mat-option>
               </mat-select>
             </div>
@@ -43,35 +50,39 @@
             <mat-calendar [(selected)]="endDate" [(startAt)]="endDate" #dateEndRange>
             </mat-calendar>
             <div style="display:flex">
-              <mat-select [value]="endDate.getHours() < 10 ? '0' + endDate.getHours() : endDate.getHours().toString()" #endDateHours>
+              <mat-select [value]="endDate.getHours() < 10 ? '0' + endDate.getHours() : endDate.getHours().toString()"
+                #endDateHours>
                 <mat-option *ngFor="let option of getHours()" [value]="option">{{ option }}</mat-option>
               </mat-select>
-              <mat-select [value]="endDate.getMinutes() < 10 ? '0' + endDate.getMinutes() : endDate.getMinutes().toString()" #endDateMinutes>
+              <mat-select
+                [value]="endDate.getMinutes() < 10 ? '0' + endDate.getMinutes() : endDate.getMinutes().toString()"
+                #endDateMinutes>
                 <mat-option *ngFor="let option of getMinutes()" [value]="option">{{ option }}</mat-option>
               </mat-select>
-              <mat-select [value]="endDate.getSeconds() < 10 ? '0' + endDate.getSeconds() : endDate.getSeconds().toString()" #endDateSeconds>
+              <mat-select
+                [value]="endDate.getSeconds() < 10 ? '0' + endDate.getSeconds() : endDate.getSeconds().toString()"
+                #endDateSeconds>
                 <mat-option *ngFor="let option of getSeconds()" [value]="option">{{ option }}</mat-option>
               </mat-select>
             </div>
           </div>
         </div>
         <div style="width: 100%; text-align: end">
-          <button style="margin-left: auto;" mat-raised-button class="datepicker-apply" (click)="handleHistoryTimeChange(dateStartRange, dateEndRange, startDateHours, startDateMinutes, startDateSeconds, endDateHours, endDateMinutes, endDateSeconds)">OK</button>
+          <button style="margin-left: auto;" mat-raised-button class="datepicker-apply"
+            (click)="handleHistoryTimeChange(dateStartRange, dateEndRange, startDateHours, startDateMinutes, startDateSeconds, endDateHours, endDateMinutes, endDateSeconds)">OK</button>
         </div>
       </div>
     </div>
-    <button (click)="toggleDatePicker(datepicker)" *ngIf="group.value == 'history'">
+    <button (click)="toggleDatePicker(datepicker)" *ngIf="isHistoryMode">
       <mat-icon aria-hidden="false" aria-label="Example home icon" fontIcon="calendar_month"></mat-icon>
     </button>
-    <mat-button-toggle-group name="fontStyle" #group="matButtonToggleGroup" value="realtime" class="graph-toggle" aria-label="Font Style" (change)="handleGraphChange($event)">
+    <mat-button-toggle-group name="fontStyle" #group="matButtonToggleGroup" value="realtime" class="graph-toggle"
+      aria-label="Font Style" (change)="handleGraphChange($event)">
       <mat-button-toggle value="history">History</mat-button-toggle>
       <mat-button-toggle value="realtime">Realtime</mat-button-toggle>
     </mat-button-toggle-group>
   </div>
   <div class="chart-container">
-    <div
-      id="chart"
-      class="chart"
-    ></div>
+    <div id="chart" class="chart"></div>
   </div>
 </div>

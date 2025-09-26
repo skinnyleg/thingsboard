@@ -15,74 +15,173 @@
     limitations under the License.
 
 -->
-<h2 mat-dialog-title>Create Your Forecast</h2>
+<h2 mat-dialog-title>Create Your Model</h2>
 
 <mat-dialog-content class="dialog-content">
-  <mat-form-field appearance="outline" class="full-width">
-    <mat-label>Forecast Name</mat-label>
-    <input matInput [formControl]="forecastNameControl" placeholder="Enter forecast name" />
-    <mat-error *ngIf="forecastNameControl.invalid && forecastNameControl.touched">Forecast name is required.</mat-error>
-  </mat-form-field>
-
-  <!-- Autocomplete for device selection -->
-  <mat-form-field appearance="outline" class="full-width">
-    <mat-label>Device Name</mat-label>
-    <input type="text" matInput [formControl]="myControl" [matAutocomplete]="auto"/>
-    <mat-autocomplete 
-      #auto="matAutocomplete" 
-      [displayWith]="displayFn" 
-      (optionSelected)="onDeviceSelected($event.option.value)">
-      <mat-option *ngFor="let device of filteredDevices | async" [value]="device">
-        {{ device.name }}
-      </mat-option>
-    </mat-autocomplete>
-  </mat-form-field>
-
-  <!-- Message if no telemetry available -->
-  <p *ngIf="noTelemetryMessage" class="no-telemetry-message small-text">{{ noTelemetryMessage }}</p>
-
-  <!-- Fields with type, start, and end dates -->
-  <div class="fields-container">
-    <div *ngFor="let field of fields; let i = index">
-      <div class="field">
-        <!-- Button to remove the field -->
-        <button mat-icon-button (click)="removeField(i)" class="delete_button">
-          <mat-icon>remove_circle</mat-icon>
-        </button>
-
-        <!-- Autocomplete for telemetry field types -->
-        <mat-form-field appearance="outline" class="input-field">
-          <mat-label>Field Type {{ i + 1 }}</mat-label>
-          <input type="text" matInput [(ngModel)]="field.key" [matAutocomplete]="telemetryAuto" />
-          <mat-autocomplete #telemetryAuto="matAutocomplete">
-            <mat-option 
-              *ngFor="let telemetry of getFilteredTelemetry(i)" 
-              [value]="telemetry">
-              {{ telemetry }}
-            </mat-option>
-          </mat-autocomplete>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="input-field">
-          <mat-label>Date Range for Field {{ i + 1 }}</mat-label>
-          <mat-date-range-input [rangePicker]="picker">
-            <input matStartDate [(ngModel)]="field.startDate" placeholder="Start date" />
-            <input matEndDate [(ngModel)]="field.endDate" placeholder="End date" />
-          </mat-date-range-input>
-          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-          <mat-date-range-picker #picker></mat-date-range-picker>
-        </mat-form-field>
+  <!-- Progress Bar -->
+  <div class="progress-container">
+    <div class="progress-steps">
+      <div class="step" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
+        <div class="step-number">1</div>
+        <div class="step-label">Model Setup</div>
+      </div>
+      <div class="progress-line" [class.active]="currentStep > 1"></div>
+      <div class="step" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
+        <div class="step-number">2</div>
+        <div class="step-label">Algorithm & Dates</div>
       </div>
     </div>
+  </div>
 
-    <!-- Button to add a new field -->
-    <button *ngIf="canAddField" mat-raised-button color="accent" (click)="addField()" [disabled]="!selectedDevice || noTelemetryMessage">
-      <mat-icon>add_circle</mat-icon> Add Field
-    </button>
+  <!-- Step 1: Model Setup -->
+  <div *ngIf="currentStep === 1" class="step-content">
+
+    <mat-label>Model Name:</mat-label>
+    <mat-form-field appearance="outline" class="full-width">
+      <input matInput [formControl]="forecastNameControl" placeholder="Enter a descriptive name for your model"
+        [attr.aria-label]="'Model name input'" />
+      <mat-error *ngIf="forecastNameControl.invalid && forecastNameControl.touched">Model name is required.</mat-error>
+    </mat-form-field>
+
+    <!-- Autocomplete for device selection -->
+    <mat-label>Device Name:</mat-label>
+    <mat-form-field appearance="outline" class="full-width">
+      <input type="text" matInput [formControl]="myControl" [matAutocomplete]="auto"
+        placeholder="Search and select a device" [attr.aria-label]="'Device name input'" />
+      <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn"
+        (optionSelected)="onDeviceSelected($event.option.value)">
+        <mat-option *ngFor="let device of filteredDevices | async" [value]="device">
+          {{ device.name }}
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+
+    <!-- Message if no telemetry available -->
+    <p *ngIf="noTelemetryMessage" class="no-telemetry-message small-text">{{ noTelemetryMessage }}</p>
+
+    <!-- Fields with telemetry attributes -->
+    <div class="fields-container">
+      <mat-label *ngIf="selectedDevice">Telemetry Attributes (Optional):</mat-label>
+      <p *ngIf="selectedDevice && fields.length === 0" class="optional-message">
+        <mat-icon class="info-icon">info</mat-icon>
+        You can add telemetry attributes for more specific forecasting, or proceed without them for general model
+        creation.
+      </p>
+      <div *ngFor="let field of fields; let i = index">
+        <div class="field">
+          <!-- Button to remove the field -->
+          <button mat-icon-button (click)="removeField(i)" class="delete_button"
+            [attr.aria-label]="'Remove telemetry attribute ' + (i + 1)">
+            <mat-icon>remove_circle</mat-icon>
+          </button>
+
+          <!-- Autocomplete for telemetry field types -->
+          <mat-label>Telemetry Attribute {{ i + 1 }}:</mat-label>
+          <mat-form-field appearance="outline" class="input-field">
+            <input type="text" matInput [(ngModel)]="field.key" [matAutocomplete]="telemetryAuto"
+              placeholder="Select telemetry attribute"
+              [attr.aria-label]="'Telemetry attribute ' + (i + 1) + ' input'" />
+            <mat-autocomplete #telemetryAuto="matAutocomplete">
+              <mat-option *ngFor="let telemetry of getFilteredTelemetry(i)" [value]="telemetry">
+                {{ telemetry }}
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Button to add a new field -->
+      <button *ngIf="canAddField" mat-raised-button color="accent" (click)="addField()"
+        [disabled]="!selectedDevice || noTelemetryMessage" [attr.aria-label]="'Add new telemetry attribute'">
+        <mat-icon>add_circle</mat-icon> Add Attribute
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 2: Algorithm & Dates -->
+  <div *ngIf="currentStep === 2" class="step-content">
+
+    <!-- Forecast Date Range Section -->
+    <div class="global-date-section">
+      <mat-label>Forecast Date Range:</mat-label>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-date-range-input [rangePicker]="globalPicker">
+          <input matStartDate [(ngModel)]="globalStartDate" placeholder="Forecast start date"
+            [attr.aria-label]="'Forecast start date'" />
+          <input matEndDate [(ngModel)]="globalEndDate" placeholder="Forecast end date"
+            [attr.aria-label]="'Forecast end date'" />
+        </mat-date-range-input>
+        <mat-datepicker-toggle matIconSuffix [for]="globalPicker"></mat-datepicker-toggle>
+        <mat-date-range-picker #globalPicker></mat-date-range-picker>
+        <mat-error *ngIf="globalStartDate && globalEndDate && globalStartDate >= globalEndDate">
+          End date must be after start date
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Forecast Algorithm Selection -->
+    <div class="algorithm-section">
+      <mat-label>Select Algorithm for Forecast:</mat-label>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-select [formControl]="forecastAlgorithmControl" placeholder="Choose forecast algorithm"
+          [attr.aria-label]="'Forecast algorithm selection'">
+          <mat-option *ngFor="let algorithm of forecastAlgorithmOptions" [value]="algorithm.value">
+            {{ algorithm.label }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="forecastAlgorithmControl.invalid && forecastAlgorithmControl.touched">
+          Please select a forecast algorithm
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Anomalies Date Range Section -->
+    <div class="anomalies-date-section">
+      <mat-label>Date Range for Anomalies:</mat-label>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-date-range-input [rangePicker]="anomaliesPicker">
+          <input matStartDate [(ngModel)]="anomaliesStartDate" placeholder="Anomalies start date"
+            [attr.aria-label]="'Anomalies start date'" />
+          <input matEndDate [(ngModel)]="anomaliesEndDate" placeholder="Anomalies end date"
+            [attr.aria-label]="'Anomalies end date'" />
+        </mat-date-range-input>
+        <mat-datepicker-toggle matIconSuffix [for]="anomaliesPicker"></mat-datepicker-toggle>
+        <mat-date-range-picker #anomaliesPicker></mat-date-range-picker>
+        <mat-error *ngIf="anomaliesStartDate && anomaliesEndDate && anomaliesStartDate >= anomaliesEndDate">
+          End date must be after start date
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Anomalies Algorithm Selection -->
+    <div class="anomalies-algorithm-section">
+      <mat-label>Select Algorithm for Anomalies:</mat-label>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-select [formControl]="anomaliesAlgorithmControl" placeholder="Choose anomalies algorithm"
+          [attr.aria-label]="'Anomalies algorithm selection'">
+          <mat-option *ngFor="let algorithm of anomaliesAlgorithmOptions" [value]="algorithm.value">
+            {{ algorithm.label }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="anomaliesAlgorithmControl.invalid && anomaliesAlgorithmControl.touched">
+          Please select an anomalies algorithm
+        </mat-error>
+      </mat-form-field>
+    </div>
   </div>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button (click)="onCancel()">Cancel</button>
-  <button mat-raised-button color="primary" [disabled]="!isFormValid" (click)="onConfirm()">Confirm</button>
+  <button mat-button (click)="onCancel()" [attr.aria-label]="'Cancel forecast creation'">Cancel</button>
+  <button *ngIf="currentStep > 1" mat-button (click)="previousStep()" [attr.aria-label]="'Go to previous step'">
+    <mat-icon>arrow_back</mat-icon> Previous
+  </button>
+  <button *ngIf="currentStep < totalSteps" mat-raised-button color="primary" [disabled]="!isCurrentStepValid()"
+    (click)="nextStep()" [attr.aria-label]="'Go to next step'">
+    Next <mat-icon>arrow_forward</mat-icon>
+  </button>
+  <button *ngIf="currentStep === totalSteps" mat-raised-button color="primary" [disabled]="!isFormValid"
+    (click)="onConfirm()" [attr.aria-label]="'Confirm and create forecast'">
+    Create Model
+  </button>
 </mat-dialog-actions>

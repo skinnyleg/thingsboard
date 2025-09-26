@@ -26,7 +26,7 @@ import { RouterTabsComponent } from "../../components/router-tabs.component";
 import { ForcastComponent } from "./forcast/forcast.module";
 
 @Injectable()
-export class OAuth2LoginProcessingUrlResolver  {
+export class OAuth2LoginProcessingUrlResolver {
   constructor(private oauth2Service: OAuth2Service) {}
 
   resolve(): Observable<string> {

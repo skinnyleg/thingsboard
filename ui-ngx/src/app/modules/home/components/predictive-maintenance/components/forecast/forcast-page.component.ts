@@ -16,7 +16,7 @@
 
 import { SelectionModel } from "@angular/cdk/collections";
 import { CommonModule } from "@angular/common";
-import { Component, OnInit, ViewChild } from "@angular/core";
+import { Component, ElementRef, OnInit, ViewChild } from "@angular/core";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
@@ -24,6 +24,8 @@ import { MatDialog } from "@angular/material/dialog";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
+import { MatSelectModule } from "@angular/material/select";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import {
   MatPaginator,
   MatPaginatorModule,
@@ -34,6 +36,9 @@ import { MatSort, MatSortModule } from "@angular/material/sort";
 import { MatTableDataSource, MatTableModule } from "@angular/material/table";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatCheckboxModule } from "@angular/material/checkbox";
+import { MatListModule } from "@angular/material/list";
+import { MatMenuModule } from "@angular/material/menu";
 import { Router } from "@angular/router";
 import { ForecastService } from "@app/core/http/forecast.service";
 import { DeviceService } from "@app/core/public-api";
@@ -64,12 +69,37 @@ import { AddForecastDialogComponent } from "./add-forecast-dialog/add-forecast-d
     MatToolbarModule,
     MatSidenavModule,
     MatDividerModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatCheckboxModule,
+    MatListModule,
+    MatMenuModule,
     TranslateModule,
     ReactiveFormsModule,
   ],
 })
 export class ForcastComponent implements OnInit {
-  displayedColumns: string[] = ["id", "device", "date", "status", "action"];
+  // All available columns with their display names
+  allColumns = [
+    { key: "id", name: "ID", visible: false }, // Hidden by default
+    { key: "modelName", name: "Name", visible: true },
+    { key: "device", name: "Device", visible: true },
+    { key: "date", name: "Creation Time", visible: true },
+    { key: "status", name: "Status", visible: true },
+    { key: "action", name: "Actions", visible: true, permanent: true }, // Actions column always visible
+  ];
+
+  // Get currently displayed columns based on visibility
+  get displayedColumns(): string[] {
+    return this.allColumns
+      .filter((column) => column.visible)
+      .map((column) => column.key);
+  }
+
+  // Get columns that can be toggled (excluding permanent ones)
+  get toggleableColumns() {
+    return this.allColumns.filter((column) => !column.permanent);
+  }
 
   dataSource = new MatTableDataSource<Order>();
   textSearch = new FormControl();
@@ -77,6 +107,8 @@ export class ForcastComponent implements OnInit {
   isLoading = false;
   totalElements = 0;
   textSearchMode: boolean = false;
+  toolbarOpened: boolean = true; // Add toolbar state
+  models: Order[] = []; // For storing available models
   pageLink: PageLink = new PageLink(10, 0, null, {
     property: "createdTime",
     direction: Direction.DESC,
@@ -86,6 +118,7 @@ export class ForcastComponent implements OnInit {
   pageSizeOptions = [5, 10, 25, 100];
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild("searchInput") searchInputField!: ElementRef;
 
   constructor(
     public dialog: MatDialog,
@@ -128,8 +161,13 @@ export class ForcastComponent implements OnInit {
       trueId: item.id.id,
       device:
         deviceNameMap.get(item.deviceId.id) || item.deviceId.id.split("-")[0],
+      modelName:
+        item.name ||
+        item.modelName ||
+        item.title ||
+        `Model_${item.id.id.split("-")[0]}`, // Use actual model name from API response
       date: new Date(item.createdTime).toISOString().split("T")[0], // Formatting the createdTime to yyyy-mm-dd
-      status: "Completed", // Default status as Completed
+      status: item.status || "Completed", // Use actual status from API or default to Completed
     }));
   }
 
@@ -151,7 +189,8 @@ export class ForcastComponent implements OnInit {
       (data) => {
         const deviceNameMap = new Map<string, string>();
         const forecastData = data.data;
-        // console.log("data === ", data);
+        console.log("Forecast API response data:", data);
+        console.log("Sample forecast item:", forecastData[0]);
         if (forecastData.length === 0) {
           this.dataSource.data = [];
           this.totalElements = data.totalElements;
@@ -172,6 +211,7 @@ export class ForcastComponent implements OnInit {
         forkJoin(deviceRequests).subscribe(() => {
           const newData = this.structureDate(forecastData, deviceNameMap);
           this.dataSource.data = newData;
+          this.models = [...newData]; // Populate models for the selector
           this.totalElements = data.totalElements;
           this.isLoading = false;
         });
@@ -255,13 +295,38 @@ export class ForcastComponent implements OnInit {
     }
   }
 
+  enterFilterMode() {
+    this.textSearchMode = true;
+    setTimeout(() => {
+      this.searchInputField.nativeElement.focus();
+      this.searchInputField.nativeElement.setSelectionRange(0, 0);
+    }, 10);
+  }
+
   exitFilterMode() {
-    this.textSearchMode = false; // Example logic to exit search mode
+    this.textSearchMode = false;
+    this.textSearch.reset();
   }
   openForcastModel(row: Order) {
     this.router.navigateByUrl(`/PM/forcast/${row.trueId}`, {
       state: { forecastData: this.dataSource.data },
     });
   }
+
+  toggleColumnVisibility(columnKey: string): void {
+    const column = this.allColumns.find((col) => col.key === columnKey);
+    if (column && !column.permanent) {
+      column.visible = !column.visible;
+    }
+  }
+
+  toggleToolbar(): void {
+    this.toolbarOpened = !this.toolbarOpened;
+  }
+
+  refreshForecasts(): void {
+    this.fetchForecasts(this.paginator.pageIndex, this.paginator.pageSize);
+  }
+
   // Rest of the methods (add, edit, delete, etc.)
 }

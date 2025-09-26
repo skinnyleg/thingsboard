@@ -119,7 +119,7 @@ $accent: mat.get-color-from-palette($tb-accent);
   #{--tb-dark-hover}: var(--tb-dark-mat-800);
 
   // #{--tb-dark-dialog}:     map_get($tb-dark-mat-indigo, 800);
-    #{--tb-dark-dialog}:    var(--tb-dark-mat-800);
+    #{--tb-dark-dialog}:    #1c1c1c;
   #{--tb-dark-disabled-button}: rgba(white, 0.12);
   // #{--tb-dark-raised-button}: map-get($tb-dark-mat-indigo, 50);
   #{--tb-dark-raised-button}: var(--tb-dark-mat-50);
