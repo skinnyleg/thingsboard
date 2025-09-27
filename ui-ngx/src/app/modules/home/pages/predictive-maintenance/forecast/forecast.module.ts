@@ -8,9 +8,32 @@ import { Store } from "@ngrx/store";
 import { MatDialog } from "@angular/material/dialog";
 import { AddForecastDialogComponent } from "../../../components/predictive-maintenance/components/forecast/add-forecast-dialog/add-forecast-dialog.component";
 import { ModelSelectionDialogComponent } from "./model-selection-dialog/model-selection-dialog.component";
+import { AnomaliesComponent } from "../../../components/predictive-maintenance/components/anomalies/anomalies.component";
+import { CommonModule } from "@angular/common";
+import { ForecastChartComponent } from "../../../components/predictive-maintenance/components/forecast-chart/forecast-chart.component";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatSelectModule } from "@angular/material/select";
+import { MatIconModule } from "@angular/material/icon";
+import { MatButtonModule } from "@angular/material/button";
+import { MatInputModule } from "@angular/material/input";
+import { FormsModule } from "@angular/forms";
+import { MatTooltipModule } from "@angular/material/tooltip";
 
 @Component({
   selector: "forecast",
+  standalone: true,
+  imports: [
+    CommonModule,
+    ForecastChartComponent,
+    AnomaliesComponent,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatIconModule,
+    MatButtonModule,
+    MatInputModule,
+    FormsModule,
+    MatTooltipModule,
+  ],
   templateUrl: "./forecast.component.html",
   styleUrls: ["./forecast.component.scss"],
 })

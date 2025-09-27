@@ -177,3 +177,10 @@ mat-sidenav-content {
     border-bottom: 1px solid #5d5d5d91 !important;
   }
 }
+
+.tb-panel-container {
+  background: var(--tb-dark-background) !important;
+  border: solid 1px var(--tb-dark-mat-800);
+
+  
+}

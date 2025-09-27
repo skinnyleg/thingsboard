@@ -45,7 +45,7 @@
 
 <div class="model-dashboard">
     <tb-forecast-chart [deviceId]="deviceId" [Attributes]="Attributes" [forecastId]="trueId"></tb-forecast-chart>
-    <div style="padding-left: 3em;">
-        <h4>Anomalies</h4>
+    <div class="anomalies-section">
+        <tb-anomalies [deviceId]="deviceId" [forecastId]="trueId"></tb-anomalies>
     </div>
 </div>

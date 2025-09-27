@@ -21,7 +21,6 @@ import { PredictiveMaintenanceComponent } from "@app/modules/home/components/pre
 import { OAuth2Service } from "@core/http/oauth2.service";
 import { Authority } from "@shared/models/authority.enum";
 import { Observable } from "rxjs";
-import { AnomalyDetectionComponent } from "@app/modules/home/pages/predictive-maintenance/anomaly-detection/anomaly-detection-page.module";
 import { RouterTabsComponent } from "../../components/router-tabs.component";
 import { ForecastComponent } from "./forecast/forecast.module";
 
@@ -51,19 +50,6 @@ const routes: Routes = [
         data: {
           auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
           title: "predictive-maintenance.predictive-maintenance",
-          isPage: true,
-        },
-      },
-      {
-        path: "anomaly-detection/:id",
-        component: AnomalyDetectionComponent,
-        data: {
-          auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
-          title: "predictive-maintenance.anomaly-detection",
-          breadcrumb: {
-            label: "Anomaly Detection",
-            icon: "mdi:alert",
-          },
           isPage: true,
         },
       },

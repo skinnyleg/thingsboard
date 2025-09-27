@@ -1,0 +1,375 @@
+.anomalies-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+// Data Table Styles
+.table-container {
+  flex: 1;
+  overflow: hidden;
+
+  mat-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mat-mdc-table-toolbar {
+    min-height: 48px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--mat-divider-color);
+    // background-color: var(--mat-sidenav-container-background-color);
+    // background-color: #1976d2;
+  }
+
+  .table-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: auto;
+  }
+
+  .anomalies-table {
+    flex: 1;
+    width: 100%;
+    min-width: 1200px;
+    // border: solid 1px var(--tb-dark-mat-800);
+    // border-radius: 10px;
+
+    .mat-mdc-header-cell {
+      font-weight: 600;
+      //   color: #424242;
+      //   background-color: #fafafa;
+      padding: 16px 8px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .mat-mdc-cell {
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--mat-divider-color);
+      font-size: 13px;
+    }
+
+    .table-row {
+      &:hover {
+        background-color: #f5f5f5;
+      }
+    }
+  }
+
+  mat-paginator {
+    border-top: 1px solid var(--mat-divider-color);
+    background-color: var(--mat-sidenav-container-background-color);
+  }
+}
+
+// Cell-specific styles
+.severity-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .severity-icon {
+    font-size: 16px;
+  }
+
+  .severity-text {
+    font-weight: 500;
+
+    &.critical {
+      color: #f44336;
+    }
+
+    &.major {
+      color: #ff9800;
+    }
+
+    &.minor {
+      color: #2196f3;
+    }
+  }
+}
+
+.entity-cell {
+  .entity-name {
+    font-weight: 500;
+    // color: #333;
+  }
+}
+
+.error-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .error-name {
+    font-weight: 500;
+    cursor: help;
+    // color: #333;
+  }
+
+  .metrics-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+
+    .metric-chip {
+      background-color: #e3f2fd;
+      color: #1976d2;
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 500;
+      border: 1px solid #bbdefb;
+    }
+  }
+}
+
+.sensor-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .sensor-icon {
+    color: #666;
+    font-size: 16px;
+  }
+
+  .sensor-info {
+    display: flex;
+    flex-direction: column;
+
+    .sensor-name {
+      font-weight: 500;
+      //   color: #333;
+    }
+
+    .device-type {
+      font-size: 11px;
+      //   color: #666;
+      opacity: 0.7;
+    }
+  }
+}
+
+.date-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .date-icon {
+    color: #666;
+    font-size: 16px;
+    opacity: 0.7;
+  }
+}
+
+.location-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .location-icon {
+    color: #666;
+    font-size: 16px;
+  }
+}
+
+.status-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .status-icon {
+    font-size: 16px;
+  }
+
+  .status-text {
+    font-weight: 500;
+
+    &.active {
+      color: #f44336;
+    }
+
+    &.investigating {
+      color: #ff9800;
+    }
+
+    &.resolved {
+      color: #4caf50;
+    }
+  }
+}
+
+.confidence-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .confidence-value {
+    font-weight: 500;
+
+    &.high-confidence {
+      color: #4caf50;
+    }
+
+    &.medium-confidence {
+      color: #ff9800;
+    }
+
+    &.low-confidence {
+      color: #f44336;
+    }
+  }
+
+  .confidence-icon {
+    font-size: 16px;
+    opacity: 0.7;
+  }
+}
+
+.actions-cell {
+  display: flex;
+  gap: 4px;
+
+  .mat-icon-button {
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+
+    .mat-icon {
+      font-size: 16px;
+    }
+  }
+
+  button[disabled] {
+    opacity: 0.5;
+  }
+}
+
+// Dark mode support
+.tb-dark {
+  .anomalies-container {
+    .table-container {
+      mat-card {
+        background-color: #2d2d2d;
+        color: #ffffff;
+      }
+
+      .anomalies-table {
+        .mat-mdc-header-cell {
+          background-color: #1a1a1a;
+          color: #ffffff;
+          border-bottom-color: #404040;
+        }
+
+        .mat-mdc-cell {
+          color: #ffffff;
+          border-bottom-color: #404040;
+        }
+
+        .table-row:hover {
+          background-color: #404040;
+        }
+      }
+
+      mat-paginator {
+        background-color: #2d2d2d;
+        color: #ffffff;
+        border-top-color: #404040;
+      }
+    }
+
+    .severity-text {
+      &.critical {
+        color: #ff6b6b;
+      }
+
+      &.major {
+        color: #ffa726;
+      }
+
+      &.minor {
+        color: #42a5f5;
+      }
+    }
+
+    .entity-cell .entity-name {
+      color: #64b5f6;
+    }
+
+    .error-cell {
+      .error-name {
+        color: #ffffff;
+      }
+
+      .metrics-chips .metric-chip {
+        background-color: #404040;
+        color: #ffffff;
+        border-color: #606060;
+      }
+    }
+
+    .sensor-icon,
+    .location-icon {
+      color: #64b5f6;
+    }
+
+    .sensor-info {
+      .sensor-name {
+        color: #ffffff;
+      }
+
+      .device-type {
+        color: #aaaaaa;
+      }
+    }
+
+    .date-icon {
+      color: #aaaaaa;
+    }
+
+    .status-text {
+      &.active {
+        color: #ff6b6b;
+      }
+
+      &.investigating {
+        color: #ffa726;
+      }
+
+      &.resolved {
+        color: #66bb6a;
+      }
+    }
+
+    .confidence-value {
+      &.high-confidence {
+        color: #66bb6a;
+      }
+
+      &.medium-confidence {
+        color: #ffa726;
+      }
+
+      &.low-confidence {
+        color: #ff6b6b;
+      }
+    }
+
+    .confidence-icon {
+      color: #aaaaaa;
+    }
+
+    .mat-mdc-table-toolbar {
+      background-color: #2d2d2d;
+      color: #ffffff;
+      border-bottom-color: #404040;
+    }
+  }
+}

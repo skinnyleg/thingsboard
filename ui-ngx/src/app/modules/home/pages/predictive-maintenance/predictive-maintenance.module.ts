@@ -18,18 +18,18 @@ import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
 import { SharedModule } from "@shared/shared.module";
 import { PredictiveMaintenanceRoutingModule } from "./predictive-maintenance-routing.module";
-import { AnomalyDetectionComponent } from "./anomaly-detection/anomaly-detection-page.module";
 // import { NgApexchartsModule } from "ng-apexcharts";
 import { ForecastChartComponent } from "../../components/predictive-maintenance/components/forecast-chart/forecast-chart.component";
 import { ForecastComponent } from "./forecast/forecast.module";
 @NgModule({
-  declarations: [AnomalyDetectionComponent, ForecastComponent],
+  declarations: [],
   imports: [
     CommonModule,
     SharedModule,
     PredictiveMaintenanceRoutingModule,
     // NgApexchartsModule,
     ForecastChartComponent,
+    ForecastComponent,
   ],
 })
 export class PredictiveMaintenanceModule {}

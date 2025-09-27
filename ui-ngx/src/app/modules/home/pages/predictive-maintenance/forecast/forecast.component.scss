@@ -354,5 +354,21 @@
     border: 1px solid #5d5d5d91 !important;
     border-radius: 4px;
     height: 100%;
+    display: flex;
+    overflow: scroll;
+    flex-direction: column;
+
+    .anomalies-section {
+      margin: 1rem;
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid var(--tb-dark-mat-800);
+    }
+
+    tb-forecast-chart {
+      overflow: hidden;
+    }
   }
 }

@@ -45,7 +45,6 @@ import screenfull from "screenfull";
 import { MatTabsModule } from "@angular/material/tabs";
 import { CommonModule } from "@angular/common";
 import { ForecastComponent } from "./components/forecast/forecast-page.component";
-import { AnomalyDetectionComponent } from "./components/anomaly-detection/anomaly-detection.component";
 
 @Component({
   selector: "tb-predictive-maintenance",
@@ -56,7 +55,6 @@ import { AnomalyDetectionComponent } from "./components/anomaly-detection/anomal
     CommonModule,
     MatTabsModule,
     ForecastComponent,
-    AnomalyDetectionComponent,
   ],
 })
 export class PredictiveMaintenanceComponent
