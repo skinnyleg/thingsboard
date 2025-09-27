@@ -29,8 +29,8 @@
                 </mat-select>
             </mat-form-field>
         </div>
-        <mat-icon class="status-icon-option" *ngIf="status.toLowerCase() == 'completed'"
-            aria-label="Status Model" matTooltip="{{status}}">check</mat-icon>
+        <mat-icon class="status-icon-option" *ngIf="status.toLowerCase() == 'completed'" aria-label="Status Model"
+            matTooltip="{{status}}">check</mat-icon>
     </div>
     <div class="forecast-actions">
         <div class="left-actions">
@@ -43,19 +43,7 @@
     </div>
 </div>
 
-<div class="anomaly-detection-container">
-    <!-- <div class="anomaly-detection-header">
-        <div class="anomaly-detection-tabs">
-            <p class="active">Anomaly Details</p>
-            <p>Anomaly Summary</p>
-            <p>Cluster Infos</p>
-        </div>
-        <div class="anomaly-detection-action">
-            <button mat-raised-button color="primary">ReBuild</button>
-            <button mat-raised-button color="primary">Apply To</button>
-        </div>
-        <div class="anomaly-detection-header-divider"> </div>
-    </div> -->
+<div class="model-dashboard">
     <tb-forecast-chart [deviceId]="deviceId" [Attributes]="Attributes" [forecastId]="trueId"></tb-forecast-chart>
     <div style="padding-left: 3em;">
         <h4>Anomalies</h4>

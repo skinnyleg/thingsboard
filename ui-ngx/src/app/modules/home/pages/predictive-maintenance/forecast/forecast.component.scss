@@ -47,9 +47,14 @@
   padding: 0 1rem;
   margin-top: 1rem;
 
+  margin-bottom: 1rem;
+
+  display: flex;
+  flex-direction: column;
+
   overflow: hidden;
 
-  height: 92vh;
+  height: 100%;
 
   .model-select {
     width: 100%;
@@ -342,5 +347,12 @@
         }
       }
     }
+  }
+
+  .model-dashboard {
+    background: var(--tb-dark-app-bar);
+    border: 1px solid #5d5d5d91 !important;
+    border-radius: 4px;
+    height: 100%;
   }
 }
