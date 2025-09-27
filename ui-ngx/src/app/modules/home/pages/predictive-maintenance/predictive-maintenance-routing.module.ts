@@ -40,7 +40,7 @@ const routes: Routes = [
     data: {
       breadcrumb: {
         label: "Predictive Maintenance",
-        icon: "mdi:line-up",
+        icon: "mdi:wrench-clock",
       },
       // alarmsMode: AlarmsMode.ALL
     },
@@ -74,8 +74,8 @@ const routes: Routes = [
           auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
           title: "predictive-maintenance.forecast",
           breadcrumb: {
-            label: "Forecast",
-            icon: "mdi:alert",
+            label: "Model",
+            icon: "mdi:tools",
           },
           isPage: true,
         },

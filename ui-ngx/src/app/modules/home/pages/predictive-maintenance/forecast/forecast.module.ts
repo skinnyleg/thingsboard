@@ -20,6 +20,8 @@ export class ForecastComponent extends PageComponent implements Order {
   forecastData: Order[];
 
   models: Order[];
+  filteredModels: Order[] = []; // For storing filtered models
+  modelSearchTerm: string = ""; // Search term for filtering models
   modelNames: Map<string, string> = new Map(); // Cache for model names
   id: string;
   trueId: string;
@@ -86,6 +88,9 @@ export class ForecastComponent extends PageComponent implements Order {
           return this.router.navigateByUrl("/PM");
         }
 
+        // Initialize filtered models
+        this.updateFilteredModels();
+
         // Fetch names for all models
         this.fetchModelNames();
 
@@ -108,6 +113,8 @@ export class ForecastComponent extends PageComponent implements Order {
           (data) => {
             const name = data.name || data.id.id.split("-")[0];
             this.modelNames.set(model.trueId, name);
+            // Update filtered models after names are fetched
+            this.filterModels();
           },
           (error) => {
             console.error(
@@ -117,6 +124,8 @@ export class ForecastComponent extends PageComponent implements Order {
             );
             // Fallback to the existing ID
             this.modelNames.set(model.trueId, model.id);
+            // Update filtered models even on error
+            this.filterModels();
           }
         );
       });
@@ -125,6 +134,26 @@ export class ForecastComponent extends PageComponent implements Order {
 
   getModelDisplayName(model: any): string {
     return this.modelNames.get(model.trueId) || model.id;
+  }
+
+  filterModels(): void {
+    if (!this.modelSearchTerm || this.modelSearchTerm.trim() === "") {
+      this.filteredModels = [...this.models];
+    } else {
+      const searchTerm = this.modelSearchTerm.toLowerCase();
+      this.filteredModels = this.models.filter(
+        (model) =>
+          this.getModelDisplayName(model).toLowerCase().includes(searchTerm) ||
+          model.device.toLowerCase().includes(searchTerm) ||
+          model.date.toLowerCase().includes(searchTerm) ||
+          model.status.toLowerCase().includes(searchTerm)
+      );
+    }
+  }
+
+  private updateFilteredModels(): void {
+    this.filteredModels = [...this.models];
+    this.modelSearchTerm = ""; // Reset search term when models change
   }
 
   fetchForcast(forcastId: string): any {

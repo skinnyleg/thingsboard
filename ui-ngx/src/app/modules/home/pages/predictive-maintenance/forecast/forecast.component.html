@@ -1,22 +1,39 @@
 <!-- New forecast info container -->
+<span class="model-label">Model:</span>
 <div class="forecast-info-container">
     <div class="forecast-name">
-        <span class="model-label">Model:</span>
-        <h3>
-            {{ forecastName || id }}
-            <!-- Debug: Status is "{{ status }}" -->
-            <mat-icon *ngIf="status?.toLowerCase()?.includes('completed') || status?.toLowerCase() === 'complete'"
-                class="status-completed-icon" [title]="status">done</mat-icon>
-        </h3>
+        <div class="model-select-wrapper">
+            <mat-form-field appearance="outline" class="model-select-field">
+                <mat-select [value]="trueId" (selectionChange)="changeModel($event.value)"
+                    [disabled]="!models || models.length <= 1" panelClass="model-select-panel">
+                    <!-- Search input at the top of the dropdown -->
+                    <div class="search-header" (click)="$event.stopPropagation()">
+                        <mat-form-field appearance="outline" class="search-field">
+                            <mat-icon matPrefix>search</mat-icon>
+                            <input matInput placeholder="Search models..." [(ngModel)]="modelSearchTerm"
+                                (input)="filterModels()" (click)="$event.stopPropagation()">
+                        </mat-form-field>
+                    </div>
+
+                    <!-- Filtered model options -->
+                    <mat-option *ngFor="let model of filteredModels" [value]="model.trueId">
+                        <span class="option-content">
+                            {{ getModelDisplayName(model) }}
+                        </span>
+                    </mat-option>
+
+                    <!-- No results message -->
+                    <mat-option *ngIf="filteredModels.length === 0" disabled>
+                        No models found
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+        </div>
+        <mat-icon class="status-icon-option" *ngIf="status.toLowerCase() == 'completed'"
+            aria-label="Status Model" matTooltip="{{status}}">check</mat-icon>
     </div>
     <div class="forecast-actions">
         <div class="left-actions">
-            <div class="model-select-container">
-                <button mat-outlined-button (click)="openModelSelectionDialog()" class="model-select-button">
-                    <mat-icon>list</mat-icon>
-                    Other Models
-                </button>
-            </div>
             <div class="button-container">
                 <button mat-raised-button color="primary" (click)="openCreateModelDialog()">
                     <mat-icon>add</mat-icon>New Model

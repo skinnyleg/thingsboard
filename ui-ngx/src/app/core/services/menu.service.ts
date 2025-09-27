@@ -447,7 +447,7 @@ export class MenuService {
         name: 'Predictive Maintenance',
         type: 'link',
         path: '/predictiveMaintenance',
-        icon: 'mdi:line-up'
+        icon: 'mdi:wrench-clock'
       },
       {
         id: 'resources',

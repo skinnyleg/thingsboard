@@ -19,11 +19,24 @@
     .forecast-info-container {
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
-      .forecast-name h3 .status-completed-icon {
-        color: #66bb6a !important; // Lighter green for dark mode
+      .forecast-name {
+        .model-select-wrapper {
+          .model-select-field {
+            ::ng-deep {
+              .mat-mdc-text-field-wrapper {
+                background: var(--tb-dark-app-bar, #2d3748);
+                color: white;
+              }
 
-        &:hover {
-          color: #4caf50 !important; // Slightly darker on hover in dark mode
+              .mat-mdc-select-value-text {
+                color: white;
+              }
+
+              .mat-mdc-select-arrow {
+                color: rgba(255, 255, 255, 0.7);
+              }
+            }
+          }
         }
       }
     }
@@ -31,7 +44,8 @@
 }
 
 :host {
-  padding: 0 0.5em;
+  padding: 0 1rem;
+  margin-top: 1rem;
 
   overflow: hidden;
 
@@ -48,57 +62,71 @@
     margin-top: 1.5rem;
   }
 
+  .model-label {
+    font-size: 0.9rem;
+    opacity: 0.6;
+    margin-right: 0.5rem;
+  }
+
   .forecast-info-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 0.5rem;
-    margin-top: 1rem;
+    // padding: 0rem 0rem;
+    padding-bottom: 1em;
+    margin-bottom: 1rem;
+    // margin-top: 1rem;
     border-bottom: 1px solid rgba(51, 51, 51, 0.1);
 
     .forecast-name {
       flex: 1;
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
 
-      .model-label {
-        font-size: 0.9rem;
-        opacity: 0.6;
-        margin-right: 0.5rem;
-      }
-
-      h3 {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 500;
+      .model-select-wrapper {
         display: flex;
         align-items: center;
+        gap: 0.5rem;
 
-        .status-completed-icon {
-          margin-left: 0.5rem;
-          font-size: 1.2rem !important;
-          color: #4caf50 !important; // Green color for completed status
-          vertical-align: middle;
-          display: inline-flex !important;
-          transition: transform 250ms cubic-bezier(0, 0, 0.2, 1),
-            color 250ms cubic-bezier(0, 0, 0.2, 1);
-          cursor: pointer;
+        .model-select-field {
+          min-width: 250px;
+          width: auto;
+          height: 36px;
 
-          &:hover {
-            transform: scale(1.1);
-            color: #2e7d32 !important; // Darker green on hover
+          ::ng-deep {
+            .mat-mdc-form-field-subscript-wrapper {
+              display: none;
+            }
+
+            .mat-mdc-text-field-wrapper {
+              background: var(--tb-dark-app-bar, #fff);
+              border-radius: 10px;
+              padding: 5px 10px;
+              height: 36px;
+              display: flex;
+              align-items: center;
+            }
+
+            .mat-mdc-select-value {
+              // font-size: 1.2rem;
+              font-weight: 500;
+              padding-left: 10px;
+            }
+
+            .mat-mdc-form-field-infix {
+              padding: 0;
+              min-height: auto;
+            }
           }
         }
       }
     }
 
     .forecast-actions {
-      flex: 1;
-      text-align: right;
-
       .left-actions {
         display: flex;
         gap: 20px;
-        align-items: flex-end;
-        justify-content: flex-start;
 
         .model-select-container {
           display: flex;
@@ -106,11 +134,13 @@
           gap: 5px;
 
           .model-select-button {
+            background: none;
+            color: var(--tb-dark-text-400);
+            border-radius: 10px;
             display: flex;
             align-items: center;
             gap: 8px;
             padding: 8px 16px;
-            min-width: 140px;
             justify-content: flex-start;
 
             mat-icon {
@@ -130,6 +160,8 @@
             flex-shrink: 0;
             padding-inline: 10px;
             margin: 0;
+            height: 36px;
+            min-height: 36px;
           }
         }
       }
@@ -163,15 +195,6 @@
     padding-left: 0.5em;
     gap: 1.5em;
     cursor: pointer;
-    // color: rgba(51, 51, 51, 0.59);
-
-    // :hover {
-    //   color: #333333;
-    // }
-    //
-    // .active {
-    //   color: #333333;
-    // }
   }
 
   .anomaly-detection-tabs p {
@@ -182,5 +205,142 @@
     display: flex;
     gap: 1.5em;
     padding-right: 0.5em;
+  }
+
+  // Status icon in mat-select options
+  ::ng-deep {
+    .status-icon-option {
+      font-size: 120% !important;
+      color: #4caf50 !important;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    // Custom styling for the model select panel with search
+    .model-select-panel {
+      border-radius: 10px;
+      background: var(--tb-dark-dialog-background, #fff);
+      min-height: 200px;
+      max-height: 400px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+
+      .search-header {
+        padding: 8px 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+        background: var(--tb-dark-dialog-background, #fff);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        border-radius: 10px 10px 0 0;
+        flex-shrink: 0;
+
+        .search-field {
+          width: 100%;
+
+          .mat-mdc-form-field-subscript-wrapper {
+            display: none;
+          }
+
+          .mat-mdc-text-field-wrapper {
+            height: 40px;
+          }
+
+          input {
+            font-size: 14px;
+          }
+
+          mat-icon {
+            color: rgba(0, 0, 0, 0.54);
+          }
+        }
+      }
+
+      .mat-mdc-select-panel {
+        overflow-y: auto;
+        flex-grow: 1;
+      }
+
+      .mat-mdc-option {
+        min-height: 48px;
+        padding: 12px 16px;
+        margin: 4px 8px;
+        border-radius: 8px;
+        background: var(--tb-dark-dialog-background, #fff);
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.04);
+        }
+
+        &.mdc-list-item--selected {
+          background: rgba(63, 81, 181, 0.08);
+        }
+
+        .option-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+        }
+
+        // Ensure the green checkmark is properly styled
+        .status-icon-option {
+          color: #4caf50 !important;
+          font-size: 1rem !important;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        // Add margin-left for non-selected models to align with selected ones
+        &:not(.mdc-list-item--selected) .option-content {
+          margin-left: calc(1rem + 0.5rem); // icon size + icon margin
+        }
+      }
+    }
+
+    // Dark mode styling for search panel
+    .tb-dark .model-select-panel {
+      background: var(--tb-dark-dialog-background, #2d3748);
+
+      .search-header {
+        background: var(--tb-dark-dialog-background, #2d3748);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+        .search-field {
+          mat-icon {
+            color: rgba(255, 255, 255, 0.7);
+          }
+
+          input {
+            color: white;
+
+            &::placeholder {
+              color: rgba(255, 255, 255, 0.6);
+            }
+          }
+        }
+      }
+
+      .mat-mdc-option {
+        background: var(--tb-dark-dialog-background, #2d3748);
+        color: white;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.08);
+        }
+
+        &.mdc-list-item--selected {
+          background: rgba(63, 81, 181, 0.2);
+        }
+
+        // Ensure the green checkmark is visible in dark mode
+        .status-icon-option {
+          color: #4caf50 !important;
+        }
+      }
+    }
   }
 }
