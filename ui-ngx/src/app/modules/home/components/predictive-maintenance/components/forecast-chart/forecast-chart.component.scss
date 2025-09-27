@@ -10,6 +10,12 @@
       }
     }
 
+    .title {
+      .title-icon {
+        color: #64b5f6;
+      }
+    }
+
     .graph-toggle {
       .mat-button-toggle-group {
         background-color: var(--tb-dark-app-bar);
@@ -257,19 +263,39 @@
     margin-right: auto;
     font-size: 1.3em;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .title-icon {
+      font-size: 1.2em;
+      color: #3f51b5;
+    }
   }
 
   .history-container {
     width: 100%;
-    display: flex;
+    // display: flex;
     height: 10%;
     align-items: baseline;
     justify-content: end;
     gap: 0.5em;
     margin-top: 1em;
     margin-bottom: 1em;
-    padding-right: 3em;
-    padding-left: 3em;
+    padding-inline: 2rem;
+
+    .toolbar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: relative;
+    }
+
+    .toolbar-bottom-divider {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
 
     .toolbar-divider {
       height: 24px;
@@ -362,6 +388,10 @@
     background-size: contain;
     background-repeat: no-repeat;
     display: block;
+  }
+
+  .expand-btn {
+    border: none !important;
   }
 }
 

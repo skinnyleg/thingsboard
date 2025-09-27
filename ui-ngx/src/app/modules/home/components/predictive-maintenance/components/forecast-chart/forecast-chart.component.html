@@ -1,103 +1,107 @@
 <div style="height: 100%;" [class.expanded]="isExpanded" class="forecast-chart-container">
   <div class="history-container">
-    <div class="title">
-      Forecast Chart
-    </div>
-    <button mat-icon-button class="refresh-btn" matTooltip="Refresh chart data" matTooltipPosition="above"
-      (click)="refreshChart()" [disabled]="isRefreshing">
-      <mat-icon [class.rotating]="isRefreshing">refresh</mat-icon>
-    </button>
-    <mat-divider vertical class="toolbar-divider"></mat-divider>
-    <button mat-icon-button class="time-selector-icon" matTooltip="Select time range" matTooltipPosition="above"
-      *ngIf="isRealtimeMode" [matMenuTriggerFor]="timeMenu">
-      <mat-icon>schedule</mat-icon>
-    </button>
-    <mat-menu #timeMenu="matMenu">
-      <button mat-menu-item *ngFor="let option of selectionOptions" (click)="onSelectTimeChange({value: option.value})"
-        [class.selected]="selected.value === option.value">
-        <mat-icon *ngIf="selected.value === option.value">check</mat-icon>
-        <span [style.margin-left]="selected.value === option.value ? '0' : '24px'">{{ option.name }}</span>
+    <div class="toolbar">
+      <div class="title">
+        <mat-icon class="title-icon">trending_up</mat-icon>
+        Forecast Chart
+      </div>
+      <button mat-icon-button class="refresh-btn" matTooltip="Refresh chart data" matTooltipPosition="above"
+        (click)="refreshChart()" [disabled]="isRefreshing">
+        <mat-icon [class.rotating]="isRefreshing">refresh</mat-icon>
       </button>
-    </mat-menu>
-    <div style="position:relative">
-      <div class="datepicker-container" #datepicker>
-        <div style="justify-content: space-around; display: flex; align-items: center; height: 3em;">
-          <div>
-            Start Date
-          </div>
-          <div style="display: flex; align-items: center;">
-            <div style="display:flex; align-items:center; flex-direction:column; margin-left: 20px;">
-              End Date
+      <mat-divider vertical class="toolbar-divider"></mat-divider>
+      <button mat-icon-button class="time-selector-icon" matTooltip="Select time range" matTooltipPosition="above"
+        *ngIf="isRealtimeMode" [matMenuTriggerFor]="timeMenu">
+        <mat-icon>schedule</mat-icon>
+      </button>
+      <mat-menu #timeMenu="matMenu">
+        <button mat-menu-item *ngFor="let option of selectionOptions"
+          (click)="onSelectTimeChange({value: option.value})" [class.selected]="selected.value === option.value">
+          <mat-icon *ngIf="selected.value === option.value">check</mat-icon>
+          <span [style.margin-left]="selected.value === option.value ? '0' : '24px'">{{ option.name }}</span>
+        </button>
+      </mat-menu>
+      <div style="position:relative">
+        <div class="datepicker-container" #datepicker>
+          <div style="justify-content: space-around; display: flex; align-items: center; height: 3em;">
+            <div>
+              Start Date
             </div>
-            <button mat-icon-button (click)="updateEndDate()" [disabled]="!endDate"
-              style="position: absolute; right: 0;">
-              <mat-icon>update</mat-icon>
-            </button>
-          </div>
-        </div>
-        <div style="display:flex;">
-          <div>
-            <mat-calendar [(selected)]="startDate" [(startAt)]="startDate" #dateStartRange>
-            </mat-calendar>
-            <div style="display:flex">
-              <mat-select
-                [value]="startDate.getHours() < 10 ? '0' + startDate.getHours(): startDate.getHours().toString()"
-                #startDateHours>
-                <mat-option *ngFor="let option of getHours()" [value]="option">{{ option }}</mat-option>
-              </mat-select>
-              <mat-select
-                [value]="startDate.getMinutes() < 10 ? '0' + startDate.getMinutes() : startDate.getMinutes().toString()"
-                #startDateMinutes>
-                <mat-option *ngFor="let option of getMinutes()" [value]="option">{{ option }}</mat-option>
-              </mat-select>
-              <mat-select
-                [value]="startDate.getSeconds() < 10 ? '0' + startDate.getSeconds() : startDate.getSeconds().toString()"
-                #startDateSeconds>
-                <mat-option *ngFor="let option of getSeconds()" [value]="option">{{ option }}</mat-option>
-              </mat-select>
+            <div style="display: flex; align-items: center;">
+              <div style="display:flex; align-items:center; flex-direction:column; margin-left: 20px;">
+                End Date
+              </div>
+              <button mat-icon-button (click)="updateEndDate()" [disabled]="!endDate"
+                style="position: absolute; right: 0;">
+                <mat-icon>update</mat-icon>
+              </button>
             </div>
           </div>
-          <div>
-            <mat-calendar [(selected)]="endDate" [(startAt)]="endDate" #dateEndRange>
-            </mat-calendar>
-            <div style="display:flex">
-              <mat-select [value]="endDate.getHours() < 10 ? '0' + endDate.getHours() : endDate.getHours().toString()"
-                #endDateHours>
-                <mat-option *ngFor="let option of getHours()" [value]="option">{{ option }}</mat-option>
-              </mat-select>
-              <mat-select
-                [value]="endDate.getMinutes() < 10 ? '0' + endDate.getMinutes() : endDate.getMinutes().toString()"
-                #endDateMinutes>
-                <mat-option *ngFor="let option of getMinutes()" [value]="option">{{ option }}</mat-option>
-              </mat-select>
-              <mat-select
-                [value]="endDate.getSeconds() < 10 ? '0' + endDate.getSeconds() : endDate.getSeconds().toString()"
-                #endDateSeconds>
-                <mat-option *ngFor="let option of getSeconds()" [value]="option">{{ option }}</mat-option>
-              </mat-select>
+          <div style="display:flex;">
+            <div>
+              <mat-calendar [(selected)]="startDate" [(startAt)]="startDate" #dateStartRange>
+              </mat-calendar>
+              <div style="display:flex">
+                <mat-select
+                  [value]="startDate.getHours() < 10 ? '0' + startDate.getHours(): startDate.getHours().toString()"
+                  #startDateHours>
+                  <mat-option *ngFor="let option of getHours()" [value]="option">{{ option }}</mat-option>
+                </mat-select>
+                <mat-select
+                  [value]="startDate.getMinutes() < 10 ? '0' + startDate.getMinutes() : startDate.getMinutes().toString()"
+                  #startDateMinutes>
+                  <mat-option *ngFor="let option of getMinutes()" [value]="option">{{ option }}</mat-option>
+                </mat-select>
+                <mat-select
+                  [value]="startDate.getSeconds() < 10 ? '0' + startDate.getSeconds() : startDate.getSeconds().toString()"
+                  #startDateSeconds>
+                  <mat-option *ngFor="let option of getSeconds()" [value]="option">{{ option }}</mat-option>
+                </mat-select>
+              </div>
+            </div>
+            <div>
+              <mat-calendar [(selected)]="endDate" [(startAt)]="endDate" #dateEndRange>
+              </mat-calendar>
+              <div style="display:flex">
+                <mat-select [value]="endDate.getHours() < 10 ? '0' + endDate.getHours() : endDate.getHours().toString()"
+                  #endDateHours>
+                  <mat-option *ngFor="let option of getHours()" [value]="option">{{ option }}</mat-option>
+                </mat-select>
+                <mat-select
+                  [value]="endDate.getMinutes() < 10 ? '0' + endDate.getMinutes() : endDate.getMinutes().toString()"
+                  #endDateMinutes>
+                  <mat-option *ngFor="let option of getMinutes()" [value]="option">{{ option }}</mat-option>
+                </mat-select>
+                <mat-select
+                  [value]="endDate.getSeconds() < 10 ? '0' + endDate.getSeconds() : endDate.getSeconds().toString()"
+                  #endDateSeconds>
+                  <mat-option *ngFor="let option of getSeconds()" [value]="option">{{ option }}</mat-option>
+                </mat-select>
+              </div>
             </div>
           </div>
-        </div>
-        <div style="width: 100%; text-align: end">
-          <button style="margin-left: auto;" mat-raised-button class="datepicker-apply"
-            (click)="handleHistoryTimeChange(dateStartRange, dateEndRange, startDateHours, startDateMinutes, startDateSeconds, endDateHours, endDateMinutes, endDateSeconds)">OK</button>
+          <div style="width: 100%; text-align: end">
+            <button style="margin-left: auto;" mat-raised-button class="datepicker-apply"
+              (click)="handleHistoryTimeChange(dateStartRange, dateEndRange, startDateHours, startDateMinutes, startDateSeconds, endDateHours, endDateMinutes, endDateSeconds)">OK</button>
+          </div>
         </div>
       </div>
+      <button (click)="toggleDatePicker(datepicker)" *ngIf="isHistoryMode" class="time-selector-icon">
+        <mat-icon aria-hidden="false" aria-label="Example home icon" fontIcon="calendar_month"></mat-icon>
+      </button>
+      <mat-divider vertical class="toolbar-divider"></mat-divider>
+      <button mat-icon-button class="mode-switch-icon"
+        [matTooltip]="isRealtimeMode ? 'Switch to History mode' : 'Switch to Realtime mode'" matTooltipPosition="above"
+        (click)="toggleMode()">
+        <mat-icon>{{ isRealtimeMode ? 'history' : 'timeline' }}</mat-icon>
+      </button>
+      <mat-divider vertical class="toolbar-divider"></mat-divider>
+      <button mat-icon-button (click)="toggleExpanded()" [matTooltip]="isExpanded ? 'Collapse chart' : 'Expand chart'"
+        matTooltipPosition="above" class="expand-btn">
+        <mat-icon>{{ isExpanded ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+      </button>
     </div>
-    <button (click)="toggleDatePicker(datepicker)" *ngIf="isHistoryMode" class="time-selector-icon">
-      <mat-icon aria-hidden="false" aria-label="Example home icon" fontIcon="calendar_month"></mat-icon>
-    </button>
-    <mat-divider vertical class="toolbar-divider"></mat-divider>
-    <button mat-icon-button class="mode-switch-icon"
-      [matTooltip]="isRealtimeMode ? 'Switch to History mode' : 'Switch to Realtime mode'" matTooltipPosition="above"
-      (click)="toggleMode()">
-      <mat-icon>{{ isRealtimeMode ? 'history' : 'timeline' }}</mat-icon>
-    </button>
-    <mat-divider vertical class="toolbar-divider"></mat-divider>
-    <button mat-icon-button (click)="toggleExpanded()" [matTooltip]="isExpanded ? 'Collapse chart' : 'Expand chart'"
-      matTooltipPosition="above">
-      <mat-icon>{{ isExpanded ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
-    </button>
+    <mat-divider class="toolbar-bottom-divider"></mat-divider>
   </div>
   <div class="chart-container">
     <div id="chart" class="chart"></div>
