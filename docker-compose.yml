@@ -101,7 +101,17 @@ services:
     networks:
       - thingsboard
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: always
+    environment:
+      - WAIT_HOSTS=database:5432
 
   ui-ngx:
     build:
@@ -117,7 +127,17 @@ services:
     networks:
       - thingsboard
     depends_on:
-      - tb_application
+      tb_application:
+        condition: service_healthy
+    environment:
+      - WAIT_HOSTS=thingsboard:8080
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4200 || exit 1"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    restart: always
 
 volumes:
   postgres_data:
