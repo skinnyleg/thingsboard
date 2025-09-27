@@ -52,9 +52,9 @@ import { catchError, forkJoin, of, tap } from "rxjs";
 import { AddForecastDialogComponent } from "./add-forecast-dialog/add-forecast-dialog.component";
 
 @Component({
-  selector: "tb-forcast-page",
-  templateUrl: "./forcast-page.component.html",
-  styleUrls: ["./forcast-page.component.scss"],
+  selector: "tb-forecast-page",
+  templateUrl: "./forecast-page.component.html",
+  styleUrls: ["./forecast-page.component.scss"],
   standalone: true,
   imports: [
     CommonModule,
@@ -78,7 +78,7 @@ import { AddForecastDialogComponent } from "./add-forecast-dialog/add-forecast-d
     ReactiveFormsModule,
   ],
 })
-export class ForcastComponent implements OnInit {
+export class ForecastComponent implements OnInit {
   // All available columns with their display names
   allColumns = [
     { key: "id", name: "ID", visible: false }, // Hidden by default
@@ -307,8 +307,8 @@ export class ForcastComponent implements OnInit {
     this.textSearchMode = false;
     this.textSearch.reset();
   }
-  openForcastModel(row: Order) {
-    this.router.navigateByUrl(`/PM/forcast/${row.trueId}`, {
+  openForecastModel(row: Order) {
+    this.router.navigateByUrl(`/predictiveMaintenance/forecast/${row.trueId}`, {
       state: { forecastData: this.dataSource.data },
     });
   }

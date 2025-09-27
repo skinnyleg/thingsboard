@@ -23,7 +23,7 @@ import { Authority } from "@shared/models/authority.enum";
 import { Observable } from "rxjs";
 import { AnomalyDetectionComponent } from "@app/modules/home/pages/predictive-maintenance/anomaly-detection/anomaly-detection-page.module";
 import { RouterTabsComponent } from "../../components/router-tabs.component";
-import { ForcastComponent } from "./forcast/forcast.module";
+import { ForecastComponent } from "./forecast/forecast.module";
 
 @Injectable()
 export class OAuth2LoginProcessingUrlResolver {
@@ -36,7 +36,7 @@ export class OAuth2LoginProcessingUrlResolver {
 
 const routes: Routes = [
   {
-    path: "PM",
+    path: "predictiveMaintenance",
     data: {
       breadcrumb: {
         label: "Predictive Maintenance",
@@ -68,13 +68,13 @@ const routes: Routes = [
         },
       },
       {
-        path: "forcast/:id",
-        component: ForcastComponent,
+        path: "forecast/:id",
+        component: ForecastComponent,
         data: {
           auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
-          title: "predictive-maintenance.forcast",
+          title: "predictive-maintenance.forecast",
           breadcrumb: {
-            label: "Forcast",
+            label: "Forecast",
             icon: "mdi:alert",
           },
           isPage: true,

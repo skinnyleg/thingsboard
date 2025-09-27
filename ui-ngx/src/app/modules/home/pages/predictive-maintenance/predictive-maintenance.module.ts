@@ -20,16 +20,16 @@ import { SharedModule } from "@shared/shared.module";
 import { PredictiveMaintenanceRoutingModule } from "./predictive-maintenance-routing.module";
 import { AnomalyDetectionComponent } from "./anomaly-detection/anomaly-detection-page.module";
 // import { NgApexchartsModule } from "ng-apexcharts";
-import { ForcastChartComponent } from "../../components/predictive-maintenance/components/forcast-chart/forcast-chart.component";
-import { ForcastComponent } from "./forcast/forcast.module";
+import { ForecastChartComponent } from "../../components/predictive-maintenance/components/forecast-chart/forecast-chart.component";
+import { ForecastComponent } from "./forecast/forecast.module";
 @NgModule({
-  declarations: [AnomalyDetectionComponent, ForcastComponent],
+  declarations: [AnomalyDetectionComponent, ForecastComponent],
   imports: [
     CommonModule,
     SharedModule,
     PredictiveMaintenanceRoutingModule,
     // NgApexchartsModule,
-    ForcastChartComponent,
+    ForecastChartComponent,
   ],
 })
-export class PredictiveMaintenanceModule { }
+export class PredictiveMaintenanceModule {}

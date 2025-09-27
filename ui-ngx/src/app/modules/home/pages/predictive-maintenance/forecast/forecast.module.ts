@@ -10,11 +10,11 @@ import { AddForecastDialogComponent } from "../../../components/predictive-maint
 import { ModelSelectionDialogComponent } from "./model-selection-dialog/model-selection-dialog.component";
 
 @Component({
-  selector: "forcast",
-  templateUrl: "./forcast.component.html",
-  styleUrls: ["./forcast.component.scss"],
+  selector: "forecast",
+  templateUrl: "./forecast.component.html",
+  styleUrls: ["./forecast.component.scss"],
 })
-export class ForcastComponent extends PageComponent implements Order {
+export class ForecastComponent extends PageComponent implements Order {
   deviceId: string; // To pass to the chart
   Attributes: string[]; // To store the temperature data
   forecastData: Order[];
@@ -39,7 +39,7 @@ export class ForcastComponent extends PageComponent implements Order {
   }
 
   changeModel(value: any) {
-    this.router.navigateByUrl("/PM/forcast/" + value);
+    this.router.navigateByUrl("/predictiveMaintenance/forecast/" + value);
 
     this.deviceId = "";
     this.Attributes = [];

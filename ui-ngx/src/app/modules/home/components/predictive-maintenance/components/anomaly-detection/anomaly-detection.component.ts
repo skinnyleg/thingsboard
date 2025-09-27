@@ -72,7 +72,7 @@ export class AnomalyDetectionComponent implements OnInit {
 
 
   openAnomalyDetectionModel(row: Order) {
-    this.router.navigateByUrl(`/PM/anomaly-detection/${row.id}`);
+    this.router.navigateByUrl(`/predictiveMaintenance/anomaly-detection/${row.id}`);
   }
 
   applyFilter(event: Event) {

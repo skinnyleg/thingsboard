@@ -189,9 +189,9 @@ const selectionOptions = [
 ];
 
 @Component({
-  selector: "tb-forcast-chart",
-  templateUrl: "./forcast-chart.component.html",
-  styleUrls: ["./forcast-chart.component.scss"],
+  selector: "tb-forecast-chart",
+  templateUrl: "./forecast-chart.component.html",
+  styleUrls: ["./forecast-chart.component.scss"],
   standalone: true,
   imports: [
     CommonModule,
@@ -205,7 +205,7 @@ const selectionOptions = [
     MatDatepickerModule,
   ],
 })
-export class ForcastChartComponent
+export class ForecastChartComponent
   implements OnInit, OnChanges, OnDestroy, AfterViewInit
 {
   public forecastWs: WebSocketSubject<any>;
