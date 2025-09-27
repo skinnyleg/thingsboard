@@ -58,7 +58,7 @@ export interface AnomalyReport {
   errorName: string;
   severity: "Critical" | "Major" | "Minor";
   creationDate: string;
-  sensorName: string;
+  componentType: string;
   deviceType: string;
   location: string;
   description: string;
@@ -91,16 +91,15 @@ export interface AnomalyReport {
 export class AnomaliesComponent implements OnInit {
   @Input() deviceId?: string;
   @Input() forecastId?: string;
+  @Input() isExpanded?: boolean;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   displayedColumns: string[] = [
     "severity",
-    "reportEntity",
-    "errorName",
-    "sensorName",
     "creationDate",
+    "componentType",
     "deviceType",
     "location",
     "status",
@@ -108,24 +107,20 @@ export class AnomaliesComponent implements OnInit {
     "actions",
   ];
 
+  // Track which columns are pinned/sticky
+  stickyColumns: Set<string> = new Set();
+
   allColumns: DisplayColumn[] = [
     { title: "Severity", def: "severity", display: true, selectable: true },
     {
-      title: "Report Entity",
-      def: "reportEntity",
-      display: true,
-      selectable: true,
-    },
-    { title: "Error Name", def: "errorName", display: true, selectable: true },
-    {
-      title: "Sensor Name",
-      def: "sensorName",
-      display: true,
-      selectable: true,
-    },
-    {
       title: "Creation Date",
       def: "creationDate",
+      display: true,
+      selectable: true,
+    },
+    {
+      title: "Component Type",
+      def: "componentType",
       display: true,
       selectable: true,
     },
@@ -144,7 +139,6 @@ export class AnomaliesComponent implements OnInit {
   dataSource = new MatTableDataSource<AnomalyReport>();
 
   isRefreshing = false;
-  isExpanded = false;
 
   constructor(
     private overlay: Overlay,
@@ -160,7 +154,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Thermal Anomaly Detected",
       severity: "Critical",
       creationDate: "2024-09-25T14:30:00Z",
-      sensorName: "TempSensor_001",
+      componentType: "comp1",
       deviceType: "Temperature Sensor",
       location: "Building A - Floor 2",
       description: "Temperature reading exceeded normal threshold by 15°C",
@@ -174,7 +168,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Excessive Vibration Pattern",
       severity: "Major",
       creationDate: "2024-09-25T12:15:00Z",
-      sensorName: "VibSensor_003",
+      componentType: "comp2",
       deviceType: "Vibration Sensor",
       location: "Production Line 1",
       description: "Unusual vibration pattern detected in machinery operation",
@@ -188,7 +182,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Pressure Drop Alert",
       severity: "Major",
       creationDate: "2024-09-25T10:45:00Z",
-      sensorName: "PresSensor_002",
+      componentType: "comp3",
       deviceType: "Pressure Sensor",
       location: "Hydraulic System",
       description: "Significant pressure drop detected in main hydraulic line",
@@ -202,7 +196,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Humidity Spike Detected",
       severity: "Minor",
       creationDate: "2024-09-25T09:20:00Z",
-      sensorName: "HumSensor_005",
+      componentType: "comp4",
       deviceType: "Humidity Sensor",
       location: "Storage Room C",
       description: "Humidity level temporarily exceeded normal range",
@@ -216,7 +210,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Power Consumption Anomaly",
       severity: "Critical",
       creationDate: "2024-09-25T08:00:00Z",
-      sensorName: "PowerSensor_007",
+      componentType: "comp5",
       deviceType: "Power Meter",
       location: "Main Electrical Panel",
       description: "Unexpected power consumption spike detected",
@@ -230,7 +224,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Air Quality Degradation",
       severity: "Major",
       creationDate: "2024-09-25T07:30:00Z",
-      sensorName: "AirSensor_004",
+      componentType: "comp1",
       deviceType: "Air Quality Sensor",
       location: "Office Area 1",
       description: "CO2 levels exceeded recommended thresholds",
@@ -244,7 +238,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Flow Rate Irregularity",
       severity: "Minor",
       creationDate: "2024-09-25T06:45:00Z",
-      sensorName: "FlowSensor_006",
+      componentType: "comp2",
       deviceType: "Flow Sensor",
       location: "Water Supply Line",
       description: "Minor fluctuations in water flow rate detected",
@@ -258,7 +252,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Unexpected Motion Pattern",
       severity: "Minor",
       creationDate: "2024-09-25T05:15:00Z",
-      sensorName: "MotionSensor_008",
+      componentType: "comp3",
       deviceType: "Motion Sensor",
       location: "Security Zone 2",
       description: "Unusual motion pattern detected during off-hours",
@@ -272,7 +266,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Noise Level Anomaly",
       severity: "Major",
       creationDate: "2024-09-24T23:30:00Z",
-      sensorName: "SoundSensor_009",
+      componentType: "comp4",
       deviceType: "Sound Level Meter",
       location: "Machine Shop",
       description: "Abnormal noise levels detected from equipment",
@@ -286,7 +280,7 @@ export class AnomaliesComponent implements OnInit {
       errorName: "Chemical Concentration Alert",
       severity: "Critical",
       creationDate: "2024-09-24T22:00:00Z",
-      sensorName: "ChemSensor_010",
+      componentType: "comp5",
       deviceType: "Chemical Sensor",
       location: "Treatment Plant",
       description: "Chemical concentration levels outside safe operating range",
@@ -298,10 +292,17 @@ export class AnomaliesComponent implements OnInit {
 
   ngOnInit(): void {
     this.dataSource.data = this.anomalies;
+    // Pin the actions column by default
+    this.stickyColumns.add("actions");
   }
 
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
+
+    // Set default sort by creation date in descending order
+    this.sort.active = "creationDate";
+    this.sort.direction = "desc";
     this.dataSource.sort = this.sort;
   }
 
@@ -494,5 +495,39 @@ export class AnomaliesComponent implements OnInit {
 
   toggleExpanded(): void {
     this.isExpanded = !this.isExpanded;
+  }
+
+  /**
+   * Toggle column stickiness for vertical scrolling
+   */
+  toggleColumnSticky(columnDef: string): void {
+    if (this.stickyColumns.has(columnDef)) {
+      this.stickyColumns.delete(columnDef);
+    } else {
+      this.stickyColumns.add(columnDef);
+    }
+  }
+
+  /**
+   * Check if a column is currently sticky
+   */
+  isColumnSticky(columnDef: string): boolean {
+    return this.stickyColumns.has(columnDef);
+  }
+
+  /**
+   * Get the pin icon for a column based on its sticky state
+   */
+  getPinIcon(columnDef: string): string {
+    return this.isColumnSticky(columnDef) ? "push_pin" : "push_pin";
+  }
+
+  /**
+   * Get the tooltip text for the pin button
+   */
+  getPinTooltip(columnDef: string): string {
+    return this.isColumnSticky(columnDef)
+      ? "Unpin column"
+      : "Pin column when scrolling vertically";
   }
 }

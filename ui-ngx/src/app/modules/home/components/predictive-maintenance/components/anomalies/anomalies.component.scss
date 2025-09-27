@@ -67,17 +67,104 @@
       position: sticky;
       top: 0;
       background: var(--tb-dark-app-bar);
+
+      // Header content with pin button
+      .header-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+
+        span {
+          flex: 1;
+        }
+
+        .pin-button {
+          width: 24px;
+          height: 24px;
+          line-height: 24px;
+          opacity: 0.6;
+          transition: all 0.3s ease;
+          flex-shrink: 0;
+
+          .pin-icon {
+            font-size: 16px;
+            width: 16px;
+            height: 16px;
+            line-height: 16px;
+            transform: rotate(-45deg);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          &:hover {
+            opacity: 1;
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: scale(1.1);
+
+            .pin-icon {
+              transform: rotate(-45deg) scale(1.1);
+            }
+          }
+
+          &.pinned {
+            opacity: 1;
+            color: #ff9800;
+            background-color: rgba(255, 152, 0, 0.1);
+
+            .pin-icon {
+              transform: rotate(0deg);
+              color: #ff9800;
+            }
+
+            &:hover {
+              background-color: rgba(255, 152, 0, 0.2);
+              transform: scale(1.1);
+
+              .pin-icon {
+                transform: rotate(0deg) scale(1.1);
+              }
+            }
+          }
+        }
+      }
+
+      // Sticky column styles
+      &.sticky-column {
+        background: var(
+          --tb-dark-app-bar,
+          var(--tb-dark-widget, #1c1c1c)
+        ) !important;
+        border-right: 2px solid var(--mat-divider-color) !important;
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1) !important;
+        z-index: 10;
+
+        .header-content .pin-button.pinned {
+          background-color: rgba(255, 152, 0, 0.2);
+        }
+      }
     }
 
     .mat-mdc-cell {
       padding: 12px 8px;
       border-bottom: 1px solid var(--mat-divider-color);
       font-size: 13px;
+
+      // Sticky column styles for cells
+      &.sticky-column {
+        background: var(--tb-dark-widget, white) !important;
+        border-right: 2px solid var(--mat-divider-color) !important;
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1) !important;
+        z-index: 10;
+      }
     }
 
     .table-row {
       &:hover {
-        background-color: #f5f5f5;
+        background-color: var(--tb-dark-hover, #f5f5f5);
+
+        .mat-mdc-cell.sticky-column {
+          background: var(--tb-dark-hover, #f5f5f5) !important;
+        }
       }
     }
   }
@@ -150,21 +237,21 @@
   }
 }
 
-.sensor-cell {
+.component-cell {
   display: flex;
   align-items: center;
   gap: 8px;
 
-  .sensor-icon {
+  .component-icon {
     color: #666;
     font-size: 16px;
   }
 
-  .sensor-info {
+  .component-info {
     display: flex;
     flex-direction: column;
 
-    .sensor-name {
+    .component-name {
       font-weight: 500;
       //   color: #333;
     }
@@ -183,6 +270,18 @@
   gap: 8px;
 
   .date-icon {
+    color: #666;
+    font-size: 16px;
+    opacity: 0.7;
+  }
+}
+
+.device-type-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .device-type-icon {
     color: #666;
     font-size: 16px;
     opacity: 0.7;
@@ -301,15 +400,47 @@
           background-color: #2d2d2d;
           color: #ffffff;
           border-bottom-color: #404040;
+
+          .header-content .pin-button {
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.1);
+            }
+
+            &.pinned {
+              color: #ffc947;
+
+              .pin-icon {
+                color: #ffc947;
+              }
+            }
+          }
+
+          &.sticky-column {
+            background: var(--tb-dark-widget, #1c1c1c) !important;
+            border-right-color: #42a5f5;
+
+            .header-content .pin-button.pinned {
+              background-color: rgba(255, 201, 71, 0.2);
+            }
+          }
         }
 
         .mat-mdc-cell {
           color: #ffffff;
           border-bottom-color: #404040;
+
+          &.sticky-column {
+            background: var(--tb-dark-widget, #1c1c1c) !important;
+            border-right-color: #42a5f5;
+          }
         }
 
         .table-row:hover {
-          background-color: #404040;
+          background-color: var(--tb-dark-hover, #404040);
+
+          .mat-mdc-cell.sticky-column {
+            background: var(--tb-dark-hover, #404040) !important;
+          }
         }
       }
 
@@ -365,6 +496,10 @@
     }
 
     .date-icon {
+      color: #aaaaaa;
+    }
+
+    .device-type-icon {
       color: #aaaaaa;
     }
 
