@@ -13,7 +13,7 @@ import {
 import { AttributeService } from "@core/http/attribute.service";
 import { TelemetryWebsocketService } from "@core/ws/telemetry-websocket.service";
 import { AttributeDatasource } from "@home/models/datasource/attribute-datasource";
-import { TranslateService } from "@ngx-translate/core";
+import { TranslateService, TranslateModule } from "@ngx-translate/core";
 import { EntityId } from "@shared/models/id/entity-id";
 import { TelemetryType } from "@shared/models/telemetry/telemetry.models";
 import { Subject } from "rxjs";
@@ -21,6 +21,8 @@ import { webSocket, WebSocketSubject } from "rxjs/webSocket";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatDividerModule } from "@angular/material/divider";
 import { FormsModule } from "@angular/forms";
 import ApexCharts from "apexcharts";
 import { MatButtonToggleModule } from "@angular/material/button-toggle";
@@ -39,6 +41,7 @@ import { UniversalTransition } from "echarts/features";
 import { MatButtonModule } from "@angular/material/button";
 import { CanvasRenderer } from "echarts/renderers";
 import { MatIconModule } from "@angular/material/icon";
+import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatDatepickerModule } from "@angular/material/datepicker";
 import { FormControl } from "@angular/forms";
 import { FormGroup } from "@material-ui/core";
@@ -198,11 +201,15 @@ const selectionOptions = [
     MatInputModule,
     MatSelectModule,
     MatFormFieldModule,
+    MatMenuModule,
+    MatDividerModule,
     FormsModule,
     MatButtonToggleModule,
     MatButtonModule,
     MatIconModule,
+    MatTooltipModule,
     MatDatepickerModule,
+    TranslateModule,
   ],
 })
 export class ForecastChartComponent
@@ -257,6 +264,8 @@ export class ForecastChartComponent
   graphtype = "realtime";
   public isHistoryMode = false;
   public isRealtimeMode = true;
+  public isRefreshing = false;
+  public isExpanded = false;
 
   constructor(
     private attributeService: AttributeService,
@@ -314,6 +323,26 @@ export class ForecastChartComponent
     this.isHistoryMode = event.value === "history";
     this.isRealtimeMode = event.value === "realtime";
     // Trigger change detection to prevent ExpressionChangedAfterItHasBeenCheckedError
+    setTimeout(() => {
+      this.handleTimeChangeDate();
+      this.cdr.detectChanges();
+    });
+  }
+
+  toggleMode() {
+    this.graphtype = this.isRealtimeMode ? "history" : "realtime";
+    this.isHistoryMode = this.graphtype === "history";
+    this.isRealtimeMode = this.graphtype === "realtime";
+    setTimeout(() => {
+      this.handleTimeChangeDate();
+      this.cdr.detectChanges();
+    });
+  }
+
+  selectMode(mode: string) {
+    this.graphtype = mode;
+    this.isHistoryMode = mode === "history";
+    this.isRealtimeMode = mode === "realtime";
     setTimeout(() => {
       this.handleTimeChangeDate();
       this.cdr.detectChanges();
@@ -779,6 +808,71 @@ export class ForecastChartComponent
         this.chartInstance.resize();
       };
       this.handleTimeChangeDate();
+    }
+  }
+
+  refreshChart() {
+    if (this.isRefreshing) {
+      return; // Prevent multiple refresh operations
+    }
+
+    this.isRefreshing = true;
+
+    try {
+      // Close existing WebSocket connections
+      if (this.forecastWs) {
+        this.forecastWs.complete();
+        this.forecastWs = null;
+      }
+
+      if (this.dataWs) {
+        this.dataWs.complete();
+        this.dataWs = null;
+      }
+
+      if (this.alarmsWs$) {
+        this.alarmsWs$.complete();
+        this.alarmsWs$ = null;
+      }
+
+      // Clear any existing intervals
+      if (this.setIntervalId) {
+        clearInterval(this.setIntervalId);
+        this.setIntervalId = null;
+      }
+
+      // Reset series data
+      this.oldForecastSeries = {};
+      this.telemetryData = [];
+      this.seriesHidden = [];
+      this.originalSeriesData = {};
+
+      console.log("Refreshing forecast chart connections...");
+
+      // Small delay to ensure connections are properly closed
+      setTimeout(() => {
+        // Restart the data connection process
+        this.handleTimeChangeDate();
+
+        // Reset refresh state after a short delay
+        setTimeout(() => {
+          this.isRefreshing = false;
+          console.log("Forecast chart refresh completed");
+        }, 1500);
+      }, 500);
+    } catch (error) {
+      console.error("Error during chart refresh:", error);
+      this.isRefreshing = false;
+    }
+  }
+
+  toggleExpanded(): void {
+    this.isExpanded = !this.isExpanded;
+    // Resize chart when toggling expanded state
+    if (this.chartInstance) {
+      setTimeout(() => {
+        this.chartInstance.resize();
+      }, 100);
     }
   }
 

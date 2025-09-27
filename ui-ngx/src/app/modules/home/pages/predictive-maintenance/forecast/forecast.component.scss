@@ -357,6 +357,7 @@
     display: flex;
     overflow: scroll;
     flex-direction: column;
+    position: relative; // Add positioning context for absolute positioned children
 
     .anomalies-section {
       margin: 1rem;

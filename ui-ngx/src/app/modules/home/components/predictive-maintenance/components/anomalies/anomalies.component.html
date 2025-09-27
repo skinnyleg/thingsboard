@@ -1,4 +1,4 @@
-<div class="anomalies-container">
+<div class="anomalies-container" [class.expanded]="isExpanded">
     <!-- Data Table -->
     <div class="table-container">
         <mat-card>
@@ -9,9 +9,19 @@
                         Anomalies
                     </div>
                     <span fxFlex></span>
+                    <button mat-icon-button matTooltip="Refresh table" matTooltipPosition="above"
+                        (click)="refreshTable()" [disabled]="isRefreshing">
+                        <mat-icon [class.rotating]="isRefreshing">refresh</mat-icon>
+                    </button>
+                    <mat-divider vertical class="toolbar-divider"></mat-divider>
                     <button mat-icon-button matTooltip="Select columns to display" matTooltipPosition="above"
                         (click)="editColumnsToDisplay($event)">
                         <mat-icon>view_column</mat-icon>
+                    </button>
+                    <mat-divider vertical class="toolbar-divider"></mat-divider>
+                    <button mat-icon-button (click)="toggleExpanded()"
+                        [matTooltip]="isExpanded ? 'Collapse table' : 'Expand table'" matTooltipPosition="above">
+                        <mat-icon>{{ isExpanded ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
                     </button>
                 </mat-toolbar>
             </div>

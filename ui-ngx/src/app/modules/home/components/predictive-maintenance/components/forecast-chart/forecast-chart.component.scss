@@ -3,12 +3,10 @@
     // background: none;
     .anomaly-detection-tabs {
       color: blue;
-      :hover {
-        // color: white;
-      }
 
       .active {
-        // color: white;
+        // Keep this for potential future use
+        color: inherit;
       }
     }
 
@@ -35,6 +33,66 @@
         color: #f0e5e5;
       }
     }
+
+    .time-selector-icon {
+      color: #f0e5e5 !important;
+      border: none !important;
+      width: 40px !important;
+      height: 40px !important;
+
+      .mat-icon {
+        font-size: 24px;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+      }
+    }
+
+    .refresh-btn {
+      color: #f0e5e5 !important;
+      width: 40px !important;
+      height: 40px !important;
+
+      .mat-icon {
+        font-size: 24px;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+      }
+    }
+
+    .mode-switch-icon {
+      color: #f0e5e5 !important;
+      border: none !important;
+      width: 40px !important;
+      height: 40px !important;
+
+      .mat-icon {
+        font-size: 24px;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+      }
+    }
+
+    .mode-dropdown {
+      background: var(--tb-dark-app-bar);
+      color: #f0e5e5;
+      border: 1px solid #3f4449;
+      height: 40px;
+      min-width: 100px;
+
+      .mat-icon {
+        margin-left: 8px;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+      }
+    }
   }
 }
 
@@ -52,6 +110,14 @@
       .active {
         color: #333333;
       }
+    }
+
+    .forecast-chart-container {
+      background: var(--tb-dark-app-bar);
+    }
+
+    .time-selector-icon {
+      border: 0;
     }
 
     .graph-toggle {
@@ -75,6 +141,66 @@
 
       .mat-select {
         color: white;
+      }
+    }
+
+    .time-selector-icon {
+      color: #333333 !important;
+      border: none !important;
+      width: 40px !important;
+      height: 40px !important;
+
+      .mat-icon {
+        font-size: 24px;
+      }
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.04) !important;
+      }
+    }
+
+    .refresh-btn {
+      color: #333333 !important;
+      width: 40px !important;
+      height: 40px !important;
+
+      .mat-icon {
+        font-size: 24px;
+      }
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.04) !important;
+      }
+    }
+
+    .mode-switch-icon {
+      color: #333333 !important;
+      border: none !important;
+      width: 40px !important;
+      height: 40px !important;
+
+      .mat-icon {
+        font-size: 24px;
+      }
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.04) !important;
+      }
+    }
+
+    .mode-dropdown {
+      background: #3f51b5;
+      color: white;
+      border: none;
+      height: 40px;
+      min-width: 100px;
+
+      .mat-icon {
+        margin-left: 8px;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
       }
     }
   }
@@ -139,16 +265,46 @@
     height: 10%;
     align-items: baseline;
     justify-content: end;
-    gap: 1em;
+    gap: 0.5em;
     margin-top: 1em;
     margin-bottom: 1em;
     padding-right: 3em;
     padding-left: 3em;
 
+    .toolbar-divider {
+      height: 24px;
+      margin: 0 4px;
+    }
+
     button {
       background: var(--tb-dark-dialog);
       border: 1px solid gray;
       border-radius: 5px;
+    }
+
+    .refresh-btn {
+      background: transparent !important;
+      border: none !important;
+      color: var(--mat-primary-text);
+      width: 40px !important;
+      height: 40px !important;
+
+      .mat-icon {
+        transition: transform 0.3s ease;
+        font-size: 24px;
+
+        &.rotating {
+          animation: rotate 1s linear infinite;
+        }
+      }
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.04) !important;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+      }
     }
   }
 
@@ -172,7 +328,7 @@
   }
 
   .datepicker-apply {
-    // flex-basis: 100%;
+    margin-top: 10px;
   }
 
   .history {
@@ -192,7 +348,7 @@
   }
 
   .history_chart {
-    // font-size: 120%;
+    font-size: 100%;
   }
 
   .graph-toggle {
@@ -206,5 +362,68 @@
     background-size: contain;
     background-repeat: no-repeat;
     display: block;
+  }
+}
+
+// Refresh button rotation animation
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Time selector menu styling
+::ng-deep .mat-menu-panel {
+  .mat-menu-item {
+    &.selected {
+      background-color: rgba(63, 81, 181, 0.1);
+
+      .mat-icon {
+        color: #3f51b5;
+      }
+    }
+  }
+}
+
+// Dark theme menu styling
+.tb-dark {
+  ::ng-deep .mat-menu-panel {
+    .mat-menu-item {
+      &.selected {
+        background-color: rgba(255, 255, 255, 0.08);
+
+        .mat-icon {
+          color: #f0e5e5;
+        }
+      }
+    }
+  }
+}
+
+// Expanded state styles for model-dashboard container
+:host {
+  &.expanded,
+  > div.expanded {
+    // Find the closest .model-dashboard ancestor and expand within it
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    // background-color: var(--mat-sidenav-container-background-color);
+    background: var(--tb-dark-app-bar);
+
+    .history-container {
+      padding: 1em 3em;
+    }
+
+    .chart-container {
+      // height: calc(100% - 120px);
+      padding: 0 3em;
+    }
   }
 }

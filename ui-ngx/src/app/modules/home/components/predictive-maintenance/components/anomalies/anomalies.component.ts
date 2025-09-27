@@ -31,6 +31,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatCardModule } from "@angular/material/card";
 import { MatToolbarModule } from "@angular/material/toolbar";
+import { MatDividerModule } from "@angular/material/divider";
 import { FlexLayoutModule } from "@angular/flex-layout";
 import {
   ConnectedPosition,
@@ -49,6 +50,7 @@ import {
 import { DisplayColumn } from "@home/components/widget/lib/table-widget.models";
 import { DEFAULT_OVERLAY_POSITIONS } from "@shared/models/overlay.models";
 import { WidgetComponentsModule } from "@home/components/widget/widget-components.module";
+import { TranslateModule, TranslateService } from "@ngx-translate/core";
 
 export interface AnomalyReport {
   id: string;
@@ -78,8 +80,10 @@ export interface AnomalyReport {
     MatTooltipModule,
     MatCardModule,
     MatToolbarModule,
+    MatDividerModule,
     FlexLayoutModule,
     WidgetComponentsModule,
+    TranslateModule,
   ],
   templateUrl: "./anomalies.component.html",
   styleUrls: ["./anomalies.component.scss"],
@@ -139,9 +143,13 @@ export class AnomaliesComponent implements OnInit {
 
   dataSource = new MatTableDataSource<AnomalyReport>();
 
+  isRefreshing = false;
+  isExpanded = false;
+
   constructor(
     private overlay: Overlay,
-    private viewContainerRef: ViewContainerRef
+    private viewContainerRef: ViewContainerRef,
+    private translate: TranslateService
   ) {}
 
   // Hardcoded anomaly data
@@ -467,5 +475,24 @@ export class AnomaliesComponent implements OnInit {
     componentRef.onDestroy(() => {
       resizeWindows$.unsubscribe();
     });
+  }
+
+  refreshTable(): void {
+    this.isRefreshing = true;
+
+    // Simulate API call delay
+    setTimeout(() => {
+      // In a real application, this would make an API call to fetch fresh data
+      // For now, we'll just refresh the current data
+      this.dataSource.data = [...this.anomalies];
+      this.isRefreshing = false;
+
+      // Optional: Add a console log to show refresh completed
+      console.log("Anomalies table refreshed");
+    }, 1000);
+  }
+
+  toggleExpanded(): void {
+    this.isExpanded = !this.isExpanded;
   }
 }

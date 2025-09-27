@@ -22,6 +22,11 @@
     border-bottom: 1px solid var(--mat-divider-color);
     // background-color: var(--mat-sidenav-container-background-color);
     // background-color: #1976d2;
+
+    .toolbar-divider {
+      height: 24px;
+      margin: 0 8px;
+    }
   }
 
   .table-content {
@@ -370,6 +375,54 @@
       background-color: #2d2d2d;
       color: #ffffff;
       border-bottom-color: #404040;
+    }
+  }
+}
+
+// Refresh button rotation animation
+.rotating {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Expanded styles for model-dashboard container
+.anomalies-container {
+  &.expanded {
+    // Find the closest .model-dashboard ancestor and expand within it
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: var(--tb-dark-app-bar);
+    padding: 1rem;
+
+    .table-container {
+      height: 100%;
+
+      mat-card {
+        height: 100%;
+      }
+    }
+  }
+}
+
+// Ensure the expanded button is properly styled
+.mat-mdc-table-toolbar {
+  .mat-icon-button {
+    transition: all 0.3s ease;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
     }
   }
 }

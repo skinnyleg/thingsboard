@@ -1,13 +1,24 @@
-<div style="height: 100%;">
+<div style="height: 100%;" [class.expanded]="isExpanded" class="forecast-chart-container">
   <div class="history-container">
     <div class="title">
       Forecast Chart
     </div>
-    <button mat-flat-button class="history" *ngIf="isRealtimeMode">
-      <mat-select [disabled]="isHistoryMode" (selectionChange)="onSelectTimeChange($event)" [(value)]="selected.value">
-        <mat-option *ngFor="let option of selectionOptions" [(value)]="option.value">{{ option.name }}</mat-option>
-      </mat-select>
+    <button mat-icon-button class="refresh-btn" matTooltip="Refresh chart data" matTooltipPosition="above"
+      (click)="refreshChart()" [disabled]="isRefreshing">
+      <mat-icon [class.rotating]="isRefreshing">refresh</mat-icon>
     </button>
+    <mat-divider vertical class="toolbar-divider"></mat-divider>
+    <button mat-icon-button class="time-selector-icon" matTooltip="Select time range" matTooltipPosition="above"
+      *ngIf="isRealtimeMode" [matMenuTriggerFor]="timeMenu">
+      <mat-icon>schedule</mat-icon>
+    </button>
+    <mat-menu #timeMenu="matMenu">
+      <button mat-menu-item *ngFor="let option of selectionOptions" (click)="onSelectTimeChange({value: option.value})"
+        [class.selected]="selected.value === option.value">
+        <mat-icon *ngIf="selected.value === option.value">check</mat-icon>
+        <span [style.margin-left]="selected.value === option.value ? '0' : '24px'">{{ option.name }}</span>
+      </button>
+    </mat-menu>
     <div style="position:relative">
       <div class="datepicker-container" #datepicker>
         <div style="justify-content: space-around; display: flex; align-items: center; height: 3em;">
@@ -73,14 +84,20 @@
         </div>
       </div>
     </div>
-    <button (click)="toggleDatePicker(datepicker)" *ngIf="isHistoryMode">
+    <button (click)="toggleDatePicker(datepicker)" *ngIf="isHistoryMode" class="time-selector-icon">
       <mat-icon aria-hidden="false" aria-label="Example home icon" fontIcon="calendar_month"></mat-icon>
     </button>
-    <mat-button-toggle-group name="fontStyle" #group="matButtonToggleGroup" value="realtime" class="graph-toggle"
-      aria-label="Font Style" (change)="handleGraphChange($event)">
-      <mat-button-toggle value="history">History</mat-button-toggle>
-      <mat-button-toggle value="realtime">Realtime</mat-button-toggle>
-    </mat-button-toggle-group>
+    <mat-divider vertical class="toolbar-divider"></mat-divider>
+    <button mat-icon-button class="mode-switch-icon"
+      [matTooltip]="isRealtimeMode ? 'Switch to History mode' : 'Switch to Realtime mode'" matTooltipPosition="above"
+      (click)="toggleMode()">
+      <mat-icon>{{ isRealtimeMode ? 'history' : 'timeline' }}</mat-icon>
+    </button>
+    <mat-divider vertical class="toolbar-divider"></mat-divider>
+    <button mat-icon-button (click)="toggleExpanded()" [matTooltip]="isExpanded ? 'Collapse chart' : 'Expand chart'"
+      matTooltipPosition="above">
+      <mat-icon>{{ isExpanded ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+    </button>
   </div>
   <div class="chart-container">
     <div id="chart" class="chart"></div>
