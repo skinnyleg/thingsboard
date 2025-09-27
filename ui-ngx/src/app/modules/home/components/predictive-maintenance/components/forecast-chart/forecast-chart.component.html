@@ -11,7 +11,7 @@
       </button>
       <mat-divider vertical class="toolbar-divider"></mat-divider>
       <button mat-icon-button class="time-selector-icon" matTooltip="Select time range" matTooltipPosition="above"
-        *ngIf="isRealtimeMode" [matMenuTriggerFor]="timeMenu">
+        *ngIf="isRealtimeMode" [matMenuTriggerFor]="timeMenu" [disabled]="hasNoData">
         <mat-icon>schedule</mat-icon>
       </button>
       <mat-menu #timeMenu="matMenu">
@@ -86,24 +86,39 @@
           </div>
         </div>
       </div>
-      <button (click)="toggleDatePicker(datepicker)" *ngIf="isHistoryMode" class="time-selector-icon">
+      <button (click)="toggleDatePicker(datepicker)" *ngIf="isHistoryMode" class="time-selector-icon"
+        [disabled]="hasNoData || isRefreshing">
         <mat-icon aria-hidden="false" aria-label="Example home icon" fontIcon="calendar_month"></mat-icon>
       </button>
       <mat-divider vertical class="toolbar-divider"></mat-divider>
       <button mat-icon-button class="mode-switch-icon"
         [matTooltip]="isRealtimeMode ? 'Switch to History mode' : 'Switch to Realtime mode'" matTooltipPosition="above"
-        (click)="toggleMode()">
+        (click)="toggleMode()" [disabled]="hasNoData || isRefreshing">
         <mat-icon>{{ isRealtimeMode ? 'history' : 'timeline' }}</mat-icon>
       </button>
       <mat-divider vertical class="toolbar-divider"></mat-divider>
       <button mat-icon-button (click)="toggleExpanded()" [matTooltip]="isExpanded ? 'Collapse chart' : 'Expand chart'"
-        matTooltipPosition="above" class="expand-btn">
+        matTooltipPosition="above" class="expand-btn" [disabled]="hasNoData || isRefreshing">
         <mat-icon>{{ isExpanded ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
       </button>
     </div>
     <mat-divider class="toolbar-bottom-divider"></mat-divider>
   </div>
   <div class="chart-container">
-    <div id="chart" class="chart"></div>
+    <div id="chart" class="chart" [class.blurred]="hasNoData" [class.hidden]="isRefreshing"></div>
+    <div class="no-data-overlay" *ngIf="hasNoData && !isRefreshing">
+      <div class="no-data-message">
+        <mat-icon class="no-data-icon">timeline</mat-icon>
+        <h3>{{ noDataMessage }}</h3>
+        <p>Please try selecting a different time range or check your data source.</p>
+      </div>
+    </div>
+    <div class="loading-overlay" *ngIf="isRefreshing">
+      <div class="loading-message">
+        <mat-icon class="loading-icon">refresh</mat-icon>
+        <h3>Refreshing Chart...</h3>
+        <p>Fetching latest data, please wait.</p>
+      </div>
+    </div>
   </div>
 </div>

@@ -232,6 +232,8 @@ export class ForecastChartComponent
   attributeScope: TelemetryType;
   dataSource: AttributeDatasource;
   displayData: boolean = true;
+  public hasNoData: boolean = false;
+  public noDataMessage: string = "No data available";
   public forecast_chart_seconds_away = 60;
   setIntervalId: number;
   public chartInstance;
@@ -289,11 +291,15 @@ export class ForecastChartComponent
     end = new Date(end.selected);
     start.setHours(+shours.value, +smin.value, +sseconds.value);
     end.setHours(+ehours.value, +emin.value, +eseconds.value);
-    if (!+end) {
-      return alert("Invalid Start Date");
+    if (!+start) {
+      this.hasNoData = true;
+      this.noDataMessage = "Invalid start date selected";
+      return;
     }
     if (!+end) {
-      return alert("Invalid End Date");
+      this.hasNoData = true;
+      this.noDataMessage = "Invalid end date selected";
+      return;
     }
     this.startDate = start;
     this.endDate = end;
@@ -433,9 +439,13 @@ export class ForecastChartComponent
     }
     this.oldForecastSeries["pressure"] = [];
     this.getHistoricalData().then(([history, alarms]) => {
-      if (!history?.pressure) {
-        // return alert("No Data Found.");
+      if (!history?.pressure || history.pressure.length === 0) {
+        this.hasNoData = true;
+        this.noDataMessage =
+          "No pressure data available for the selected time range";
+        return;
       }
+      this.hasNoData = false;
       history["pressure"].sort((a, b) => a.ts - b.ts);
       this.chartInstance.setOption({
         series: [
@@ -817,6 +827,7 @@ export class ForecastChartComponent
     }
 
     this.isRefreshing = true;
+    this.hasNoData = false; // Reset no data state when refreshing
 
     try {
       // Close existing WebSocket connections
