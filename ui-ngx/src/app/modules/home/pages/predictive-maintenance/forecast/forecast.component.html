@@ -31,6 +31,8 @@
         </div>
         <mat-icon class="status-icon-option" *ngIf="status.toLowerCase() == 'completed'" aria-label="Status Model"
             matTooltip="{{status}}">check</mat-icon>
+        <span class="device-label">Device:</span>
+        <span class="device-name">{{device}}</span>
     </div>
     <div class="forecast-actions">
         <div class="left-actions">
@@ -44,8 +46,44 @@
 </div>
 
 <div class="model-dashboard">
-    <tb-forecast-chart [deviceId]="deviceId" [Attributes]="Attributes" [forecastId]="trueId"></tb-forecast-chart>
-    <div class="anomalies-section">
-        <tb-anomalies [deviceId]="deviceId" [forecastId]="trueId"></tb-anomalies>
+    <!-- Forecast Chart Section with Collapse Button -->
+    <div class="chart-section" [class.collapsed]="forecastChartCollapsed">
+        <div class="section-header" (click)="toggleForecastChart()" role="button"
+            [attr.aria-expanded]="!forecastChartCollapsed" aria-label="Toggle forecast chart section">
+            <button mat-icon-button class="collapse-btn" (click)="$event.stopPropagation(); toggleForecastChart()"
+                [matTooltip]="forecastChartCollapsed ? 'Expand forecast chart' : 'Collapse forecast chart'"
+                matTooltipPosition="right" [attr.aria-expanded]="!forecastChartCollapsed"
+                aria-label="Toggle forecast chart visibility">
+                <mat-icon>{{ forecastChartCollapsed ? 'chevron_right' : 'expand_more' }}</mat-icon>
+            </button>
+            <h3 class="section-title">
+                <mat-icon class="section-icon">trending_up</mat-icon>
+                Forecast
+            </h3>
+        </div>
+        <div class="chart-content" [@slideCollapse]="forecastChartCollapsed ? 'collapsed' : 'expanded'">
+            <tb-forecast-chart [deviceId]="deviceId" [Attributes]="Attributes"
+                [forecastId]="trueId"></tb-forecast-chart>
+        </div>
+    </div>
+
+    <!-- Anomalies Section with Collapse Button -->
+    <div class="anomalies-section" [class.collapsed]="anomaliesCollapsed">
+        <div class="section-header" (click)="toggleAnomalies()" role="button" [attr.aria-expanded]="!anomaliesCollapsed"
+            aria-label="Toggle anomalies section">
+            <button mat-icon-button class="collapse-btn" (click)="$event.stopPropagation(); toggleAnomalies()"
+                [matTooltip]="anomaliesCollapsed ? 'Expand anomalies table' : 'Collapse anomalies table'"
+                matTooltipPosition="right" [attr.aria-expanded]="!anomaliesCollapsed"
+                aria-label="Toggle anomalies table visibility">
+                <mat-icon>{{ anomaliesCollapsed ? 'chevron_right' : 'expand_more' }}</mat-icon>
+            </button>
+            <h3 class="section-title">
+                <mat-icon class="section-icon">bug_report</mat-icon>
+                Anomalies
+            </h3>
+        </div>
+        <div class="chart-content" [@slideCollapse]="anomaliesCollapsed ? 'collapsed' : 'expanded'">
+            <tb-anomalies [deviceId]="deviceId" [forecastId]="trueId"></tb-anomalies>
+        </div>
     </div>
 </div>

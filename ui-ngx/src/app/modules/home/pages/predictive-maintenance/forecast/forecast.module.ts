@@ -18,24 +18,47 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatInputModule } from "@angular/material/input";
 import { FormsModule } from "@angular/forms";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import {
+  trigger,
+  state,
+  style,
+  transition,
+  animate,
+} from "@angular/animations";
 
 @Component({
-  selector: "forecast",
+  selector: "tb-forecast",
   standalone: true,
   imports: [
     CommonModule,
-    ForecastChartComponent,
-    AnomaliesComponent,
     MatFormFieldModule,
     MatSelectModule,
     MatIconModule,
     MatButtonModule,
     MatInputModule,
     FormsModule,
+    ForecastChartComponent,
+    AnomaliesComponent,
     MatTooltipModule,
   ],
   templateUrl: "./forecast.component.html",
   styleUrls: ["./forecast.component.scss"],
+  animations: [
+    trigger("slideCollapse", [
+      state(
+        "expanded",
+        style({ height: "*", opacity: 1, overflow: "visible" })
+      ),
+      state(
+        "collapsed",
+        style({ height: "0", opacity: 0, overflow: "hidden" })
+      ),
+      transition(
+        "expanded <=> collapsed",
+        animate("300ms cubic-bezier(0.4, 0.0, 0.2, 1)")
+      ),
+    ]),
+  ],
 })
 export class ForecastComponent extends PageComponent implements Order {
   deviceId: string; // To pass to the chart
@@ -52,6 +75,10 @@ export class ForecastComponent extends PageComponent implements Order {
   forecastName: string;
   date: string;
   status: string;
+
+  // Collapse/expand states for charts
+  forecastChartCollapsed: boolean = false;
+  anomaliesCollapsed: boolean = false;
 
   constructor(
     protected store: Store<AppState>,
@@ -97,6 +124,10 @@ export class ForecastComponent extends PageComponent implements Order {
       // Optionally, handle the case when data is not passed
       console.error("No forecast data passed.");
     }
+
+    // Load collapsed states from localStorage
+    this.loadCollapsedStates();
+
     this.init();
   }
 
@@ -219,5 +250,47 @@ export class ForecastComponent extends PageComponent implements Order {
         console.error("Error adding forecast:", error);
       }
     );
+  }
+
+  // Methods to toggle collapse/expand states
+  toggleForecastChart(): void {
+    this.forecastChartCollapsed = !this.forecastChartCollapsed;
+    this.saveCollapsedStates();
+  }
+
+  toggleAnomalies(): void {
+    this.anomaliesCollapsed = !this.anomaliesCollapsed;
+    this.saveCollapsedStates();
+  }
+
+  // Methods to persist collapsed states
+  private loadCollapsedStates(): void {
+    try {
+      const savedStates = localStorage.getItem(
+        "forecast-dashboard-collapsed-states"
+      );
+      if (savedStates) {
+        const states = JSON.parse(savedStates);
+        this.forecastChartCollapsed = states.forecastChartCollapsed || false;
+        this.anomaliesCollapsed = states.anomaliesCollapsed || false;
+      }
+    } catch (error) {
+      console.warn("Error loading collapsed states:", error);
+    }
+  }
+
+  private saveCollapsedStates(): void {
+    try {
+      const states = {
+        forecastChartCollapsed: this.forecastChartCollapsed,
+        anomaliesCollapsed: this.anomaliesCollapsed,
+      };
+      localStorage.setItem(
+        "forecast-dashboard-collapsed-states",
+        JSON.stringify(states)
+      );
+    } catch (error) {
+      console.warn("Error saving collapsed states:", error);
+    }
   }
 }

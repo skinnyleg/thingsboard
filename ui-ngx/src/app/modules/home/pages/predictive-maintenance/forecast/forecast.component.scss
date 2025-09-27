@@ -5,6 +5,62 @@
       color: white;
       border: none;
     }
+
+    // Light mode styling for section headers
+    .model-dashboard {
+      .chart-section,
+      .anomalies-section {
+        border-color: #e0e0e0;
+
+        .section-header {
+          background: rgba(0, 0, 0, 0.02);
+          border-bottom-color: #e0e0e0;
+
+          &:hover {
+            background: rgba(0, 0, 0, 0.04);
+          }
+
+          .collapse-btn {
+            color: rgba(0, 0, 0, 0.6);
+
+            &:hover {
+              color: #3f51b5;
+              background-color: rgba(0, 0, 0, 0.04);
+            }
+
+            mat-icon {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+          }
+
+          .section-title {
+            color: rgba(0, 0, 0, 0.87);
+
+            .section-icon {
+              color: #3f51b5;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+          }
+        }
+      }
+
+      .anomalies-section .section-header {
+        .collapse-btn:hover {
+          color: #ff9800;
+        }
+
+        .section-title .section-icon {
+          color: #ff9800;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+    }
   }
 }
 
@@ -35,6 +91,47 @@
               .mat-mdc-select-arrow {
                 color: rgba(255, 255, 255, 0.7);
               }
+            }
+          }
+        }
+      }
+    }
+
+    // Dark mode styling for section headers
+    .model-dashboard {
+      .chart-section,
+      .anomalies-section {
+        border-color: #404040;
+
+        .section-header {
+          background: rgba(255, 255, 255, 0.03);
+          border-bottom-color: #404040;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.06);
+          }
+
+          .collapse-btn {
+            color: rgba(255, 255, 255, 0.7);
+
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.1);
+            }
+
+            mat-icon {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+          }
+
+          .section-title {
+            color: rgba(255, 255, 255, 0.9);
+
+            .section-icon {
+              display: flex;
+              align-items: center;
+              justify-content: center;
             }
           }
         }
@@ -73,6 +170,19 @@
     margin-right: 0.5rem;
   }
 
+  .device-label {
+    font-size: 0.9rem;
+    opacity: 0.6;
+    margin-left: 0.5rem;
+    margin-right: 0.3rem;
+  }
+
+  .device-name {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: inherit;
+  }
+
   .forecast-info-container {
     display: flex;
     justify-content: space-between;
@@ -86,8 +196,7 @@
     .forecast-name {
       flex: 1;
       display: flex;
-      gap: 0.4rem;
-      align-items: center;
+      align-items: baseline;
 
       .model-select-wrapper {
         display: flex;
@@ -221,6 +330,7 @@
       vertical-align: middle;
       display: inline-flex;
       align-items: center;
+      align-self: center;
     }
 
     // Custom styling for the model select panel with search
@@ -350,26 +460,207 @@
   }
 
   .model-dashboard {
-    background: var(--tb-dark-app-bar);
-    border: 1px solid #5d5d5d91 !important;
-    border-radius: 4px;
+    // border: 1px solid #5d5d5d91 !important;
+    // border-radius: 4px;
     height: 100%;
     display: flex;
     overflow: scroll;
     flex-direction: column;
     position: relative; // Add positioning context for absolute positioned children
 
+    // Chart Section (Forecast Chart) styling
+    .chart-section {
+      background: var(--tb-dark-app-bar);
+
+      display: flex;
+      flex-direction: column;
+      margin: 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--tb-dark-mat-800);
+      overflow: hidden;
+      transition: all 0.3s ease;
+
+      &.collapsed {
+        .chart-content {
+          display: none;
+        }
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid var(--tb-dark-mat-800);
+        user-select: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .collapse-btn {
+          width: 32px;
+          height: 32px;
+          min-width: 32px;
+          color: rgba(255, 255, 255, 0.7);
+          transition: all 0.2s ease;
+          margin-right: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          &:hover {
+            color: #64b5f6;
+            background-color: rgba(255, 255, 255, 0.1);
+          }
+
+          mat-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+          }
+        }
+
+        .section-title {
+          font-size: 16px;
+          font-weight: 500;
+          margin: 0;
+          color: rgba(255, 255, 255, 0.9);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          line-height: 1.2;
+
+          .section-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+            color: #64b5f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+          }
+        }
+      }
+
+      .chart-content {
+        flex: 1;
+        overflow: hidden;
+        transition: all 0.3s ease;
+
+        tb-forecast-chart {
+          overflow: hidden;
+          height: 100%;
+          display: block;
+        }
+      }
+    }
+
     .anomalies-section {
+      background: var(--tb-dark-app-bar);
       margin: 1rem;
       flex: 1;
       overflow: auto;
-      padding: 16px;
+      display: flex;
+      flex-direction: column;
       border-radius: 10px;
       border: 1px solid var(--tb-dark-mat-800);
-    }
+      transition: all 0.3s ease;
 
-    tb-forecast-chart {
-      overflow: hidden;
+      &.collapsed {
+        flex: 0 0 auto;
+
+        .chart-content {
+          display: none;
+        }
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid var(--tb-dark-mat-800);
+        user-select: none;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .collapse-btn {
+          width: 32px;
+          height: 32px;
+          min-width: 32px;
+          color: rgba(255, 255, 255, 0.7);
+          transition: all 0.2s ease;
+          margin-right: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          &:hover {
+            color: #ff9800;
+            background-color: rgba(255, 255, 255, 0.1);
+          }
+
+          mat-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+          }
+        }
+
+        .section-title {
+          font-size: 16px;
+          font-weight: 500;
+          margin: 0;
+          color: rgba(255, 255, 255, 0.9);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          line-height: 1.2;
+
+          .section-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+            color: #ff9800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+          }
+        }
+      }
+
+      .chart-content {
+        flex: 1;
+        overflow: auto;
+        padding: 16px;
+        min-height: 0; // Allow flex shrinking
+        transition: all 0.3s ease;
+
+        tb-anomalies {
+          height: 100%;
+          display: block;
+        }
+      }
     }
   }
 }

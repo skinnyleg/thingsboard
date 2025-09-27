@@ -441,8 +441,7 @@ export class ForecastChartComponent
     this.getHistoricalData().then(([history, alarms]) => {
       if (!history?.pressure || history.pressure.length === 0) {
         this.hasNoData = true;
-        this.noDataMessage =
-          "No pressure data available for the selected time range";
+        this.noDataMessage = "No data available for the selected time range";
         return;
       }
       this.hasNoData = false;
