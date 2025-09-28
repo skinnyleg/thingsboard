@@ -53,6 +53,24 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
     @Column(name = "active")
     private boolean active;
 
+    @Column(name = "forecast_algorithm")
+    private String forecastAlgorithm;
+
+    @Column(name = "forecast_start_date")
+    private Long forecastStartDate;
+
+    @Column(name = "forecast_end_date")
+    private Long forecastEndDate;
+
+    @Column(name = "anomaly_algorithm")
+    private String anomalyAlgorithm;
+
+    @Column(name = "anomaly_start_date")
+    private Long anomalyStartDate;
+
+    @Column(name = "anomaly_end_date")
+    private Long anomalyEndDate;
+
     @Convert(converter = JsonConverter.class)
     @JdbcType(PostgreSQLJsonPGObjectJsonbType.class)
     @Column(name = "attributes", columnDefinition = "jsonb")
@@ -76,6 +94,12 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
         this.name = forecast.getName();
         this.active = forecast.isActive();
         this.attributes = JacksonUtil.valueToTree(forecast.getAttributes());
+        this.forecastAlgorithm = forecast.getForecastAlgorithm();
+        this.forecastStartDate = forecast.getForecastStartDate();
+        this.forecastEndDate = forecast.getForecastEndDate();
+        this.anomalyAlgorithm = forecast.getAnomalyAlgorithm();
+        this.anomalyStartDate = forecast.getAnomalyStartDate();
+        this.anomalyEndDate = forecast.getAnomalyEndDate();
     }
 
     @Override
@@ -91,6 +115,12 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
         forecast.setName(name);
         forecast.setActive(active);
         forecast.setAttributes(JacksonUtil.convertValue(attributes, ForecastAttribute[].class));
+        forecast.setForecastAlgorithm(forecastAlgorithm);
+        forecast.setForecastStartDate(forecastStartDate);
+        forecast.setForecastEndDate(forecastEndDate);
+        forecast.setAnomalyAlgorithm(anomalyAlgorithm);
+        forecast.setAnomalyStartDate(anomalyStartDate);
+        forecast.setAnomalyEndDate(anomalyEndDate);
         return forecast;
     }
 }

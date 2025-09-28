@@ -69,7 +69,7 @@
     .model-select {
       color: #f0e5e5;
       background: var(--tb-dark-app-bar); // Match top sidenav/app-bar
-      border: 1px solid #3f4449;
+      // border: 1px solid #3f4449;
     }
 
     .forecast-info-container {
@@ -202,17 +202,17 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-
+        
         .model-select-field {
           min-width: 250px;
           width: auto;
           height: 36px;
-
+          
           ::ng-deep {
             .mat-mdc-form-field-subscript-wrapper {
               display: none;
             }
-
+            
             .mat-mdc-text-field-wrapper {
               background: var(--tb-dark-app-bar, #fff);
               border-radius: 10px;

@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS claim (
 );
 
 ALTER TABLE claim
-ADD COLUMN IF NOT EXISTS assignee_id uuid CONSTRAINT fk_claims_assignee_id REFERENCES tb_user(id);
+ADD COLUMN IF NOT EXISTS assignee_id uuid CONSTRAINT fk_claims_assignee_id REFERENCES tb_user (id);
 
 ALTER TABLE claim
 ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]'::jsonb;
@@ -50,3 +50,11 @@ CREATE TABLE IF NOT EXISTS anomaly_detector (
     start_date bigint NOT NULL,
     end_date bigint NOT NULL
 );
+
+ALTER TABLE forecast
+ADD COLUMN IF NOT EXISTS forecast_algorithm varchar(255) NOT NULL DEFAULT 'ARIMA',
+ADD COLUMN IF NOT EXISTS forecast_start_date bigint NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS forecast_end_date bigint NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS anomaly_algorithm varchar(255) NOT NULL DEFAULT 'THRESHOLD',
+ADD COLUMN IF NOT EXISTS anomaly_start_date bigint NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS anomaly_end_date bigint NOT NULL DEFAULT 0;
