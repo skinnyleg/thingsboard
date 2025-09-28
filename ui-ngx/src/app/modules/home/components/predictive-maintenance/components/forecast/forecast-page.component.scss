@@ -223,6 +223,21 @@ table {
       float: right;
     }
   }
+
+  // Attributes column styling
+  .attributes-cell {
+    max-width: 200px;
+    padding-right: 16px;
+
+    .attributes-text {
+      display: inline-block;
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: help;
+    }
+  }
 }
 
 mat-paginator {

@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, OnInit, ViewChild } from "@angular/core";
+import { Component, OnDestroy, OnInit, ViewChild } from "@angular/core";
 import {
   FormControl,
   FormsModule,
@@ -26,8 +26,8 @@ import { AttributeService, DeviceService } from "@app/core/public-api";
 import { DevicesDataSource } from "@app/modules/home/models/datasource/device-datasource";
 import { DeviceInfo } from "@shared/models/device.models";
 import { PageLink } from "@shared/models/page/page-link";
-import { Observable, of } from "rxjs";
-import { map, startWith } from "rxjs/operators";
+import { Observable, of, Subject } from "rxjs";
+import { map, startWith, takeUntil } from "rxjs/operators";
 
 // Import necessary Angular Material modules
 import { CommonModule } from "@angular/common";
@@ -41,10 +41,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { Direction, EntityType } from "@app/shared/public-api";
-import {
-  ForecastField,
-  ForecastFieldRequest,
-} from "@app/modules/home/models/predictive-maintenance.models";
+import { ForecastField } from "@app/modules/home/models/predictive-maintenance.models";
 
 @Component({
   selector: "app-add-forecast-dialog",
@@ -66,7 +63,9 @@ import {
     MatAutocompleteModule, // For autocomplete
   ],
 })
-export class AddForecastDialogComponent implements OnInit {
+export class AddForecastDialogComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
   devicesDataSource: DevicesDataSource;
   selectedDevice: DeviceInfo | null = null;
   fields: ForecastField[] = []; // Array for field type, start, and end dates
@@ -219,10 +218,10 @@ export class AddForecastDialogComponent implements OnInit {
           // Set available telemetry keys
           this.availableTelemetry = telemetryKeys;
 
-          // If no telemetry available, notify the user
+          // If no telemetry available, offer to add custom attributes
           if (telemetryKeys.length === 0) {
             this.noTelemetryMessage =
-              "No telemetry options available for this device. Please choose another device.";
+              "No telemetry attributes found for this device. You can add custom attributes below or proceed without them.";
           } else {
             this.noTelemetryMessage = null; // Reset if telemetry is available
           }
@@ -237,10 +236,13 @@ export class AddForecastDialogComponent implements OnInit {
     if (!this.selectedDevice) {
       return false; // Cannot add fields without a selected device
     }
-    if (this.availableTelemetry.length === 0) {
-      return false; // Disable adding fields if no telemetry is available
-    }
-    return this.fields.length < this.availableTelemetry.length;
+
+    // Always allow adding fields when device is selected
+    // If telemetry exists, limit to available telemetry count
+    // If no telemetry, allow unlimited custom attributes (reasonable limit)
+    const maxFields =
+      this.availableTelemetry.length > 0 ? this.availableTelemetry.length : 10;
+    return this.fields.length < maxFields;
   }
 
   get isFormValid(): boolean {
@@ -328,10 +330,18 @@ export class AddForecastDialogComponent implements OnInit {
 
   // Get telemetry options excluding already selected ones
   getFilteredTelemetry(index: number): string[] {
-    return this.availableTelemetry.filter(
-      (telemetry) =>
-        !this.fields.some((field, i) => field.key === telemetry && i !== index)
-    );
+    // If telemetry is available, filter it
+    if (this.availableTelemetry.length > 0) {
+      return this.availableTelemetry.filter(
+        (telemetry) =>
+          !this.fields.some(
+            (field, i) => field.key === telemetry && i !== index
+          )
+      );
+    }
+
+    // If no telemetry available, return empty array (allows manual input)
+    return [];
   }
 
   removeField(index: number): void {
@@ -349,14 +359,10 @@ export class AddForecastDialogComponent implements OnInit {
     }
     const deviceId = this.selectedDevice.id;
 
-    // Only include attributes if they exist and are valid
-    const attributes: ForecastFieldRequest[] = this.fields
+    // Only include attribute keys without startDate and endDate
+    const attributes = this.fields
       .filter((field) => field.key && field.key.trim() !== "")
-      .map((el) => ({
-        key: el.key,
-        startDate: this.globalStartDate.toISOString().slice(0, 10), // Use forecast start date
-        endDate: this.globalEndDate.toISOString().slice(0, 10), // Use forecast end date
-      }));
+      .map((el) => ({ key: el.key }));
 
     this.dialogRef.close({
       name: this.forecastNameControl.value,
@@ -364,8 +370,19 @@ export class AddForecastDialogComponent implements OnInit {
       attributes: attributes, // This can now be an empty array
       forecastAlgorithm: this.forecastAlgorithmControl.value,
       anomaliesAlgorithm: this.anomaliesAlgorithmControl.value,
-      anomaliesStartDate: this.anomaliesStartDate.toISOString().slice(0, 10),
-      anomaliesEndDate: this.anomaliesEndDate.toISOString().slice(0, 10),
+      forecastStartDate: this.globalStartDate.getTime(),
+      forecastEndDate: this.globalEndDate.getTime(),
+      anomaliesStartDate: this.anomaliesStartDate.getTime(),
+      anomaliesEndDate: this.anomaliesEndDate.getTime(),
     });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  getFieldAutocomplete(index: number): any {
+    return this.availableTelemetry.length > 0 ? "telemetryAuto" : null;
   }
 }

@@ -5,18 +5,13 @@ export interface Order {
   modelName?: string;
   date: string;
   status: string;
+  attributesText?: string;
 }
 
 export interface ForecastField {
   key: string;
   startDate: Date;
   endDate: Date;
-}
-
-export interface ForecastFieldRequest {
-  key: string;
-  startDate: string;
-  endDate: string;
 }
 
 export interface ForecastData {

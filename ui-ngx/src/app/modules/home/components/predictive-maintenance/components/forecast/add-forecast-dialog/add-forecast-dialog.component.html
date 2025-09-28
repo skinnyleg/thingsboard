@@ -57,7 +57,10 @@
     </mat-form-field>
 
     <!-- Message if no telemetry available -->
-    <p *ngIf="noTelemetryMessage" class="no-telemetry-message small-text">{{ noTelemetryMessage }}</p>
+    <div *ngIf="noTelemetryMessage" class="no-telemetry-message small-text">
+      <mat-icon class="info-icon">info</mat-icon>
+      {{ noTelemetryMessage }}
+    </div>
 
     <!-- Fields with telemetry attributes -->
     <div class="fields-container">
@@ -76,24 +79,28 @@
           </button>
 
           <!-- Autocomplete for telemetry field types -->
-          <mat-label>Telemetry Attribute {{ i + 1 }}:</mat-label>
+          <mat-label>{{ availableTelemetry.length > 0 ? 'Telemetry Attribute' : 'Custom Attribute' }} {{ i + 1
+            }}:</mat-label>
           <mat-form-field appearance="outline" class="input-field">
-            <input type="text" matInput [(ngModel)]="field.key" [matAutocomplete]="telemetryAuto"
-              placeholder="Select telemetry attribute"
-              [attr.aria-label]="'Telemetry attribute ' + (i + 1) + ' input'" />
-            <mat-autocomplete #telemetryAuto="matAutocomplete">
+            <input type="text" matInput [(ngModel)]="field.key" [matAutocomplete]="getFieldAutocomplete(i)"
+              [placeholder]="availableTelemetry.length > 0 ? 'Select telemetry attribute' : 'Enter custom attribute name'"
+              [attr.aria-label]="(availableTelemetry.length > 0 ? 'Telemetry' : 'Custom') + ' attribute ' + (i + 1) + ' input'" />
+            <mat-autocomplete #telemetryAuto="matAutocomplete" *ngIf="availableTelemetry.length > 0">
               <mat-option *ngFor="let telemetry of getFilteredTelemetry(i)" [value]="telemetry">
                 {{ telemetry }}
               </mat-option>
             </mat-autocomplete>
+            <mat-hint *ngIf="availableTelemetry.length === 0">
+              Enter the name of the attribute you want to track
+            </mat-hint>
           </mat-form-field>
         </div>
       </div>
 
       <!-- Button to add a new field -->
-      <button *ngIf="canAddField" mat-raised-button color="accent" (click)="addField()"
-        [disabled]="!selectedDevice || noTelemetryMessage" [attr.aria-label]="'Add new telemetry attribute'">
-        <mat-icon>add_circle</mat-icon> Add Attribute
+      <button *ngIf="canAddField" mat-raised-button color="accent" (click)="addField()" [disabled]="!selectedDevice"
+        [attr.aria-label]="'Add new ' + (availableTelemetry.length > 0 ? 'telemetry' : 'custom') + ' attribute'">
+        <mat-icon>add_circle</mat-icon> Add {{ availableTelemetry.length > 0 ? 'Telemetry' : 'Custom' }} Attribute
       </button>
     </div>
   </div>

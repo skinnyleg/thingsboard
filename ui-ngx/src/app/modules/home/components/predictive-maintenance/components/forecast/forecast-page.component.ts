@@ -41,7 +41,7 @@ import { MatListModule } from "@angular/material/list";
 import { MatMenuModule } from "@angular/material/menu";
 import { Router } from "@angular/router";
 import { ForecastService } from "@app/core/http/forecast.service";
-import { DeviceService } from "@app/core/public-api";
+import { DeviceService, DialogService } from "@app/core/public-api";
 import {
   ELEMENT_DATA,
   Order,
@@ -84,6 +84,7 @@ export class ForecastComponent implements OnInit {
     { key: "id", name: "ID", visible: false }, // Hidden by default
     { key: "modelName", name: "Name", visible: true },
     { key: "device", name: "Device", visible: true },
+    { key: "attributes", name: "Attributes", visible: true },
     { key: "date", name: "Creation Time", visible: true },
     { key: "status", name: "Status", visible: true },
     { key: "action", name: "Actions", visible: true, permanent: true }, // Actions column always visible
@@ -125,7 +126,8 @@ export class ForecastComponent implements OnInit {
     private forecastService: ForecastService,
     private deviceService: DeviceService,
     private translate: TranslateService,
-    private router: Router
+    private router: Router,
+    private dialogService: DialogService
   ) {
     this.translations = {
       search: this.translate.instant("search"),
@@ -168,6 +170,10 @@ export class ForecastComponent implements OnInit {
         `Model_${item.id.id.split("-")[0]}`, // Use actual model name from API response
       date: new Date(item.createdTime).toISOString().split("T")[0], // Formatting the createdTime to yyyy-mm-dd
       status: item.status || "Completed", // Use actual status from API or default to Completed
+      attributesText:
+        item.attributes && item.attributes.length > 0
+          ? item.attributes.map((attr: any) => attr.key).join(", ")
+          : "", // Convert attributes array to comma-separated string
     }));
   }
 
@@ -284,6 +290,29 @@ export class ForecastComponent implements OnInit {
         console.error("Error deleting forecast:", error);
       }
     );
+  }
+
+  confirmDeleteForecast(event: Event, forecast: Order): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    const modelName = forecast.modelName || forecast.id || "Unknown Model";
+    const title = this.translate.instant("forecast.delete-model-title");
+    const content = this.translate.instant("forecast.delete-model-text", {
+      modelName: modelName,
+    });
+    this.dialogService
+      .confirm(
+        title,
+        content,
+        this.translate.instant("action.no"),
+        this.translate.instant("action.yes")
+      )
+      .subscribe((result) => {
+        if (result) {
+          this.deleteForecast(forecast.trueId);
+        }
+      });
   }
 
   applyFilter(event: Event) {
