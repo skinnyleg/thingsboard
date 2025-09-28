@@ -34,7 +34,12 @@ Version = "v22.0"
 AccountSid= os.getenv("AccountSid")
 AccountToken = os.getenv("AccountToken")
 TwilioSmsFrom = os.getenv("TwilioSmsFrom")
-PhoneNumberID = int(os.getenv("PhoneNumberID"))
+# Handle PhoneNumberID conversion safely
+phone_number_id_str = os.getenv("PhoneNumberID")
+try:
+    PhoneNumberID = int(phone_number_id_str) if phone_number_id_str and phone_number_id_str.isdigit() else None
+except (ValueError, TypeError):
+    PhoneNumberID = None
 WB_TOKEN = os.getenv("WB_TOKEN")
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 APP_PASSWORD = os.getenv("APP_PASSWORD")
@@ -226,6 +231,12 @@ def notify_alarm_assignee(body=Body(None)):
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=404, detail=f"User was not found.\n {e}")
+
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for container monitoring"""
+    return {"status": "healthy", "service": "predictive-maintenance", "version": Version}
 
 
 @app.get("/api/predictiveMaintenance")

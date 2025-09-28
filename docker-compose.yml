@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgres:16
     container_name: thingsboard_db
-    restart: always
+    restart: on-failure:3
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -70,17 +70,31 @@ services:
       context: ./predictive-maintenance
       dockerfile: .Dockerfile
     container_name: fastapi
-    restart: always
+    restart: on-failure:3
     volumes:
       - application_source_code:/app
     depends_on:
       - postgres
-      - tb_application
     ports:
       - "8000:8000"
     # network_mode: host
     networks:
       - thingsboard
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      - WAIT_HOSTS=postgres:5432
+      - AccountSid=${ACCOUNT_SID:-defaultSid}
+      - AccountToken=${ACCOUNT_TOKEN:-defaultToken}
+      - TwilioSmsFrom=${TWILIO_SMS_FROM:-+1234567890}
+      - PhoneNumberID=${PHONE_NUMBER_ID:-123456789}
+      - WB_TOKEN=${WB_TOKEN:-defaultWBToken}
+      - EMAIL_ADDRESS=${EMAIL_ADDRESS:-test@example.com}
+      - APP_PASSWORD=${APP_PASSWORD:-defaultPassword}
 
   tb_application:
     container_name: thingsboard
@@ -103,15 +117,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      fastapi:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 120s
-    restart: always
+    restart: on-failure:3
     environment:
-      - WAIT_HOSTS=database:5432
+      - WAIT_HOSTS=postgres:5432,fastapi:8000
 
   ui-ngx:
     build:
@@ -137,7 +153,7 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
-    restart: always
+    restart: on-failure:3
 
 volumes:
   postgres_data:
