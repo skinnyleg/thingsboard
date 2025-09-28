@@ -31,13 +31,17 @@ load_dotenv()
 
 # Access environment variables
 Version = "v22.0"
-AccountSid= os.getenv("AccountSid")
+AccountSid = os.getenv("AccountSid")
 AccountToken = os.getenv("AccountToken")
 TwilioSmsFrom = os.getenv("TwilioSmsFrom")
 # Handle PhoneNumberID conversion safely
 phone_number_id_str = os.getenv("PhoneNumberID")
 try:
-    PhoneNumberID = int(phone_number_id_str) if phone_number_id_str and phone_number_id_str.isdigit() else None
+    PhoneNumberID = (
+        int(phone_number_id_str)
+        if phone_number_id_str and phone_number_id_str.isdigit()
+        else None
+    )
 except (ValueError, TypeError):
     PhoneNumberID = None
 WB_TOKEN = os.getenv("WB_TOKEN")
@@ -69,6 +73,7 @@ app.add_middleware(
 
 
 app.include_router(forecast_router, prefix="/forecast")
+
 
 def send_notification(phone, body):
     try:
@@ -236,7 +241,11 @@ def notify_alarm_assignee(body=Body(None)):
 @app.get("/health")
 def health_check():
     """Health check endpoint for container monitoring"""
-    return {"status": "healthy", "service": "predictive-maintenance", "version": Version}
+    return {
+        "status": "healthy",
+        "service": "predictive-maintenance",
+        "version": Version,
+    }
 
 
 @app.get("/api/predictiveMaintenance")
