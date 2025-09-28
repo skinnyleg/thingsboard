@@ -4,6 +4,23 @@ import { AppState } from "@app/core/core.state";
 import { ForecastService } from "@app/core/http/forecast.service";
 import { Order } from "@app/modules/home/models/predictive-maintenance.models";
 import { PageComponent } from "@app/shared/public-api";
+import {
+  ForecastStatus,
+  getForecastStatusFromString,
+  getForecastStatusDisplayText,
+  isForecastActive,
+  getForecastViewPreferences,
+  setForecastViewPreferences,
+} from "@app/shared/models/forecast.models";
+import {
+  ForecastViewType,
+  ForecastViewPreferences,
+  DEFAULT_VIEW_PREFERENCES,
+  parseForecastViewPreferences,
+  stringifyForecastViewPreferences,
+  isForecastViewSelected,
+  isAnomalyViewSelected,
+} from "@app/shared/models/forecast-view-preferences.models";
 import { Store } from "@ngrx/store";
 import { MatDialog } from "@angular/material/dialog";
 import { AddForecastDialogComponent } from "../../../components/predictive-maintenance/components/forecast/add-forecast-dialog/add-forecast-dialog.component";
@@ -18,6 +35,8 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatInputModule } from "@angular/material/input";
 import { FormsModule } from "@angular/forms";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatCheckboxModule } from "@angular/material/checkbox";
+import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import {
   trigger,
   state,
@@ -40,6 +59,8 @@ import {
     ForecastChartComponent,
     AnomaliesComponent,
     MatTooltipModule,
+    MatCheckboxModule,
+    TranslateModule,
   ],
   templateUrl: "./forecast.component.html",
   styleUrls: ["./forecast.component.scss"],
@@ -80,12 +101,32 @@ export class ForecastComponent extends PageComponent implements Order {
   forecastChartCollapsed: boolean = false;
   anomaliesCollapsed: boolean = false;
 
+  // View selector options
+  viewOptions = [
+    {
+      value: ForecastViewType.FORECAST,
+      label: "Show Forecast",
+      icon: "trending_up",
+    },
+    {
+      value: ForecastViewType.ANOMALIES,
+      label: "Show Anomalies",
+      icon: "bug_report",
+    },
+  ];
+  selectedViews: ForecastViewType[] = [
+    ForecastViewType.FORECAST,
+    ForecastViewType.ANOMALIES,
+  ];
+  showViewSelector: boolean = false;
+
   constructor(
     protected store: Store<AppState>,
     protected route: ActivatedRoute,
     private forecastService: ForecastService,
     protected router: Router,
-    public dialog: MatDialog
+    public dialog: MatDialog,
+    private translate: TranslateService
   ) {
     super(store);
   }
@@ -128,6 +169,9 @@ export class ForecastComponent extends PageComponent implements Order {
     // Load collapsed states from localStorage
     this.loadCollapsedStates();
 
+    // Add document click listener for view selector dropdown
+    this.addDocumentClickListener();
+
     this.init();
   }
 
@@ -147,6 +191,12 @@ export class ForecastComponent extends PageComponent implements Order {
 
         // Fetch names for all models
         this.fetchModelNames();
+
+        // Load view preferences for the current forecast
+        if (this.trueId !== params.id) {
+          this.trueId = params.id;
+          this.loadViewPreferences();
+        }
 
         const forecast = this.models.find(
           (element) => element.trueId === this.id
@@ -238,6 +288,70 @@ export class ForecastComponent extends PageComponent implements Order {
     });
   }
 
+  openEditModelDialog(): void {
+    if (!this.trueId) {
+      console.error("No model ID available for editing");
+      return;
+    }
+
+    // Fetch the current forecast data for editing
+    this.forecastService.getForecast(this.trueId).subscribe(
+      (forecastData) => {
+        console.log("Raw forecast data from service:", forecastData);
+
+        // Prepare the data structure that the dialog expects
+        const dialogData = {
+          isEdit: true,
+          forecastData: {
+            trueId: forecastData.id.id,
+            modelName: forecastData.name || forecastData.id.id.split("-")[0],
+            device: this.device,
+            deviceId: forecastData.deviceId,
+            attributes: forecastData.attributes || [],
+            attributesText: forecastData.attributes
+              ? forecastData.attributes.map((attr) => attr.key).join(", ")
+              : "",
+            forecastAlgorithm: forecastData.forecastAlgorithm,
+            anomalyAlgorithm: forecastData.anomalyAlgorithm,
+            forecastStartDate: forecastData.forecastStartDate,
+            forecastEndDate: forecastData.forecastEndDate,
+            anomaliesStartDate: forecastData.anomalyStartDate,
+            anomaliesEndDate: forecastData.anomalyEndDate,
+          },
+        };
+
+        console.log("Opening edit dialog with data:", dialogData);
+
+        const dialogRef = this.dialog.open(AddForecastDialogComponent, {
+          width: "600px",
+          data: dialogData,
+        });
+
+        dialogRef.afterClosed().subscribe((result) => {
+          if (result) {
+            this.updateForecast(result);
+          }
+        });
+      },
+      (error) => {
+        console.error("Error fetching forecast data for editing:", error);
+      }
+    );
+  }
+
+  updateForecast(forecastData: any): void {
+    this.forecastService.updateForecast(forecastData).subscribe(
+      (response) => {
+        console.log("Forecast updated successfully:", response);
+        // Refresh the current model to reflect changes
+        this.refreshModel();
+      },
+      (error) => {
+        console.error("Error updating forecast:", error);
+      }
+    );
+  }
+
   addForecast(forecast: any): void {
     // Call the service to add a forecast
     this.forecastService.addForecast(forecast).subscribe(
@@ -250,6 +364,32 @@ export class ForecastComponent extends PageComponent implements Order {
         console.error("Error adding forecast:", error);
       }
     );
+  }
+
+  refreshModel(): void {
+    // Refresh the current forecast model data
+    if (this.trueId) {
+      this.fetchForcast(this.trueId);
+    }
+  }
+
+  activateModel(): void {
+    // Activate the current forecast model
+    if (this.trueId) {
+      this.forecastService.activateForecast(this.trueId).subscribe(
+        () => {
+          console.log("Forecast activated successfully");
+          // Update the local status to reflect the change
+          this.status = "active";
+          // Optionally refresh the model data to get the latest status
+          this.refreshModel();
+        },
+        (error) => {
+          console.error("Error activating forecast:", error);
+          // Handle error appropriately (show toast, alert, etc.)
+        }
+      );
+    }
   }
 
   // Methods to toggle collapse/expand states
@@ -277,6 +417,9 @@ export class ForecastComponent extends PageComponent implements Order {
     } catch (error) {
       console.warn("Error loading collapsed states:", error);
     }
+
+    // Load view preferences from forecast model
+    this.loadViewPreferences();
   }
 
   private saveCollapsedStates(): void {
@@ -292,5 +435,189 @@ export class ForecastComponent extends PageComponent implements Order {
     } catch (error) {
       console.warn("Error saving collapsed states:", error);
     }
+  }
+
+  // View selector methods
+  toggleViewSelector(): void {
+    this.showViewSelector = !this.showViewSelector;
+  }
+
+  selectView(viewValues: ForecastViewType[]): void {
+    this.selectedViews = viewValues;
+    this.showViewSelector = false;
+    this.saveViewPreferences();
+  }
+
+  isViewSelected(viewType: ForecastViewType): boolean {
+    return this.selectedViews.includes(viewType);
+  }
+
+  toggleView(viewType: ForecastViewType, checked: boolean): void {
+    if (checked) {
+      if (!this.selectedViews.includes(viewType)) {
+        this.selectedViews.push(viewType);
+      }
+    } else {
+      this.selectedViews = this.selectedViews.filter((v) => v !== viewType);
+    }
+    this.saveViewPreferences();
+  }
+
+  getCurrentViewLabel(): string {
+    if (this.selectedViews.length === 2) {
+      return "Both Views";
+    } else if (this.selectedViews.includes(ForecastViewType.FORECAST)) {
+      return "Forecast Only";
+    } else if (this.selectedViews.includes(ForecastViewType.ANOMALIES)) {
+      return "Anomalies Only";
+    }
+    return "No Views Selected";
+  }
+
+  shouldShowForecastChart(): boolean {
+    return this.selectedViews.includes(ForecastViewType.FORECAST);
+  }
+
+  shouldShowAnomalies(): boolean {
+    return this.selectedViews.includes(ForecastViewType.ANOMALIES);
+  }
+
+  private loadViewPreferences(): void {
+    if (!this.trueId) return;
+
+    // Load view preferences from forecast entity
+    this.forecastService.getForecast(this.trueId).subscribe(
+      (forecast) => {
+        const preferences = parseForecastViewPreferences(
+          forecast.viewPreferences || ""
+        );
+        this.selectedViews = preferences.selectedViews;
+      },
+      (error) => {
+        console.warn(
+          "Error loading forecast data for view preferences:",
+          error
+        );
+        this.selectedViews = [
+          ForecastViewType.FORECAST,
+          ForecastViewType.ANOMALIES,
+        ]; // Default fallback
+      }
+    );
+  }
+
+  private saveViewPreferences(): void {
+    if (!this.trueId) return;
+
+    // Get the current forecast data and update the view preferences
+    this.forecastService.getForecast(this.trueId).subscribe(
+      (forecast) => {
+        const preferences: ForecastViewPreferences = {
+          selectedViews: this.selectedViews,
+        };
+
+        // Update the forecast with new view preferences
+        const updatedForecast = {
+          ...forecast,
+          viewPreferences: stringifyForecastViewPreferences(preferences),
+        };
+
+        // Save the updated forecast
+        this.forecastService.updateForecast(updatedForecast).subscribe(
+          (response) => {
+            console.log(
+              "View preferences saved successfully to database for forecast:",
+              this.trueId
+            );
+          },
+          (error) => {
+            console.error("Error saving view preferences to database:", error);
+            // Fallback to localStorage if database save fails
+            this.fallbackToLocalStorage();
+          }
+        );
+      },
+      (error) => {
+        console.error(
+          "Error loading forecast for view preferences save:",
+          error
+        );
+        // Fallback to localStorage if forecast load fails
+        this.fallbackToLocalStorage();
+      }
+    );
+  }
+
+  private fallbackToLocalStorage(): void {
+    try {
+      const preferences: ForecastViewPreferences = {
+        selectedViews: this.selectedViews,
+      };
+      localStorage.setItem(
+        `forecast-view-${this.trueId}`,
+        stringifyForecastViewPreferences(preferences)
+      );
+      console.log(
+        "View preferences saved to localStorage as fallback for forecast:",
+        this.trueId
+      );
+    } catch (error) {
+      console.error(
+        "Error saving view preferences to localStorage fallback:",
+        error
+      );
+    }
+  }
+
+  // Document click listener for closing dropdown
+  private addDocumentClickListener(): void {
+    document.addEventListener("click", (event: Event) => {
+      const target = event.target as HTMLElement;
+      const viewSelectorButton = target.closest(".view-selector-button");
+      const viewSelectorDropdown = target.closest(".view-selector-dropdown");
+
+      if (
+        !viewSelectorButton &&
+        !viewSelectorDropdown &&
+        this.showViewSelector
+      ) {
+        this.showViewSelector = false;
+      }
+    });
+  }
+
+  // Forecast status helper methods
+  getForecastStatusDisplayText(status: string | boolean): string {
+    const forecastStatus = getForecastStatusFromString(status);
+    switch (forecastStatus) {
+      case ForecastStatus.ACTIVE:
+        return this.translate.instant("forecast.status.active");
+      case ForecastStatus.PENDING:
+        return this.translate.instant("forecast.status.pending");
+      case ForecastStatus.FAILED:
+        return this.translate.instant("forecast.status.failed");
+      case ForecastStatus.INACTIVE:
+      default:
+        return this.translate.instant("forecast.status.inactive");
+    }
+  }
+
+  getForecastStatusClass(status: string | boolean): string {
+    const forecastStatus = getForecastStatusFromString(status);
+    switch (forecastStatus) {
+      case ForecastStatus.ACTIVE:
+        return "status-active";
+      case ForecastStatus.PENDING:
+        return "status-pending";
+      case ForecastStatus.FAILED:
+        return "status-failed";
+      case ForecastStatus.INACTIVE:
+      default:
+        return "status-inactive";
+    }
+  }
+
+  isForecastActive(): boolean {
+    return isForecastActive({ status: this.status });
   }
 }

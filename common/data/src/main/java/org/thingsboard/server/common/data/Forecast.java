@@ -1,7 +1,8 @@
 /**
  * Copyright © 2016-2024 The Thingsboard Authors
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed u    @Schema(description = "Forecast status: 'inactive', 'active', or 'pending'", defaultValue = "inactive")
+    private String status;er the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -24,6 +25,7 @@ import org.thingsboard.server.common.data.validation.Length;
 import org.thingsboard.server.common.data.validation.NoXss;
 import org.thingsboard.server.common.data.id.ForecastId;
 import org.thingsboard.server.common.data.forecast.ForecastAttribute;
+import org.thingsboard.server.common.data.forecast.ForecastStatus;
 import org.thingsboard.server.common.data.id.DeviceId;
 import jakarta.validation.Valid;
 
@@ -47,13 +49,14 @@ public class Forecast extends BaseData<ForecastId> implements HasTenantId, HasNa
         this.deviceId = forecast.getDeviceId();
         this.name = forecast.getName();
         this.attributes = forecast.getAttributes();
-        this.active = forecast.isActive();
+        this.status = forecast.getStatus();
         this.forecastAlgorithm = forecast.getForecastAlgorithm();
         this.forecastStartDate = forecast.getForecastStartDate();
         this.forecastEndDate = forecast.getForecastEndDate();
         this.anomalyAlgorithm = forecast.getAnomalyAlgorithm();
         this.anomalyStartDate = forecast.getAnomalyStartDate();
         this.anomalyEndDate = forecast.getAnomalyEndDate();
+        this.viewPreferences = forecast.getViewPreferences();
     }
 
     @NoXss
@@ -67,8 +70,8 @@ public class Forecast extends BaseData<ForecastId> implements HasTenantId, HasNa
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Device Id.")
     private DeviceId deviceId;
 
-    @Schema(description = "Active status of the forecast", accessMode = Schema.AccessMode.READ_ONLY, defaultValue = "false")
-    private boolean active;
+    @Schema(description = "Forecast status (inactive, active, pending, failed)", defaultValue = "inactive")
+    private String status;
 
     @Schema(description = "Forecast algorithm", defaultValue = "ARIMA")
     private String forecastAlgorithm;
@@ -91,4 +94,61 @@ public class Forecast extends BaseData<ForecastId> implements HasTenantId, HasNa
     @Valid
     @Schema(description = "JSON array of attributes")
     private transient ForecastAttribute[] attributes;
+
+    @Schema(description = "JSON object with view preferences", defaultValue = "{\"selectedViews\": [\"forecast\", \"anomalies\"]}")
+    private String viewPreferences;
+
+    /**
+     * Gets the forecast status as an enum.
+     * 
+     * @return the forecast status enum, defaults to INACTIVE if status is null or invalid
+     */
+    public ForecastStatus getForecastStatus() {
+        return ForecastStatus.fromString(this.status);
+    }
+
+    /**
+     * Sets the forecast status using an enum.
+     * 
+     * @param forecastStatus the forecast status enum
+     */
+    public void setForecastStatus(ForecastStatus forecastStatus) {
+        this.status = forecastStatus != null ? forecastStatus.getValue() : ForecastStatus.INACTIVE.getValue();
+    }
+
+    /**
+     * Checks if the forecast is active.
+     * 
+     * @return true if the forecast status is ACTIVE
+     */
+    public boolean isActive() {
+        return getForecastStatus() == ForecastStatus.ACTIVE;
+    }
+
+    /**
+     * Checks if the forecast is inactive.
+     * 
+     * @return true if the forecast status is INACTIVE
+     */
+    public boolean isInactive() {
+        return getForecastStatus() == ForecastStatus.INACTIVE;
+    }
+
+    /**
+     * Checks if the forecast is pending.
+     * 
+     * @return true if the forecast status is PENDING
+     */
+    public boolean isPending() {
+        return getForecastStatus() == ForecastStatus.PENDING;
+    }
+
+    /**
+     * Checks if the forecast has failed.
+     * 
+     * @return true if the forecast status is FAILED
+     */
+    public boolean isFailed() {
+        return getForecastStatus() == ForecastStatus.FAILED;
+    }
 }

@@ -66,4 +66,14 @@ public class BaseForcastService implements ForecastsService {
             throw e;
         }
     }
+
+    @Override
+    public void deactivateForecast(TenantId tenantId, ForecastId forecastId) {
+        try {
+            Forecast result = forecastDao.deactivateForecast(tenantId, forecastId);
+            log.info("Deactivated forecast: [{}]", result);
+        } catch (Exception e) {
+            throw e;
+        }
+    }
 }

@@ -47,6 +47,20 @@ import {
   Order,
 } from "@app/modules/home/models/predictive-maintenance.models";
 import { Direction, PageLink } from "@app/shared/public-api";
+import {
+  ForecastStatus,
+  getForecastStatusFromString,
+  getForecastStatusDisplayText,
+  getForecastViewPreferences,
+  setForecastViewPreferences,
+} from "@app/shared/models/forecast.models";
+import {
+  ForecastViewType,
+  ForecastViewPreferences,
+  DEFAULT_VIEW_PREFERENCES,
+  parseForecastViewPreferences,
+  stringifyForecastViewPreferences,
+} from "@app/shared/models/forecast-view-preferences.models";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { catchError, forkJoin, of, tap } from "rxjs";
 import { AddForecastDialogComponent } from "./add-forecast-dialog/add-forecast-dialog.component";
@@ -104,6 +118,10 @@ export class ForecastComponent implements OnInit {
 
   dataSource = new MatTableDataSource<Order>();
   textSearch = new FormControl();
+  viewSelectorControl = new FormControl<ForecastViewType[]>([
+    ForecastViewType.FORECAST,
+    ForecastViewType.ANOMALIES,
+  ]);
   selection = new SelectionModel<Order>(true, []);
   isLoading = false;
   totalElements = 0;
@@ -133,11 +151,18 @@ export class ForecastComponent implements OnInit {
       search: this.translate.instant("search"),
       close: this.translate.instant("action.close"),
     };
+
+    // Subscribe to view selector changes
+    this.viewSelectorControl.valueChanges.subscribe((selectedViews) => {
+      if (selectedViews && selectedViews.length > 0) {
+        this.onViewSelectionChange(selectedViews);
+      }
+    });
   }
 
   ngOnInit() {
-    // this.fetchForecasts(0, 10);
-    // Initialization logic
+    // Initialize view selector
+    this.initializeViewSelector();
   }
   ngAfterViewInit() {
     // console.log("pageLink === ", this.pageLink);
@@ -158,23 +183,36 @@ export class ForecastComponent implements OnInit {
     fetchedData: any[],
     deviceNameMap: Map<string, string>
   ): Order[] {
-    return fetchedData.map((item) => ({
-      id: item.id.id.split("-")[0], // Getting the id from the nested object
-      trueId: item.id.id,
-      device:
-        deviceNameMap.get(item.deviceId.id) || item.deviceId.id.split("-")[0],
-      modelName:
-        item.name ||
-        item.modelName ||
-        item.title ||
-        `Model_${item.id.id.split("-")[0]}`, // Use actual model name from API response
-      date: new Date(item.createdTime).toISOString().split("T")[0], // Formatting the createdTime to yyyy-mm-dd
-      status: item.status || "Completed", // Use actual status from API or default to Completed
-      attributesText:
-        item.attributes && item.attributes.length > 0
-          ? item.attributes.map((attr: any) => attr.key).join(", ")
-          : "", // Convert attributes array to comma-separated string
-    }));
+    return fetchedData.map((item) => {
+      // Handle both new status field and legacy active field
+      let status = "inactive"; // Default status
+      if (item.status) {
+        // Use the new status field if present
+        status = item.status;
+      } else if (item.active !== undefined) {
+        // Handle legacy boolean active field
+        status = item.active ? "active" : "inactive";
+      }
+
+      return {
+        id: item.id.id.split("-")[0], // Getting the id from the nested object
+        trueId: item.id.id,
+        device:
+          deviceNameMap.get(item.deviceId.id) || item.deviceId.id.split("-")[0],
+        modelName:
+          item.name ||
+          item.modelName ||
+          item.title ||
+          `Model_${item.id.id.split("-")[0]}`, // Use actual model name from API response
+        date: new Date(item.createdTime).toISOString().split("T")[0], // Formatting the createdTime to yyyy-mm-dd
+        status: status,
+        active: item.active, // Keep legacy field if present for backward compatibility
+        attributesText:
+          item.attributes && item.attributes.length > 0
+            ? item.attributes.map((attr: any) => attr.key).join(", ")
+            : "", // Convert attributes array to comma-separated string
+      };
+    });
   }
 
   fetchForecasts(pageIndex: number, pageSize: number): void {
@@ -253,18 +291,51 @@ export class ForecastComponent implements OnInit {
     );
   }
 
-  editForecast(forecast: Order): void {
-    // Open the dialog with the existing forecast data
-    const dialogRef = this.dialog.open(AddForecastDialogComponent, {
-      width: "600px",
-      data: forecast, // Pass the current forecast data to the dialog
-    });
+  editForecast(event: Event, forecast: Order): void {
+    if (event) {
+      event.stopPropagation();
+    }
 
-    dialogRef.afterClosed().subscribe((updatedForecast) => {
-      if (updatedForecast) {
-        this.updateForecast(updatedForecast); // Update forecast if a result is returned
+    // First fetch the full forecast details from the API to get all the necessary data
+    this.forecastService.getForecast(forecast.trueId).subscribe(
+      (fullForecastData) => {
+        // Merge the table row data with the full forecast data
+        const editData = {
+          ...forecast,
+          ...fullForecastData,
+          // Ensure we keep the UI-specific fields from the table row
+          modelName: forecast.modelName,
+          device: forecast.device,
+          trueId: forecast.trueId,
+        };
+
+        // Open the dialog with the complete forecast data
+        const dialogRef = this.dialog.open(AddForecastDialogComponent, {
+          width: "600px",
+          data: editData,
+        });
+
+        dialogRef.afterClosed().subscribe((updatedForecast) => {
+          if (updatedForecast) {
+            this.updateForecast(updatedForecast); // Update forecast if a result is returned
+          }
+        });
+      },
+      (error) => {
+        console.error("Error fetching forecast details for editing:", error);
+        // Fallback to using just the table row data
+        const dialogRef = this.dialog.open(AddForecastDialogComponent, {
+          width: "600px",
+          data: forecast,
+        });
+
+        dialogRef.afterClosed().subscribe((updatedForecast) => {
+          if (updatedForecast) {
+            this.updateForecast(updatedForecast);
+          }
+        });
       }
-    });
+    );
   }
 
   updateForecast(forecast: Order): void {
@@ -353,8 +424,86 @@ export class ForecastComponent implements OnInit {
     this.toolbarOpened = !this.toolbarOpened;
   }
 
+  getForecastStatusDisplayText(status: string | boolean): string {
+    const forecastStatus = getForecastStatusFromString(status);
+    switch (forecastStatus) {
+      case ForecastStatus.ACTIVE:
+        return this.translate.instant("forecast.status.active");
+      case ForecastStatus.PENDING:
+        return this.translate.instant("forecast.status.pending");
+      case ForecastStatus.FAILED:
+        return this.translate.instant("forecast.status.failed");
+      case ForecastStatus.INACTIVE:
+      default:
+        return this.translate.instant("forecast.status.inactive");
+    }
+  }
+
+  getForecastStatusClass(status: string | boolean): string {
+    const forecastStatus = getForecastStatusFromString(status);
+    switch (forecastStatus) {
+      case ForecastStatus.ACTIVE:
+        return "status-active";
+      case ForecastStatus.PENDING:
+        return "status-pending";
+      case ForecastStatus.FAILED:
+        return "status-failed";
+      case ForecastStatus.INACTIVE:
+      default:
+        return "status-inactive";
+    }
+  }
+
   refreshForecasts(): void {
     this.fetchForecasts(this.paginator.pageIndex, this.paginator.pageSize);
+  }
+
+  onViewSelectionChange(selectedViews: ForecastViewType[]): void {
+    const preferences: ForecastViewPreferences = {
+      selectedViews: selectedViews,
+    };
+
+    // Save to localStorage as fallback
+    try {
+      localStorage.setItem(
+        "forecast-view-preferences",
+        stringifyForecastViewPreferences(preferences)
+      );
+    } catch (error) {
+      console.warn("Failed to save view preferences to localStorage:", error);
+    }
+
+    // Here you could also save to the backend if needed
+    this.saveViewPreferencesToBackend(preferences);
+
+    console.log("View selection changed:", selectedViews);
+  }
+
+  private saveViewPreferencesToBackend(
+    preferences: ForecastViewPreferences
+  ): void {
+    // This method can be implemented later to save to a specific forecast or user preferences
+    // For now, we'll just log it
+    console.log("Saving view preferences to backend:", preferences);
+  }
+
+  private loadViewPreferencesFromStorage(): ForecastViewPreferences {
+    try {
+      const saved = localStorage.getItem("forecast-view-preferences");
+      if (saved) {
+        return parseForecastViewPreferences(saved);
+      }
+    } catch (error) {
+      console.warn("Failed to load view preferences from localStorage:", error);
+    }
+    return DEFAULT_VIEW_PREFERENCES;
+  }
+
+  private initializeViewSelector(): void {
+    const preferences = this.loadViewPreferencesFromStorage();
+    this.viewSelectorControl.setValue(preferences.selectedViews, {
+      emitEvent: false,
+    });
   }
 
   // Rest of the methods (add, edit, delete, etc.)

@@ -30,6 +30,7 @@ import org.thingsboard.server.dao.model.sql.ForecastEntity;
 import org.thingsboard.server.dao.predictive.ForecastDao;
 import org.thingsboard.server.dao.sql.JpaAbstractDao;
 import org.thingsboard.server.dao.util.SqlDao;
+import org.thingsboard.server.common.data.forecast.ForecastStatus;
 
 import java.util.UUID;
 
@@ -83,7 +84,15 @@ public class JpaForecastDao extends JpaAbstractDao<ForecastEntity, Forecast> imp
     @Override
     public Forecast activateForecast(TenantId tenantId, ForecastId forecastId) {
         ForecastEntity forecast = forecastRepository.findForecast(tenantId.getId(), forecastId.getId());
-        forecast.setActive(true);
+        forecast.setStatus(ForecastStatus.ACTIVE.getValue());
+        Forecast result = saveAndFlush(tenantId, forecast.toData());
+        return result;
+    }
+
+    @Override
+    public Forecast deactivateForecast(TenantId tenantId, ForecastId forecastId) {
+        ForecastEntity forecast = forecastRepository.findForecast(tenantId.getId(), forecastId.getId());
+        forecast.setStatus(ForecastStatus.INACTIVE.getValue());
         Forecast result = saveAndFlush(tenantId, forecast.toData());
         return result;
     }

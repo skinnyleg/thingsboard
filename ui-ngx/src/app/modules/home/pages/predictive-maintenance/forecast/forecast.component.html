@@ -29,14 +29,36 @@
                 </mat-select>
             </mat-form-field>
         </div>
-        <mat-icon class="status-icon-option" *ngIf="status.toLowerCase() == 'completed'" aria-label="Status Model"
-            matTooltip="{{status}}">check</mat-icon>
+        <!-- Status icons for all forecast statuses -->
+        <mat-icon class="status-icon-option active" *ngIf="status.toLowerCase() == 'active'" aria-label="Active Status"
+            matTooltip="Active">check_circle</mat-icon>
+        <button mat-icon-button *ngIf="status.toLowerCase() == 'inactive'" class="status-icon-button inactive-activate"
+            (click)="activateModel()" matTooltip="Activate" aria-label="Activate">
+            <mat-icon>play_circle</mat-icon>
+        </button>
+        <mat-icon class="status-icon-option pending" *ngIf="status.toLowerCase() == 'pending'"
+            aria-label="Pending Status" matTooltip="Pending">schedule</mat-icon>
+        <mat-icon class="status-icon-option failed" *ngIf="status.toLowerCase() == 'failed'" aria-label="Failed Status"
+            matTooltip="Failed">error</mat-icon>
         <span class="device-label">Device:</span>
         <span class="device-name">{{device}}</span>
     </div>
     <div class="forecast-actions">
         <div class="left-actions">
             <div class="button-container">
+                <button mat-icon-button (click)="refreshModel()" [matTooltip]="'forecast.refresh-models' | translate"
+                    matTooltipPosition="below">
+                    <mat-icon>refresh</mat-icon>
+                </button>
+                <button mat-icon-button (click)="toggleViewSelector()"
+                    [matTooltip]="'Select View: ' + getCurrentViewLabel()" matTooltipPosition="below"
+                    class="view-selector-button" [class.active]="showViewSelector">
+                    <mat-icon>view_module</mat-icon>
+                </button>
+                <button mat-icon-button (click)="openEditModelDialog()" [disabled]="!trueId"
+                    matTooltip="Edit current model" matTooltipPosition="below">
+                    <mat-icon>edit</mat-icon>
+                </button>
                 <button mat-raised-button color="primary" (click)="openCreateModelDialog()">
                     <mat-icon>add</mat-icon>New Model
                 </button>
@@ -47,7 +69,7 @@
 
 <div class="model-dashboard">
     <!-- Forecast Chart Section with Collapse Button -->
-    <div class="chart-section" [class.collapsed]="forecastChartCollapsed">
+    <div class="chart-section" [class.collapsed]="forecastChartCollapsed" *ngIf="shouldShowForecastChart()">
         <div class="section-header" (click)="toggleForecastChart()" role="button"
             [attr.aria-expanded]="!forecastChartCollapsed" aria-label="Toggle forecast chart section">
             <button mat-icon-button class="collapse-btn" (click)="$event.stopPropagation(); toggleForecastChart()"
@@ -68,7 +90,7 @@
     </div>
 
     <!-- Anomalies Section with Collapse Button -->
-    <div class="anomalies-section" [class.collapsed]="anomaliesCollapsed">
+    <div class="anomalies-section" [class.collapsed]="anomaliesCollapsed" *ngIf="shouldShowAnomalies()">
         <div class="section-header" (click)="toggleAnomalies()" role="button" [attr.aria-expanded]="!anomaliesCollapsed"
             aria-label="Toggle anomalies section">
             <button mat-icon-button class="collapse-btn" (click)="$event.stopPropagation(); toggleAnomalies()"
@@ -84,6 +106,30 @@
         </div>
         <div class="chart-content" [@slideCollapse]="anomaliesCollapsed ? 'collapsed' : 'expanded'">
             <tb-anomalies [deviceId]="deviceId" [forecastId]="trueId"></tb-anomalies>
+        </div>
+    </div>
+</div>
+
+<!-- Floating View Selector Menu -->
+<div class="view-selector-floating-menu" *ngIf="showViewSelector">
+    <div class="view-selector-overlay" (click)="showViewSelector = false"></div>
+    <div class="view-selector-checkboxes">
+        <div class="menu-header">
+            <h4>Select Views</h4>
+            <button mat-icon-button (click)="showViewSelector = false" class="close-button">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+        <div class="view-options">
+            <div class="view-option" *ngFor="let option of viewOptions">
+                <mat-checkbox [checked]="isViewSelected(option.value)"
+                    (change)="toggleView(option.value, $event.checked)">
+                    <div class="option-content">
+                        <mat-icon>{{ option.icon }}</mat-icon>
+                        <span>{{ option.label }}</span>
+                    </div>
+                </mat-checkbox>
+            </div>
         </div>
     </div>
 </div>

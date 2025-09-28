@@ -21,6 +21,17 @@
   border-radius: 10px !important; // Add border radius
 }
 
+// Edit mode styling - Add subtle border like forecast chart
+::ng-deep .mat-mdc-dialog-container.edit-mode {
+  border: 1px solid #5d5d5d91 !important;
+  box-shadow: none !important;
+}
+
+::ng-deep .tb-dark .mat-mdc-dialog-container.edit-mode {
+  border: 1px solid #3f4449 !important;
+  box-shadow: none !important;
+}
+
 // General dialog container styling - Apply border radius for all themes
 ::ng-deep .mat-mdc-dialog-container {
   border-radius: 10px !important;
@@ -74,6 +85,12 @@
   font-weight: 500;
   font-size: 14px;
   transition: all 0.3s ease;
+}
+
+.step-number.edit-mode {
+  background-color: #1976d2;
+  color: white;
+  font-size: 18px;
 }
 
 .step.active .step-number {
@@ -152,6 +169,30 @@
 // Step content styles
 .step-content {
   animation: fadeIn 0.3s ease-in-out;
+}
+
+.edit-mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: rgba(25, 118, 210, 0.1);
+  border-left: 3px solid #1976d2;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  color: #1565c0;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+::ng-deep .tb-dark .edit-mode-banner {
+  background-color: rgba(25, 118, 210, 0.2);
+  color: #42a5f5;
 }
 
 .step-title {
@@ -276,6 +317,15 @@
   }
 }
 
+// Date and time picker range styling
+.date-time-range {
+  margin-top: 8px;
+
+  mat-form-field {
+    margin: 0;
+  }
+}
+
 // Dark mode styling for all sections
 ::ng-deep .tb-dark .global-date-section,
 ::ng-deep .tb-dark .algorithm-section,
@@ -283,6 +333,15 @@
 ::ng-deep .tb-dark .anomalies-algorithm-section {
   mat-label {
     color: rgba(255, 255, 255, 0.6) !important;
+  }
+}
+
+// Dark mode styling for date time range
+::ng-deep .tb-dark .date-time-range {
+  mat-form-field {
+    .mat-mdc-text-field-wrapper {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
   }
 }
 

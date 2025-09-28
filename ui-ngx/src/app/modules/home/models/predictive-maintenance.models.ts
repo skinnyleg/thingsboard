@@ -5,6 +5,7 @@ export interface Order {
   modelName?: string;
   date: string;
   status: string;
+  active?: boolean; // Legacy field for backward compatibility
   attributesText?: string;
 }
 
@@ -19,6 +20,7 @@ export interface ForecastData {
   device: string;
   date: string;
   status: string;
+  active?: boolean; // Legacy field for backward compatibility
 }
 
 export const dataSeries = [

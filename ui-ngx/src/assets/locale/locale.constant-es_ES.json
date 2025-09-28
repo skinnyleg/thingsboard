@@ -16,7 +16,15 @@
     },
     "forecast": {
         "delete-model-title": "Eliminar Modelo",
-        "delete-model-text": "¿Está seguro de que desea eliminar el modelo '{{modelName}}'?"
+        "delete-model-text": "¿Está seguro de que desea eliminar el modelo '{{modelName}}'?",
+        "create-model": "Crear Modelo",
+        "refresh-models": "Actualizar Modelo",
+        "status": {
+            "inactive": "Inactivo",
+            "active": "Activo",
+            "pending": "Pendiente",
+            "failed": "Fallado"
+        }
     },
     "action": {
         "activate": "Activar",

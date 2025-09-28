@@ -15,20 +15,20 @@
     limitations under the License.
 
 -->
-<h2 mat-dialog-title>Create Your Model</h2>
+<h2 mat-dialog-title>{{ isEditMode ? 'Edit Model' : 'Create Your Model' }}</h2>
 
 <mat-dialog-content class="dialog-content">
   <!-- Progress Bar -->
   <div class="progress-container">
     <div class="progress-steps">
       <div class="step" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
-        <div class="step-number">1</div>
-        <div class="step-label">Model Setup</div>
+        <div class="step-number" [class.edit-mode]="isEditMode">{{ isEditMode ? '✎' : '1' }}</div>
+        <div class="step-label">{{ isEditMode ? 'Edit Setup' : 'Model Setup' }}</div>
       </div>
       <div class="progress-line" [class.active]="currentStep > 1"></div>
       <div class="step" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
-        <div class="step-number">2</div>
-        <div class="step-label">Algorithm & Dates</div>
+        <div class="step-number" [class.edit-mode]="isEditMode">{{ isEditMode ? '⚙' : '2' }}</div>
+        <div class="step-label">{{ isEditMode ? 'Update Settings' : 'Algorithm & Dates' }}</div>
       </div>
     </div>
   </div>
@@ -36,9 +36,15 @@
   <!-- Step 1: Model Setup -->
   <div *ngIf="currentStep === 1" class="step-content">
 
+    <!-- Edit mode indicator -->
+    <div *ngIf="isEditMode" class="edit-mode-banner">
+      <mat-icon>edit</mat-icon>
+      <span>Editing existing model</span>
+    </div>
+
     <mat-label>Model Name:</mat-label>
     <mat-form-field appearance="outline" class="full-width">
-      <input matInput [formControl]="forecastNameControl" placeholder="Enter a descriptive name for your model"
+      <input matInput [formControl]="forecastNameControl" placeholder="Enter model name"
         [attr.aria-label]="'Model name input'" />
       <mat-error *ngIf="forecastNameControl.invalid && forecastNameControl.touched">Model name is required.</mat-error>
     </mat-form-field>
@@ -47,7 +53,7 @@
     <mat-label>Device Name:</mat-label>
     <mat-form-field appearance="outline" class="full-width">
       <input type="text" matInput [formControl]="myControl" [matAutocomplete]="auto"
-        placeholder="Search and select a device" [attr.aria-label]="'Device name input'" />
+        placeholder="e.g., Temperature Sensor 01, Motor Controller A..." [attr.aria-label]="'Device name input'" />
       <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn"
         (optionSelected)="onDeviceSelected($event.option.value)">
         <mat-option *ngFor="let device of filteredDevices | async" [value]="device">
@@ -98,7 +104,7 @@
       </div>
 
       <!-- Button to add a new field -->
-      <button *ngIf="canAddField" mat-raised-button color="accent" (click)="addField()" [disabled]="!selectedDevice"
+      <button *ngIf="canAddField" mat-raised-button color="primary" (click)="addField()" [disabled]="!selectedDevice"
         [attr.aria-label]="'Add new ' + (availableTelemetry.length > 0 ? 'telemetry' : 'custom') + ' attribute'">
         <mat-icon>add_circle</mat-icon> Add {{ availableTelemetry.length > 0 ? 'Telemetry' : 'Custom' }} Attribute
       </button>
@@ -111,26 +117,32 @@
     <!-- Forecast Date Range Section -->
     <div class="global-date-section">
       <mat-label>Forecast Date Range:</mat-label>
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-date-range-input [rangePicker]="globalPicker">
-          <input matStartDate [(ngModel)]="globalStartDate" placeholder="Forecast start date"
-            [attr.aria-label]="'Forecast start date'" />
-          <input matEndDate [(ngModel)]="globalEndDate" placeholder="Forecast end date"
-            [attr.aria-label]="'Forecast end date'" />
-        </mat-date-range-input>
-        <mat-datepicker-toggle matIconSuffix [for]="globalPicker"></mat-datepicker-toggle>
-        <mat-date-range-picker #globalPicker></mat-date-range-picker>
-        <mat-error *ngIf="globalStartDate && globalEndDate && globalStartDate >= globalEndDate">
-          End date must be after start date
-        </mat-error>
-      </mat-form-field>
+      <div class="date-time-range" fxLayout="row" fxLayoutGap="16px" fxLayout.xs="column" fxLayoutGap.xs="8px">
+        <mat-form-field appearance="outline" fxFlex>
+          <mat-label>Forecast Start Date & Time</mat-label>
+          <mat-datetimepicker-toggle [for]="forecastStartPicker" matSuffix></mat-datetimepicker-toggle>
+          <mat-datetimepicker #forecastStartPicker type="datetime" openOnFocus="true"></mat-datetimepicker>
+          <input matInput [(ngModel)]="globalStartDate" [matDatetimepicker]="forecastStartPicker"
+            placeholder="Select start date and time" [attr.aria-label]="'Forecast start date and time'" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" fxFlex>
+          <mat-label>Forecast End Date & Time</mat-label>
+          <mat-datetimepicker-toggle [for]="forecastEndPicker" matSuffix></mat-datetimepicker-toggle>
+          <mat-datetimepicker #forecastEndPicker type="datetime" openOnFocus="true"></mat-datetimepicker>
+          <input matInput [(ngModel)]="globalEndDate" [matDatetimepicker]="forecastEndPicker"
+            placeholder="Select end date and time" [attr.aria-label]="'Forecast end date and time'" />
+        </mat-form-field>
+      </div>
+      <mat-error *ngIf="globalStartDate && globalEndDate && globalStartDate >= globalEndDate">
+        End date must be after start date
+      </mat-error>
     </div>
 
     <!-- Forecast Algorithm Selection -->
     <div class="algorithm-section">
       <mat-label>Select Algorithm for Forecast:</mat-label>
       <mat-form-field appearance="outline" class="full-width">
-        <mat-select [formControl]="forecastAlgorithmControl" placeholder="Choose forecast algorithm"
+        <mat-select [formControl]="forecastAlgorithmControl" placeholder="e.g., ARIMA, LSTM, Linear Regression..."
           [attr.aria-label]="'Forecast algorithm selection'">
           <mat-option *ngFor="let algorithm of forecastAlgorithmOptions" [value]="algorithm.value">
             {{ algorithm.label }}
@@ -145,26 +157,33 @@
     <!-- Anomalies Date Range Section -->
     <div class="anomalies-date-section">
       <mat-label>Date Range for Anomalies:</mat-label>
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-date-range-input [rangePicker]="anomaliesPicker">
-          <input matStartDate [(ngModel)]="anomaliesStartDate" placeholder="Anomalies start date"
-            [attr.aria-label]="'Anomalies start date'" />
-          <input matEndDate [(ngModel)]="anomaliesEndDate" placeholder="Anomalies end date"
-            [attr.aria-label]="'Anomalies end date'" />
-        </mat-date-range-input>
-        <mat-datepicker-toggle matIconSuffix [for]="anomaliesPicker"></mat-datepicker-toggle>
-        <mat-date-range-picker #anomaliesPicker></mat-date-range-picker>
-        <mat-error *ngIf="anomaliesStartDate && anomaliesEndDate && anomaliesStartDate >= anomaliesEndDate">
-          End date must be after start date
-        </mat-error>
-      </mat-form-field>
+      <div class="date-time-range" fxLayout="row" fxLayoutGap="16px" fxLayout.xs="column" fxLayoutGap.xs="8px">
+        <mat-form-field appearance="outline" fxFlex>
+          <mat-label>Anomalies Start Date & Time</mat-label>
+          <mat-datetimepicker-toggle [for]="anomaliesStartPicker" matSuffix></mat-datetimepicker-toggle>
+          <mat-datetimepicker #anomaliesStartPicker type="datetime" openOnFocus="true"></mat-datetimepicker>
+          <input matInput [(ngModel)]="anomaliesStartDate" [matDatetimepicker]="anomaliesStartPicker"
+            placeholder="Select start date and time" [attr.aria-label]="'Anomalies start date and time'" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" fxFlex>
+          <mat-label>Anomalies End Date & Time</mat-label>
+          <mat-datetimepicker-toggle [for]="anomaliesEndPicker" matSuffix></mat-datetimepicker-toggle>
+          <mat-datetimepicker #anomaliesEndPicker type="datetime" openOnFocus="true"></mat-datetimepicker>
+          <input matInput [(ngModel)]="anomaliesEndDate" [matDatetimepicker]="anomaliesEndPicker"
+            placeholder="Select end date and time" [attr.aria-label]="'Anomalies end date and time'" />
+        </mat-form-field>
+      </div>
+      <mat-error *ngIf="anomaliesStartDate && anomaliesEndDate && anomaliesStartDate >= anomaliesEndDate">
+        End date must be after start date
+      </mat-error>
     </div>
 
     <!-- Anomalies Algorithm Selection -->
     <div class="anomalies-algorithm-section">
       <mat-label>Select Algorithm for Anomalies:</mat-label>
       <mat-form-field appearance="outline" class="full-width">
-        <mat-select [formControl]="anomaliesAlgorithmControl" placeholder="Choose anomalies algorithm"
+        <mat-select [formControl]="anomaliesAlgorithmControl"
+          placeholder="e.g., Isolation Forest, One-Class SVM, LOF..."
           [attr.aria-label]="'Anomalies algorithm selection'">
           <mat-option *ngFor="let algorithm of anomaliesAlgorithmOptions" [value]="algorithm.value">
             {{ algorithm.label }}
@@ -188,7 +207,8 @@
     Next <mat-icon>arrow_forward</mat-icon>
   </button>
   <button *ngIf="currentStep === totalSteps" mat-raised-button color="primary" [disabled]="!isFormValid"
-    (click)="onConfirm()" [attr.aria-label]="'Confirm and create forecast'">
-    Create Model
+    (click)="onConfirm()"
+    [attr.aria-label]="isEditMode ? 'Confirm and update forecast' : 'Confirm and create forecast'">
+    {{ isEditMode ? 'Update Model' : 'Create Model' }}
   </button>
 </mat-dialog-actions>

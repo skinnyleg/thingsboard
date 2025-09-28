@@ -14,14 +14,14 @@
 /// limitations under the License.
 ///
 
-import { Component, OnDestroy, OnInit, ViewChild } from "@angular/core";
+import { Component, Inject, OnDestroy, OnInit, ViewChild } from "@angular/core";
 import {
   FormControl,
   FormsModule,
   ReactiveFormsModule,
   Validators,
 } from "@angular/forms";
-import { MatDialogRef } from "@angular/material/dialog";
+import { MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { AttributeService, DeviceService } from "@app/core/public-api";
 import { DevicesDataSource } from "@app/modules/home/models/datasource/device-datasource";
 import { DeviceInfo } from "@shared/models/device.models";
@@ -40,6 +40,11 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
+import {
+  MatDatetimepickerModule,
+  MatNativeDatetimeModule,
+} from "@mat-datetimepicker/core";
+import { FlexLayoutModule } from "@angular/flex-layout";
 import { Direction, EntityType } from "@app/shared/public-api";
 import { ForecastField } from "@app/modules/home/models/predictive-maintenance.models";
 
@@ -58,9 +63,12 @@ import { ForecastField } from "@app/modules/home/models/predictive-maintenance.m
     MatIconModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatDatetimepickerModule,
+    MatNativeDatetimeModule,
     FormsModule,
     ReactiveFormsModule, // For reactive form
     MatAutocompleteModule, // For autocomplete
+    FlexLayoutModule, // For flex layout directives
   ],
 })
 export class AddForecastDialogComponent implements OnInit, OnDestroy {
@@ -75,6 +83,10 @@ export class AddForecastDialogComponent implements OnInit, OnDestroy {
   filteredDevices: Observable<DeviceInfo[]>; // For filtered options in autocomplete
   devicesList: DeviceInfo[] = []; // To store the fetched devices
   noTelemetryMessage: string | null = null; // Message to show if no telemetry is available
+
+  // Add mode vs edit mode
+  isEditMode: boolean = false;
+  editingForecast: any = null;
 
   // Step navigation properties
   currentStep: number = 1;
@@ -120,22 +132,45 @@ export class AddForecastDialogComponent implements OnInit, OnDestroy {
 
   constructor(
     public dialogRef: MatDialogRef<AddForecastDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: any,
     private deviceService: DeviceService,
     private attributeService: AttributeService
   ) {
     this.devicesDataSource = new DevicesDataSource(this.deviceService);
+
+    // Check if we're in edit mode
+    if (data && data.isEdit) {
+      this.isEditMode = true;
+      this.editingForecast = data.forecastData;
+
+      // Add CSS class for edit mode styling
+      setTimeout(() => {
+        const dialogContainer = document.querySelector(
+          ".mat-mdc-dialog-container"
+        );
+        if (dialogContainer) {
+          dialogContainer.classList.add("edit-mode");
+        }
+      }, 0);
+    }
   }
 
   ngOnInit(): void {
-    // Initialize forecast dates with default values (last 30 days)
+    // Initialize forecast dates with default values (last 30 days) and set specific times
     this.globalEndDate = new Date();
+    this.globalEndDate.setHours(23, 59, 59, 999); // Set to end of day
+
     this.globalStartDate = new Date();
     this.globalStartDate.setDate(this.globalStartDate.getDate() - 30);
+    this.globalStartDate.setHours(0, 0, 0, 0); // Set to start of day
 
-    // Initialize anomalies dates with default values (last 60 days)
+    // Initialize anomalies dates with default values (last 60 days) and set specific times
     this.anomaliesEndDate = new Date();
+    this.anomaliesEndDate.setHours(23, 59, 59, 999); // Set to end of day
+
     this.anomaliesStartDate = new Date();
     this.anomaliesStartDate.setDate(this.anomaliesStartDate.getDate() - 60);
+    this.anomaliesStartDate.setHours(0, 0, 0, 0); // Set to start of day
 
     // Load the first page with only one device to get the total count
     const firstPageLink = new PageLink(1, 0, null, {
@@ -163,6 +198,11 @@ export class AddForecastDialogComponent implements OnInit, OnDestroy {
     // Subscribe to the devices$ observable to populate devicesList
     this.devicesDataSource.devices$.subscribe((devices) => {
       this.devicesList = devices;
+
+      // If in edit mode, populate the form after devices are loaded
+      if (this.isEditMode && this.editingForecast) {
+        this.populateFormForEdit();
+      }
     });
 
     // Set up filtered devices observable based on user input
@@ -174,12 +214,14 @@ export class AddForecastDialogComponent implements OnInit, OnDestroy {
       )
     );
 
-    // Clear fields when device changes
+    // Clear fields when device changes (only in add mode)
     this.myControl.valueChanges.subscribe((device) => {
-      this.fields = []; // Clear fields when a new device is selected
+      if (!this.isEditMode) {
+        this.fields = []; // Clear fields when a new device is selected
+      }
       this.selectedDevice = typeof device === "object" ? device : null;
       this.noTelemetryMessage = null; // Reset the message
-      if (this.selectedDevice) {
+      if (this.selectedDevice && !this.isEditMode) {
         this.onDeviceSelected(this.selectedDevice);
       }
     });
@@ -364,7 +406,7 @@ export class AddForecastDialogComponent implements OnInit, OnDestroy {
       .filter((field) => field.key && field.key.trim() !== "")
       .map((el) => ({ key: el.key }));
 
-    this.dialogRef.close({
+    const forecastData = {
       name: this.forecastNameControl.value,
       deviceId: deviceId,
       attributes: attributes, // This can now be an empty array
@@ -374,12 +416,197 @@ export class AddForecastDialogComponent implements OnInit, OnDestroy {
       forecastEndDate: this.globalEndDate.getTime(),
       anomaliesStartDate: this.anomaliesStartDate.getTime(),
       anomaliesEndDate: this.anomaliesEndDate.getTime(),
-    });
+    };
+
+    // If in edit mode, include the ID and other necessary fields
+    if (this.isEditMode) {
+      forecastData["id"] = this.editingForecast.trueId;
+      forecastData["trueId"] = this.editingForecast.trueId;
+    }
+
+    this.dialogRef.close(forecastData);
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+
+    // Clean up edit-mode class if it was added
+    if (this.isEditMode) {
+      const dialogContainer = document.querySelector(
+        ".mat-mdc-dialog-container.edit-mode"
+      );
+      if (dialogContainer) {
+        dialogContainer.classList.remove("edit-mode");
+      }
+    }
+  }
+
+  private populateFormForEdit(): void {
+    if (!this.editingForecast) return;
+
+    console.log("Editing forecast data:", this.editingForecast);
+
+    // Set forecast name
+    this.forecastNameControl.setValue(this.editingForecast.modelName || "");
+
+    // Find and set the device
+    // Since we have device name in 'device' field, let's find by name first
+    let selectedDevice: DeviceInfo | null = null;
+
+    // Try to find by device name
+    if (this.editingForecast.device) {
+      selectedDevice = this.devicesList.find(
+        (d) => d.name === this.editingForecast.device
+      );
+    }
+
+    // If not found by name and we have a device ID, try by ID
+    if (!selectedDevice && this.editingForecast.deviceId) {
+      const deviceId =
+        typeof this.editingForecast.deviceId === "string"
+          ? this.editingForecast.deviceId
+          : this.editingForecast.deviceId.id;
+      selectedDevice = this.devicesList.find((d) => d.id.id === deviceId);
+    }
+
+    // If still not found, try using the trueId (forecast ID) to match with device
+    // This might not work directly, but let's try
+    if (!selectedDevice && this.editingForecast.trueId) {
+      // This is likely not the right approach, but let's keep it as fallback
+      console.warn(
+        "Could not find device by name or deviceId, forecast data:",
+        this.editingForecast
+      );
+    }
+
+    if (selectedDevice) {
+      this.selectedDevice = selectedDevice;
+      this.myControl.setValue(selectedDevice);
+
+      // Load telemetry for the selected device
+      this.onDeviceSelected(selectedDevice);
+    } else {
+      console.warn(
+        "Device not found for editing forecast:",
+        this.editingForecast
+      );
+    }
+
+    // Set attributes/fields if they exist - parse from attributesText
+    if (this.editingForecast.attributesText) {
+      const attributeKeys = this.editingForecast.attributesText
+        .split(", ")
+        .filter((key) => key.trim());
+      this.fields = attributeKeys.map((key) => ({
+        key: key.trim(),
+        startDate: null,
+        endDate: null,
+      }));
+    } else if (
+      this.editingForecast.attributes &&
+      Array.isArray(this.editingForecast.attributes)
+    ) {
+      this.fields = this.editingForecast.attributes.map((attr: any) => ({
+        key: attr.key || attr,
+        startDate: null,
+        endDate: null,
+      }));
+    }
+
+    // Set forecast dates if they exist
+    if (this.editingForecast.forecastStartDate) {
+      this.globalStartDate = new Date(this.editingForecast.forecastStartDate);
+    }
+    if (this.editingForecast.forecastEndDate) {
+      this.globalEndDate = new Date(this.editingForecast.forecastEndDate);
+    }
+
+    // Set anomalies dates if they exist
+    if (
+      this.editingForecast.anomalyStartDate ||
+      this.editingForecast.anomaliesStartDate
+    ) {
+      this.anomaliesStartDate = new Date(
+        this.editingForecast.anomalyStartDate ||
+          this.editingForecast.anomaliesStartDate
+      );
+    }
+    if (
+      this.editingForecast.anomalyEndDate ||
+      this.editingForecast.anomaliesEndDate
+    ) {
+      this.anomaliesEndDate = new Date(
+        this.editingForecast.anomalyEndDate ||
+          this.editingForecast.anomaliesEndDate
+      );
+    }
+
+    // Set algorithms if they exist (use setTimeout to ensure form controls are ready)
+    setTimeout(() => {
+      console.log("Setting algorithms from edit data:", {
+        forecastAlgorithm: this.editingForecast.forecastAlgorithm,
+        anomalyAlgorithm:
+          this.editingForecast.anomalyAlgorithm ||
+          this.editingForecast.anomaliesAlgorithm,
+        availableForecastOptions: this.forecastAlgorithmOptions.map(
+          (opt) => opt.value
+        ),
+        availableAnomalyOptions: this.anomaliesAlgorithmOptions.map(
+          (opt) => opt.value
+        ),
+      });
+
+      if (this.editingForecast.forecastAlgorithm) {
+        const forecastAlg = this.editingForecast.forecastAlgorithm;
+        // Check if the algorithm exists in our options
+        const forecastExists = this.forecastAlgorithmOptions.some(
+          (opt) => opt.value === forecastAlg
+        );
+        console.log(
+          `Forecast algorithm '${forecastAlg}' exists in options:`,
+          forecastExists
+        );
+
+        this.forecastAlgorithmControl.setValue(forecastAlg);
+        console.log(
+          "Forecast algorithm control value after setting:",
+          this.forecastAlgorithmControl.value
+        );
+      }
+
+      const anomalyAlg =
+        this.editingForecast.anomalyAlgorithm ||
+        this.editingForecast.anomaliesAlgorithm;
+      if (anomalyAlg) {
+        // Check if the algorithm exists in our options
+        const anomalyExists = this.anomaliesAlgorithmOptions.some(
+          (opt) => opt.value === anomalyAlg
+        );
+        console.log(
+          `Anomaly algorithm '${anomalyAlg}' exists in options:`,
+          anomalyExists
+        );
+
+        this.anomaliesAlgorithmControl.setValue(anomalyAlg);
+        console.log(
+          "Anomaly algorithm control value after setting:",
+          this.anomaliesAlgorithmControl.value
+        );
+      }
+    }, 100);
+
+    console.log("Form populated for edit mode:", {
+      forecastName: this.forecastNameControl.value,
+      device: this.selectedDevice?.name,
+      attributes: this.fields,
+      forecastAlgorithm: this.forecastAlgorithmControl.value,
+      anomaliesAlgorithm: this.anomaliesAlgorithmControl.value,
+      forecastStartDate: this.globalStartDate,
+      forecastEndDate: this.globalEndDate,
+      anomaliesStartDate: this.anomaliesStartDate,
+      anomaliesEndDate: this.anomaliesEndDate,
+    });
   }
 
   getFieldAutocomplete(index: number): any {

@@ -58,3 +58,8 @@ ADD COLUMN IF NOT EXISTS forecast_end_date bigint NOT NULL DEFAULT 0,
 ADD COLUMN IF NOT EXISTS anomaly_algorithm varchar(255) NOT NULL DEFAULT 'THRESHOLD',
 ADD COLUMN IF NOT EXISTS anomaly_start_date bigint NOT NULL DEFAULT 0,
 ADD COLUMN IF NOT EXISTS anomaly_end_date bigint NOT NULL DEFAULT 0;
+
+ALTER TABLE forecast
+DROP COLUMN IF EXISTS active,
+ADD COLUMN IF NOT EXISTS status varchar(50) NOT NULL DEFAULT 'INACTIVE',
+ADD COLUMN IF NOT EXISTS view_preferences jsonb DEFAULT '{"selectedViews": ["forecast", "anomalies"]}'::jsonb;

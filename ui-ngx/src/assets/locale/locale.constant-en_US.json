@@ -5,7 +5,15 @@
     },
     "forecast": {
         "delete-model-title": "Delete Model",
-        "delete-model-text": "Are you sure you want to delete the model '{{modelName}}'?"
+        "delete-model-text": "Are you sure you want to delete the model '{{modelName}}'?",
+        "create-model": "Create Model",
+        "refresh-models": "Refresh Model",
+        "status": {
+            "inactive": "Inactive",
+            "active": "Active",
+            "pending": "Pending",
+            "failed": "Failed"
+        }
     },
     "access": {
         "unauthorized": "Unauthorized",

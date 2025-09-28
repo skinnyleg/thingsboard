@@ -44,6 +44,7 @@ import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.Forecast;
 import org.thingsboard.server.common.data.Detector;
+import org.thingsboard.server.common.data.forecast.ForecastStatus;
 import org.thingsboard.server.config.annotations.ApiOperation;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -114,6 +115,25 @@ public class PredictiveMaintenanceController extends BaseController {
         TenantId tenantId = getCurrentUser().getTenantId();
         forecast.setId(null);
         forecast.setTenantId(tenantId);
+        forecast.setStatus(ForecastStatus.INACTIVE.getValue());
+        return checkNotNull(forecastsService.save(forecast, getCurrentUser()));
+    }
+
+    @ApiOperation(value = "Update predictiveMaintenance forecast", notes = "Update an existing forecast including view preferences")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @PostMapping(value = "/forecasts/{forecastId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Forecast updateForecast(
+            @Parameter(description = "Forecast Id") @PathVariable("forecastId") String strForecastId,
+            @RequestBody Forecast forecast) throws Exception {
+        checkParameter("forecastId", strForecastId);
+        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
+        TenantId tenantId = getCurrentUser().getTenantId();
+        
+        // Ensure the forecast ID and tenant ID are set correctly
+        forecast.setId(forecastId);
+        forecast.setTenantId(tenantId);
+        
         return checkNotNull(forecastsService.save(forecast, getCurrentUser()));
     }
 

@@ -20,6 +20,7 @@ import { Observable } from "rxjs";
 import { defaultHttpOptionsFromConfig, RequestConfig } from "./http-utils"; // Import utility functions if available
 import { PageData, PageLink } from "@app/shared/public-api";
 import { Order } from "@app/modules/home/models/predictive-maintenance.models";
+import { Forecast } from "@app/shared/models/forecast.models";
 // import { Order } from '../components/forecast/forcast-page.component'; // Adjust import path as needed
 
 @Injectable({
@@ -42,16 +43,19 @@ export class ForecastService {
   }
 
   // Fetch a specific forecast by its ID
-  getForecast(forecastId: string, config?: RequestConfig): Observable<any> {
-    return this.http.get<any>(
+  getForecast(
+    forecastId: string,
+    config?: RequestConfig
+  ): Observable<Forecast> {
+    return this.http.get<Forecast>(
       `${this.baseUrl}/${forecastId}`,
       defaultHttpOptionsFromConfig(config)
     );
   }
 
   // Save a new forecast
-  addForecast(forecast: any, config?: RequestConfig): Observable<Order> {
-    return this.http.post<Order>(
+  addForecast(forecast: any, config?: RequestConfig): Observable<Forecast> {
+    return this.http.post<Forecast>(
       `${this.baseUrl}`,
       forecast,
       defaultHttpOptionsFromConfig(config)
@@ -59,10 +63,23 @@ export class ForecastService {
   }
 
   // Update an existing forecast
-  updateForecast(forecast: any, config?: RequestConfig): Observable<Order> {
-    return this.http.put<Order>(
-      `${this.baseUrl}/${forecast.id}`,
+  updateForecast(forecast: any, config?: RequestConfig): Observable<Forecast> {
+    const forecastId = forecast.id?.id || forecast.id;
+    return this.http.post<Forecast>(
+      `${this.baseUrl}/${forecastId}`,
       forecast,
+      defaultHttpOptionsFromConfig(config)
+    );
+  }
+
+  // Activate a forecast
+  activateForecast(
+    forecastId: string,
+    config?: RequestConfig
+  ): Observable<void> {
+    return this.http.patch<void>(
+      `${this.baseUrl}/${forecastId}/activate`,
+      {},
       defaultHttpOptionsFromConfig(config)
     );
   }
