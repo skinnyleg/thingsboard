@@ -20,7 +20,7 @@ import { Observable } from "rxjs";
 import { defaultHttpOptionsFromConfig, RequestConfig } from "./http-utils"; // Import utility functions if available
 import { PageData, PageLink } from "@app/shared/public-api";
 import { Order } from "@app/modules/home/models/predictive-maintenance.models";
-import { Forecast } from "@app/shared/models/forecast.models";
+import { Forecast, ForecastCreate } from "@app/shared/models/forecast.models";
 // import { Order } from '../components/forecast/forcast-page.component'; // Adjust import path as needed
 
 @Injectable({
@@ -54,7 +54,7 @@ export class ForecastService {
   }
 
   // Save a new forecast
-  addForecast(forecast: any, config?: RequestConfig): Observable<Forecast> {
+  addForecast(forecast: ForecastCreate, config?: RequestConfig): Observable<Forecast> {
     return this.http.post<Forecast>(
       `${this.baseUrl}`,
       forecast,

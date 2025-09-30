@@ -47,6 +47,7 @@ import {
 import { FlexLayoutModule } from "@angular/flex-layout";
 import { Direction, EntityType } from "@app/shared/public-api";
 import { ForecastField } from "@app/modules/home/models/predictive-maintenance.models";
+import { ForecastCreate } from "@app/shared/models/forecast.models";
 
 @Component({
   selector: "app-add-forecast-dialog",
@@ -131,7 +132,7 @@ export class AddForecastDialogComponent implements OnInit, OnDestroy {
   ];
 
   constructor(
-    public dialogRef: MatDialogRef<AddForecastDialogComponent>,
+    public dialogRef: MatDialogRef<AddForecastDialogComponent, ForecastCreate>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private deviceService: DeviceService,
     private attributeService: AttributeService
@@ -406,16 +407,16 @@ export class AddForecastDialogComponent implements OnInit, OnDestroy {
       .filter((field) => field.key && field.key.trim() !== "")
       .map((el) => ({ key: el.key }));
 
-    const forecastData = {
+    const forecastData: ForecastCreate = {
       name: this.forecastNameControl.value,
       deviceId: deviceId,
-      attributes: attributes, // This can now be an empty array
+      attributes: attributes, 
       forecastAlgorithm: this.forecastAlgorithmControl.value,
-      anomaliesAlgorithm: this.anomaliesAlgorithmControl.value,
+      anomalyAlgorithm: this.anomaliesAlgorithmControl.value,
       forecastStartDate: this.globalStartDate.getTime(),
       forecastEndDate: this.globalEndDate.getTime(),
-      anomaliesStartDate: this.anomaliesStartDate.getTime(),
-      anomaliesEndDate: this.anomaliesEndDate.getTime(),
+      anomalyStartDate: this.anomaliesStartDate.getTime(),
+      anomalyEndDate: this.anomaliesEndDate.getTime(),
     };
 
     // If in edit mode, include the ID and other necessary fields

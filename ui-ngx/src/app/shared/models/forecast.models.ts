@@ -56,6 +56,18 @@ export interface Forecast extends BaseData<ForecastId> {
   viewPreferences?: string;
 }
 
+export interface ForecastCreate {
+  name: string;
+  deviceId: DeviceId;
+  attributes: ForecastAttribute[];
+  forecastAlgorithm: string;
+  anomalyAlgorithm: string;
+  forecastStartDate: number;
+  forecastEndDate: number;
+  anomalyStartDate: number;
+  anomalyEndDate: number;
+}
+
 export function getForecastStatusFromString(
   status: string | boolean
 ): ForecastStatus {
