@@ -6,9 +6,11 @@ import numpy as np
 from copy import deepcopy
 import datetime
 import tensorflow as tf
+from src.settings import settings
 
 Data = NewType("Data", Dict[str, List[Union[int, str]]])
-MODEL_PATH = "data/models/model.h5"
+# MODEL_PATH = "data/models/model.h5"
+MODEL_PATH = settings.models_path + "/model.h5"
 
 model = load_model(MODEL_PATH)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))

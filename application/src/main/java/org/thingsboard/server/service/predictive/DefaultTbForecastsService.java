@@ -80,8 +80,4 @@ public class DefaultTbForecastsService extends AbstractTbEntityService implement
             throw e;
         }
     }
-
-    public void activate(Forecast forecast, User user) throws ThingsboardException {
-        this.forecastsService.activateForecast(user.getTenantId(), forecast.getId());
-    }
 }

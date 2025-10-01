@@ -1,19 +1,12 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: thingsboard_db
+  database:
+    container_name: database
     restart: on-failure:3
+    image: postgres:16
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - application_source_code:/app
-    networks:
-      - thingsboard
     env_file:
       - ./.env
     healthcheck:
@@ -22,76 +15,20 @@ services:
       timeout: 60s
       retries: 5
       start_period: 80s
-
-  anomalies-script:
-    build:
-      context: ./send-telemetry/
-      dockerfile: anomalies-script.Dockerfile
-    container_name: anomalies-script
-    depends_on:
-      tb_application:
-        condition: service_healthy
-    networks:
-      - thingsboard
-
-  forecast-script:
-    build:
-      context: ./send-telemetry/
-      dockerfile: forecast-script.Dockerfile
-    container_name: forecast-script
-    depends_on:
-      tb_application:
-        condition: service_healthy
-    networks:
-      - thingsboard
-
-  ws-events:
-    build:
-      context: ./send-telemetry/
-      dockerfile: ws-events.Dockerfile
-    container_name: ws-events
-    depends_on:
-      tb_application:
-        condition: service_healthy
-    networks:
-      - thingsboard
     volumes:
-      - application_source_code:/app
-
-  dashboard-script:
-    build:
-      context: ./send-telemetry/
-      dockerfile: dashboard-script.Dockerfile
-    container_name: dashboard-script
-    depends_on:
-      tb_application:
-        condition: service_healthy
+      - data:/var/lib/postgresql/data
+      - dev-source-code:/app
     networks:
       - thingsboard
 
-  fastapi:
-    build:
-      context: ./predictive-maintenance
-      dockerfile: .Dockerfile
-    container_name: fastapi
+  model:
+    container_name: model
+    depends_on:
+      database:
+        condition: service_healthy
     restart: on-failure:3
-    volumes:
-      - application_source_code:/app
-    depends_on:
-      - postgres
-    ports:
-      - "8000:8000"
-    # network_mode: host
-    networks:
-      - thingsboard
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
     environment:
-      - WAIT_HOSTS=postgres:5432
+      - WAIT_HOSTS=thingsboard_db:5432
       - AccountSid=${ACCOUNT_SID:-defaultSid}
       - AccountToken=${ACCOUNT_TOKEN:-defaultToken}
       - TwilioSmsFrom=${TWILIO_SMS_FROM:-+1234567890}
@@ -99,98 +36,165 @@ services:
       - WB_TOKEN=${WB_TOKEN:-defaultWBToken}
       - EMAIL_ADDRESS=${EMAIL_ADDRESS:-test@example.com}
       - APP_PASSWORD=${APP_PASSWORD:-defaultPassword}
-
-  tb_application:
-    container_name: thingsboard
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://thingsboard:8080,http://thingsboard:4200}
+      - MODELS_PATH=/app/models
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     build:
-      context: .
+      context: ./predictive-maintenance
       dockerfile: .Dockerfile
     volumes:
-      - application_source_code:/app
-      - application_m2_cache:/root/.m2
-      - application_npm_cache:/root/.npm
-      - application_gradle_cache:/root/.gradle
-    # network_mode: host
+      - dev-source-code:/app
+      - models-data:/app/models
+    networks:
+      - thingsboard
+
+  # Api Gateway
+  thingsboard:
+    container_name: thingsboard
+    restart: on-failure:3
     ports:
       - "8080:8080"
       - "1883:1883"
       - "7071:7071"
       - "8883:8883"
-    networks:
-      - thingsboard
     depends_on:
-      postgres:
+      database:
         condition: service_healthy
-      fastapi:
+      model:
         condition: service_healthy
+    environment:
+      - WAIT_HOSTS=database:5432,model:8000
+      - FASTAPI_BASE_URL=http://model:8000/api/v1/
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 120s
-    restart: on-failure:3
-    environment:
-      - WAIT_HOSTS=postgres:5432,fastapi:8000
-      - FASTAPI_BASE_URL=http://fastapi:8000/api/v1/
-
-  ui-ngx:
     build:
-      context: ui-ngx
+      context: .
       dockerfile: .Dockerfile
-    container_name: thingsboard-dev
     volumes:
-      - application_source_code:/app
-      - application_npm_cache:/root/.npm
-    # network_mode: host
-    ports:
-      - "4200:4200"
+      - dev-source-code:/app
+      - m2-cache:/root/.m2
+      - npm-cache:/root/.npm
+      - gradle-cache:/root/.gradle
     networks:
       - thingsboard
+
+  ui-ngx:
+    container_name: thingsboard-ui
+    restart: on-failure:3
+    ports:
+      - "4200:4200"
     depends_on:
-      tb_application:
+      thingsboard:
         condition: service_healthy
     environment:
-      - WAIT_HOSTS=thingsboard:8080
+      - WAIT_HOSTS=thingsboard:8080,model:8000
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:4200 || exit 1"]
       interval: 1m30s
       timeout: 30s
       retries: 5
       start_period: 30s
-    restart: on-failure:3
+    build:
+      context: ./ui-ngx
+      dockerfile: .Dockerfile
+    volumes:
+      - dev-source-code:/app
+      - npm-cache:/root/.npm
+    networks:
+      - thingsboard
+
+  anomalies-script:
+    container_name: anomalies-script
+    depends_on:
+      thingsboard:
+        condition: service_healthy
+    build:
+      context: ./send-telemetry/
+      dockerfile: anomalies-script.Dockerfile
+    networks:
+      - thingsboard
+
+  forecast-script:
+    container_name: forecast-script
+    depends_on:
+      thingsboard:
+        condition: service_healthy
+    build:
+      context: ./send-telemetry/
+      dockerfile: forecast-script.Dockerfile
+    networks:
+      - thingsboard
+
+  ws-events:
+    container_name: ws-events
+    depends_on:
+      thingsboard:
+        condition: service_healthy
+    build:
+      context: ./send-telemetry/
+      dockerfile: ws-events.Dockerfile
+    networks:
+      - thingsboard
+    volumes:
+      - dev-source-code:/app
+
+  dashboard-script:
+    container_name: dashboard-script
+    depends_on:
+      thingsboard:
+        condition: service_healthy
+    build:
+      context: ./send-telemetry/
+      dockerfile: dashboard-script.Dockerfile
+    networks:
+      - thingsboard
 
 volumes:
-  postgres_data:
+  data:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ../psql_data/main
-  application_source_code:
+  dev-source-code:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: .
-  application_m2_cache:
+  m2-cache:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ../thingsboard_m2_cache
-  application_npm_cache:
+  npm-cache:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ../thingsboard_npm_cache/
-  application_gradle_cache:
+  gradle-cache:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ../thingsboard_gradle/
+  models_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../thingsboard_models`
 
 networks:
   thingsboard:

@@ -63,3 +63,6 @@ ALTER TABLE forecast
 DROP COLUMN IF EXISTS active,
 ADD COLUMN IF NOT EXISTS status varchar(50) NOT NULL DEFAULT 'INACTIVE',
 ADD COLUMN IF NOT EXISTS view_preferences jsonb DEFAULT '{"selectedViews": ["forecast", "anomalies"]}'::jsonb;
+
+ALTER TABLE forecast
+DROP COLUMN IF EXISTS status;

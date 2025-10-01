@@ -44,7 +44,6 @@ import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.Forecast;
 import org.thingsboard.server.common.data.Detector;
-import org.thingsboard.server.common.data.forecast.ForecastStatus;
 import org.thingsboard.server.config.annotations.ApiOperation;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -95,6 +94,19 @@ public class PredictiveMaintenanceController extends BaseController {
         return checkNotNull(forecastsService.findTenantForcasts(tenantId, pageLink));
     }
 
+    // get model status by forecastId
+    @ApiOperation(value = "Get predictiveMaintenance model status by forecastId", notes = "access the model status by forecastId in predictive maintenance route directive")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @GetMapping(value = "/forecasts/{forecastId}/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public JsonNode getModelStatus(
+            @Parameter(description = "Forecast Id") @PathVariable("forecastId") String strForecastId)
+            throws ThingsboardException {
+        checkParameter("forecastId", strForecastId);
+        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
+        return fastAPIService.getModelStatus(forecastId);
+    }
+
     @ApiOperation(value = "Get predictiveMaintenance forecast by id", notes = "access the forecast by id")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
     @GetMapping(value = "/forecasts/{forecastId}")
@@ -115,7 +127,6 @@ public class PredictiveMaintenanceController extends BaseController {
         TenantId tenantId = getCurrentUser().getTenantId();
         forecast.setId(null);
         forecast.setTenantId(tenantId);
-        forecast.setStatus(ForecastStatus.INACTIVE.getValue());
         return checkNotNull(forecastsService.save(forecast, getCurrentUser()));
     }
 
@@ -156,7 +167,6 @@ public class PredictiveMaintenanceController extends BaseController {
         ForecastId forecastId = new ForecastId(toUUID(strForecastId));
         try {
             fastAPIService.activateForecast(forecastId);
-            forecastsService.activate(new Forecast(forecastId), getCurrentUser());
         } catch (Exception e) {
             throw new ThingsboardException("Failed to activate forecast", e, ThingsboardErrorCode.GENERAL);
         }

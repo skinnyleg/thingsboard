@@ -91,4 +91,11 @@ export class ForecastService {
       defaultHttpOptionsFromConfig(config)
     );
   }
+
+  getForecastStatus(forecastId: string, config?: RequestConfig): Observable<string> {
+    return this.http.get<string>(
+      `${this.baseUrl}/${forecastId}/status`,
+      defaultHttpOptionsFromConfig(config)
+    );
+  }
 }

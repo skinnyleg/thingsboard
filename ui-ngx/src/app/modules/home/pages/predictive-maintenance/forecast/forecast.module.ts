@@ -95,7 +95,7 @@ export class ForecastComponent extends PageComponent implements Order {
   device: string;
   forecastName: string;
   date: string;
-  status: string;
+  status: string = "";
 
   // Collapse/expand states for charts
   forecastChartCollapsed: boolean = false;
@@ -205,7 +205,9 @@ export class ForecastComponent extends PageComponent implements Order {
         this.device = forecast.device;
         this.forecastName = forecast.id; // Use the forecast ID as the name
         this.date = forecast.date;
-        this.status = forecast.status;
+        // fetch status from the service to ensure it's up-to-date
+        
+        // this.status = forecast.status || "inactive";
       }
     });
   }
@@ -249,8 +251,7 @@ export class ForecastComponent extends PageComponent implements Order {
         (model) =>
           this.getModelDisplayName(model).toLowerCase().includes(searchTerm) ||
           model.device.toLowerCase().includes(searchTerm) ||
-          model.date.toLowerCase().includes(searchTerm) ||
-          model.status.toLowerCase().includes(searchTerm)
+          model.date.toLowerCase().includes(searchTerm)
       );
     }
   }

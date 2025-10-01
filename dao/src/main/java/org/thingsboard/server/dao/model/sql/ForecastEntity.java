@@ -50,9 +50,6 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "status")
-    private String status;
-
     @Column(name = "forecast_algorithm")
     private String forecastAlgorithm;
 
@@ -97,7 +94,6 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
             this.deviceId = forecast.getDeviceId().getId();
         }
         this.name = forecast.getName();
-        this.status = forecast.getStatus();
         this.attributes = JacksonUtil.valueToTree(forecast.getAttributes());
         this.forecastAlgorithm = forecast.getForecastAlgorithm();
         this.forecastStartDate = forecast.getForecastStartDate();
@@ -129,7 +125,6 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
             forecast.setDeviceId(new DeviceId(deviceId));
         }
         forecast.setName(name);
-        forecast.setStatus(status);
         forecast.setAttributes(JacksonUtil.convertValue(attributes, ForecastAttribute[].class));
         forecast.setForecastAlgorithm(forecastAlgorithm);
         forecast.setForecastStartDate(forecastStartDate);

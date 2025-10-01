@@ -48,13 +48,6 @@ import {
 } from "@app/modules/home/models/predictive-maintenance.models";
 import { Direction, PageLink } from "@app/shared/public-api";
 import {
-  ForecastStatus,
-  getForecastStatusFromString,
-  getForecastStatusDisplayText,
-  getForecastViewPreferences,
-  setForecastViewPreferences,
-} from "@app/shared/models/forecast.models";
-import {
   ForecastViewType,
   ForecastViewPreferences,
   DEFAULT_VIEW_PREFERENCES,
@@ -100,7 +93,6 @@ export class ForecastComponent implements OnInit {
     { key: "device", name: "Device", visible: true },
     { key: "attributes", name: "Attributes", visible: true },
     { key: "date", name: "Creation Time", visible: true },
-    { key: "status", name: "Status", visible: true },
     { key: "action", name: "Actions", visible: true, permanent: true }, // Actions column always visible
   ];
 
@@ -184,16 +176,6 @@ export class ForecastComponent implements OnInit {
     deviceNameMap: Map<string, string>
   ): Order[] {
     return fetchedData.map((item) => {
-      // Handle both new status field and legacy active field
-      let status = "inactive"; // Default status
-      if (item.status) {
-        // Use the new status field if present
-        status = item.status;
-      } else if (item.active !== undefined) {
-        // Handle legacy boolean active field
-        status = item.active ? "active" : "inactive";
-      }
-
       return {
         id: item.id.id.split("-")[0], // Getting the id from the nested object
         trueId: item.id.id,
@@ -205,7 +187,6 @@ export class ForecastComponent implements OnInit {
           item.title ||
           `Model_${item.id.id.split("-")[0]}`, // Use actual model name from API response
         date: new Date(item.createdTime).toISOString().split("T")[0], // Formatting the createdTime to yyyy-mm-dd
-        status: status,
         active: item.active, // Keep legacy field if present for backward compatibility
         attributesText:
           item.attributes && item.attributes.length > 0
@@ -422,36 +403,6 @@ export class ForecastComponent implements OnInit {
 
   toggleToolbar(): void {
     this.toolbarOpened = !this.toolbarOpened;
-  }
-
-  getForecastStatusDisplayText(status: string | boolean): string {
-    const forecastStatus = getForecastStatusFromString(status);
-    switch (forecastStatus) {
-      case ForecastStatus.ACTIVE:
-        return this.translate.instant("forecast.status.active");
-      case ForecastStatus.PENDING:
-        return this.translate.instant("forecast.status.pending");
-      case ForecastStatus.FAILED:
-        return this.translate.instant("forecast.status.failed");
-      case ForecastStatus.INACTIVE:
-      default:
-        return this.translate.instant("forecast.status.inactive");
-    }
-  }
-
-  getForecastStatusClass(status: string | boolean): string {
-    const forecastStatus = getForecastStatusFromString(status);
-    switch (forecastStatus) {
-      case ForecastStatus.ACTIVE:
-        return "status-active";
-      case ForecastStatus.PENDING:
-        return "status-pending";
-      case ForecastStatus.FAILED:
-        return "status-failed";
-      case ForecastStatus.INACTIVE:
-      default:
-        return "status-inactive";
-    }
   }
 
   refreshForecasts(): void {

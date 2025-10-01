@@ -19,7 +19,10 @@ import os
 logger = logging.getLogger("uvicorn.debug")
 logger1 = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/forecast",
+    tags=["forecast"],
+)
 
 THINGSBOARD_WS_HOST_ADDR = "thingsboard"
 THINGSBOARD_WS_PORT = 8080

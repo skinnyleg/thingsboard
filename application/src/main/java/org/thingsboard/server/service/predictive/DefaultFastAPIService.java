@@ -57,4 +57,12 @@ public class DefaultFastAPIService implements FastAPIService {
             throw new ThingsboardException("Failed to activate forecast", e, ThingsboardErrorCode.GENERAL);
         }
     }
+
+    public JsonNode getModelsStatus() {
+        return this.restTemplate.getForObject("models/status", JsonNode.class);
+    }
+
+    public JsonNode getModelStatus(ForecastId forecastId) {
+        return this.restTemplate.getForObject("models/{forecastId}/status", JsonNode.class, forecastId);
+    }
 }
