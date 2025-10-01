@@ -1,4 +1,23 @@
 {
-    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable",
-    "java.compile.nullAnalysis.mode": "automatic"
+    // Java Language Server VM arguments - configure Maven repo location
+    // Uses same cache directories as docker-compose.yml volumes
+    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable -Dmaven.repo.local=${workspaceFolder}/../thingsboard_m2_cache/repository",
+    "java.compile.nullAnalysis.mode": "automatic",
+    // Maven configuration - use Docker volume cache directory
+    // Points to ../thingsboard_m2_cache (same as docker-compose.yml)
+    "java.configuration.maven.userSettings": "${workspaceFolder}/../thingsboard_m2_cache/settings.xml",
+    "maven.terminal.customEnv": [
+        {
+            "environmentVariable": "MAVEN_OPTS",
+            "value": "-Dmaven.repo.local=${workspaceFolder}/../thingsboard_m2_cache/repository"
+        }
+    ],
+    // Gradle configuration - use Docker volume cache directory
+    // Points to ../thingsboard_gradle (same as docker-compose.yml)
+    "java.import.gradle.user.home": "${workspaceFolder}/../thingsboard_gradle",
+    "java.import.gradle.home": "${workspaceFolder}/../thingsboard_gradle",
+    // Project import settings
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.import.maven.enabled": true,
+    "java.import.gradle.enabled": true
 }

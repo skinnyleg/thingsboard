@@ -1,6 +1,22 @@
-DOCKER_CMD=docker run -v .:/app/ -v /home/samy/thingsboard_m2_cache:/root/.m2 \
-	-v /home/samy/thingsboard_npm_cache:/root/.npm \
-	-v /home/samy/thingsboard_gradle:/root/.gradle \
+# ============================================================================
+# IMPORTANT: DO NOT RUN WITH SUDO!
+# 
+# Run:     make build          ✓ (files owned by you)
+# NOT:     sudo make build     ✗ (files owned by root, causes permission issues)
+#
+# The Makefile uses --user flag to run Docker with your user ID
+# ============================================================================
+
+# Run Docker with current user ID to avoid permission issues
+# Mount cache directories and configure Maven/Gradle to use them
+DOCKER_CMD=docker run --user $(shell id -u):$(shell id -g) \
+	-v .:/app/ \
+	-v /home/samy/thingsboard_m2_cache:/cache/.m2 \
+	-v /home/samy/thingsboard_npm_cache:/cache/.npm \
+	-v /home/samy/thingsboard_gradle:/cache/.gradle \
+	-e MAVEN_OPTS="-Dmaven.repo.local=/cache/.m2/repository" \
+	-e GRADLE_USER_HOME=/cache/.gradle \
+	-e NPM_CONFIG_CACHE=/cache/.npm \
 	thingsboard-tb_application:latest
 
 all: clean build

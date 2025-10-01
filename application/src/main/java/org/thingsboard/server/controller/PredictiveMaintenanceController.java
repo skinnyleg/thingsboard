@@ -165,6 +165,8 @@ public class PredictiveMaintenanceController extends BaseController {
     public void activateForecast(@PathVariable("forecastId") String strForecastId) throws Exception {
         checkParameter("forecastId", strForecastId);
         ForecastId forecastId = new ForecastId(toUUID(strForecastId));
+        // check if forecast exists otherwise not found
+        checkNotNull(forecastsService.findTenantForecast(getTenantId(), forecastId));
         try {
             fastAPIService.activateForecast(forecastId);
         } catch (Exception e) {
