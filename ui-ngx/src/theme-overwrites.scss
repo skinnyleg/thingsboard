@@ -54,7 +54,7 @@
   }
   .mat-mdc-form-field {
     .mat-mdc-form-field-hint-wrapper {
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--tb-dark-mat-text-300);
     }
   }
 }

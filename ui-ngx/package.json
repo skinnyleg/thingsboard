@@ -3,7 +3,7 @@
     "version": "3.7.0",
     "scripts": {
         "ng": "ng",
-        "start": "node --max-old-space-size=131070 ./node_modules/@angular/cli/bin/ng serve --configuration development --host 0.0.0.0 --open",
+        "start": "node --max-old-space-size=131070 ./node_modules/@angular/cli/bin/ng serve --configuration development --host 0.0.0.0 --open --poll 0",
         "build": "ng build",
         "build:prod": "node --max-old-space-size=131070 ./node_modules/@angular/cli/bin/ng build --configuration production --vendor-chunk",
         "build:types": "node generate-types.js",

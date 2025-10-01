@@ -100,7 +100,9 @@
                             "node_modules/ace-diff/dist/ace-diff.min.css"
                         ],
                         "stylePreprocessorOptions": {
-                            "includePaths": ["src/scss"]
+                            "includePaths": [
+                                "src/scss"
+                            ]
                         },
                         "scripts": [
                             "node_modules/tinycolor2/dist/tinycolor-min.js",
@@ -203,7 +205,7 @@
                             },
                             "vendorChunk": true,
                             "extractLicenses": false,
-                            "sourceMap": true,
+                            "sourceMap": false,
                             "namedChunks": true
                         }
                     }
@@ -237,15 +239,23 @@
                         "polyfills": "src/polyfills.ts",
                         "tsConfig": "src/tsconfig.spec.json",
                         "karmaConfig": "src/karma.conf.js",
-                        "styles": ["src/styles.scss"],
+                        "styles": [
+                            "src/styles.scss"
+                        ],
                         "scripts": [],
-                        "assets": ["src/favicon.ico", "src/assets"]
+                        "assets": [
+                            "src/favicon.ico",
+                            "src/assets"
+                        ]
                     }
                 },
                 "lint": {
                     "builder": "@angular-eslint/builder:lint",
                     "options": {
-                        "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
+                        "lintFilePatterns": [
+                            "src/**/*.ts",
+                            "src/**/*.html"
+                        ]
                     }
                 }
             }
@@ -273,6 +283,8 @@
     "cli": {
         "packageManager": "yarn",
         "analytics": false,
-        "schematicCollections": ["@angular-eslint/schematics"]
+        "schematicCollections": [
+            "@angular-eslint/schematics"
+        ]
     }
 }

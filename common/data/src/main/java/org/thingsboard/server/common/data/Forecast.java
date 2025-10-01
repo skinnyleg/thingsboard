@@ -47,6 +47,13 @@ public class Forecast extends BaseData<ForecastId> implements HasTenantId, HasNa
         this.deviceId = forecast.getDeviceId();
         this.name = forecast.getName();
         this.attributes = forecast.getAttributes();
+        this.forecastAlgorithm = forecast.getForecastAlgorithm();
+        this.forecastStartDate = forecast.getForecastStartDate();
+        this.forecastEndDate = forecast.getForecastEndDate();
+        this.anomalyAlgorithm = forecast.getAnomalyAlgorithm();
+        this.anomalyStartDate = forecast.getAnomalyStartDate();
+        this.anomalyEndDate = forecast.getAnomalyEndDate();
+        this.viewPreferences = forecast.getViewPreferences();
     }
 
     @NoXss
@@ -60,10 +67,28 @@ public class Forecast extends BaseData<ForecastId> implements HasTenantId, HasNa
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Device Id.")
     private DeviceId deviceId;
 
-    @Schema(description = "Active status of the forecast", accessMode = Schema.AccessMode.READ_ONLY, defaultValue = "false")
-    private boolean active;
+    @Schema(description = "Forecast algorithm", defaultValue = "ARIMA")
+    private String forecastAlgorithm;
+
+    @Schema(description = "Forecast start date in milliseconds since epoch")
+    private Long forecastStartDate;
+
+    @Schema(description = "Forecast end date in milliseconds since epoch")
+    private Long forecastEndDate;
+
+    @Schema(description = "Anomaly detection algorithm", defaultValue = "THRESHOLD")
+    private String anomalyAlgorithm;
+
+    @Schema(description = "Anomaly detection start date in milliseconds since epoch")
+    private Long anomalyStartDate;
+
+    @Schema(description = "Anomaly detection end date in milliseconds since epoch")
+    private Long anomalyEndDate;
 
     @Valid
     @Schema(description = "JSON array of attributes")
     private transient ForecastAttribute[] attributes;
+
+    @Schema(description = "JSON object with view preferences", defaultValue = "{\"selectedViews\": [\"forecast\", \"anomalies\"]}")
+    private String viewPreferences;
 }

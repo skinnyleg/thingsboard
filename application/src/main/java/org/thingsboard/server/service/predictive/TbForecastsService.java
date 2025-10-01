@@ -30,6 +30,4 @@ public interface TbForecastsService extends SimpleTbEntityService<Forecast> {
     Forecast findTenantForecast(TenantId tenantId, ForecastId forecastId);
 
     void deleteForecast(Forecast entity, User user);
-
-    void activate(Forecast entity, User user) throws ThingsboardException;
 }

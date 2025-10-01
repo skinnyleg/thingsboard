@@ -50,13 +50,33 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "active")
-    private boolean active;
+    @Column(name = "forecast_algorithm")
+    private String forecastAlgorithm;
+
+    @Column(name = "forecast_start_date")
+    private Long forecastStartDate;
+
+    @Column(name = "forecast_end_date")
+    private Long forecastEndDate;
+
+    @Column(name = "anomaly_algorithm")
+    private String anomalyAlgorithm;
+
+    @Column(name = "anomaly_start_date")
+    private Long anomalyStartDate;
+
+    @Column(name = "anomaly_end_date")
+    private Long anomalyEndDate;
 
     @Convert(converter = JsonConverter.class)
     @JdbcType(PostgreSQLJsonPGObjectJsonbType.class)
     @Column(name = "attributes", columnDefinition = "jsonb")
     private JsonNode attributes;
+
+    @Convert(converter = JsonConverter.class)
+    @JdbcType(PostgreSQLJsonPGObjectJsonbType.class)
+    @Column(name = "view_preferences", columnDefinition = "jsonb")
+    private JsonNode viewPreferences;
 
     public ForecastEntity() {
         super();
@@ -74,8 +94,24 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
             this.deviceId = forecast.getDeviceId().getId();
         }
         this.name = forecast.getName();
-        this.active = forecast.isActive();
         this.attributes = JacksonUtil.valueToTree(forecast.getAttributes());
+        this.forecastAlgorithm = forecast.getForecastAlgorithm();
+        this.forecastStartDate = forecast.getForecastStartDate();
+        this.forecastEndDate = forecast.getForecastEndDate();
+        this.anomalyAlgorithm = forecast.getAnomalyAlgorithm();
+        this.anomalyStartDate = forecast.getAnomalyStartDate();
+        this.anomalyEndDate = forecast.getAnomalyEndDate();
+        // Handle view preferences - parse JSON string to JsonNode
+        if (forecast.getViewPreferences() != null) {
+            try {
+                this.viewPreferences = JacksonUtil.toJsonNode(forecast.getViewPreferences());
+            } catch (Exception e) {
+                // If parsing fails, set default with multi-select format
+                this.viewPreferences = JacksonUtil.toJsonNode("{\"selectedViews\": [\"forecast\", \"anomalies\"]}");
+            }
+        } else {
+            this.viewPreferences = JacksonUtil.toJsonNode("{\"selectedViews\": [\"forecast\", \"anomalies\"]}");
+        }
     }
 
     @Override
@@ -89,8 +125,19 @@ public final class ForecastEntity extends BaseSqlEntity<Forecast> {
             forecast.setDeviceId(new DeviceId(deviceId));
         }
         forecast.setName(name);
-        forecast.setActive(active);
         forecast.setAttributes(JacksonUtil.convertValue(attributes, ForecastAttribute[].class));
+        forecast.setForecastAlgorithm(forecastAlgorithm);
+        forecast.setForecastStartDate(forecastStartDate);
+        forecast.setForecastEndDate(forecastEndDate);
+        forecast.setAnomalyAlgorithm(anomalyAlgorithm);
+        forecast.setAnomalyStartDate(anomalyStartDate);
+        forecast.setAnomalyEndDate(anomalyEndDate);
+        // Convert JsonNode back to JSON string for view preferences
+        if (viewPreferences != null) {
+            forecast.setViewPreferences(viewPreferences.toString());
+        } else {
+            forecast.setViewPreferences("{\"selectedViews\": [\"forecast\", \"anomalies\"]}");
+        }
         return forecast;
     }
 }

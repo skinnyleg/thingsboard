@@ -19,4 +19,11 @@ fclean:
 
 
 build:
-	$(DOCKER_CMD) mvn install -X -DskipTests
+	$(DOCKER_CMD) mvn -X -T 1C clean install -Dmaven.test.skip -DskipTests
+
+
+clean-mvn:
+	$(DOCKER_CMD) mvn clean
+
+build-ui:
+	$(DOCKER_CMD) mvn install -pl ui-ngx -am -DskipTests

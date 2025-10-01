@@ -14,43 +14,56 @@
 /// limitations under the License.
 ///
 
-import { AfterViewInit, Component, ElementRef, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { Store } from '@ngrx/store';
-import { skip, startWith, Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  Inject,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+} from "@angular/core";
+import { Store } from "@ngrx/store";
+import { skip, startWith, Subject } from "rxjs";
+import { debounceTime, distinctUntilChanged, takeUntil } from "rxjs/operators";
 
-import { BreakpointObserver, BreakpointState } from '@angular/cdk/layout';
-import { FormBuilder } from '@angular/forms';
-import { MatSidenav } from '@angular/material/sidenav';
-import { AuthState } from '@core/auth/auth.models';
-import { getCurrentAuthState, getCurrentAuthUser } from '@core/auth/auth.selectors';
-import { AppState } from '@core/core.state';
-import { ActiveComponentService } from '@core/services/active-component.service';
-import { WINDOW } from '@core/services/window.service';
-import { ISearchableComponent } from '@home/models/searchable-component.models';
-import { PageComponent } from '@shared/components/page.component';
-import { MediaBreakpoints } from '@shared/models/constants';
-import screenfull from 'screenfull';
-import { MatTabsModule } from '@angular/material/tabs';
-import { CommonModule } from '@angular/common';
-import { ForcastComponent } from './components/forecast/forcast-page.component';
-import { AnomalyDetectionComponent } from './components/anomaly-detection/anomaly-detection.component';
+import { BreakpointObserver, BreakpointState } from "@angular/cdk/layout";
+import { FormBuilder } from "@angular/forms";
+import { MatSidenav } from "@angular/material/sidenav";
+import { AuthState } from "@core/auth/auth.models";
+import {
+  getCurrentAuthState,
+  getCurrentAuthUser,
+} from "@core/auth/auth.selectors";
+import { AppState } from "@core/core.state";
+import { ActiveComponentService } from "@core/services/active-component.service";
+import { WINDOW } from "@core/services/window.service";
+import { ISearchableComponent } from "@home/models/searchable-component.models";
+import { PageComponent } from "@shared/components/page.component";
+import { MediaBreakpoints } from "@shared/models/constants";
+import screenfull from "screenfull";
+import { MatTabsModule } from "@angular/material/tabs";
+import { CommonModule } from "@angular/common";
+import { ForecastComponent } from "./components/forecast/forecast-page.component";
 
 @Component({
-  selector: 'tb-predictive-maintenance',
-  templateUrl: './predictive-maintenance.component.html',
-  styleUrls: ['./predictive-maintenance.component.scss'],
+  selector: "tb-predictive-maintenance",
+  templateUrl: "./predictive-maintenance.component.html",
+  styleUrls: ["./predictive-maintenance.component.scss"],
   standalone: true,
-  imports: [CommonModule, MatTabsModule, ForcastComponent, AnomalyDetectionComponent]
+  imports: [
+    CommonModule,
+    MatTabsModule,
+    ForecastComponent,
+  ],
 })
-export class PredictiveMaintenanceComponent extends PageComponent implements OnInit {
-
+export class PredictiveMaintenanceComponent
+  extends PageComponent
+  implements OnInit
+{
   constructor(protected store: Store<AppState>) {
     super(store);
   }
 
-  ngOnInit() {
-
-  }
-
+  ngOnInit() {}
 }

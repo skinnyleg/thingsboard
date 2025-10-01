@@ -15,7 +15,7 @@
     limitations under the License.
 
 -->
-<mat-fab-toolbar [isOpen]="toolbarOpened" color="primary" direction="left"
+<mat-fab-toolbar [isOpen]="toolbarOpened" direction="left"
                  [ngClass]="{'is-fullscreen': forceFullscreen, 'mat-elevation-z1': forceFullscreen && toolbarOpened }">
   <mat-fab-trigger>
     <button mat-fab color="primary"
@@ -25,7 +25,7 @@
       <mat-icon>more_horiz</mat-icon>
     </button>
   </mat-fab-trigger>
-  <mat-toolbar color="primary">
+  <mat-toolbar>
     <mat-fab-actions class="mat-toolbar-tools">
       <ng-content></ng-content>
     </mat-fab-actions>

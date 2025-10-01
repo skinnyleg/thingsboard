@@ -2,8 +2,9 @@ export interface Order {
   id: string;
   trueId: string;
   device: string;
+  modelName?: string;
   date: string;
-  status: string;
+  attributesText?: string;
 }
 
 export interface ForecastField {
@@ -12,17 +13,10 @@ export interface ForecastField {
   endDate: Date;
 }
 
-export interface ForecastFieldRequest {
-  key: string;
-  startDate: string;
-  endDate: string;
-}
-
 export interface ForecastData {
   id: string;
   device: string;
   date: string;
-  status: string;
 }
 
 export const dataSeries = [
@@ -1478,6 +1472,7 @@ export const ELEMENT_DATA: any[] = [
   {
     id: "#20462",
     device: "Hat",
+    modelName: "Model_20462",
     // user: "Matt Dickerson",
     date: "2022-05-13",
     status: "Completed",
@@ -1485,6 +1480,7 @@ export const ELEMENT_DATA: any[] = [
   {
     id: "#18933",
     device: "Laptop",
+    modelName: "Model_18933",
     // user: "Wiktoria",
     date: "2022-05-22",
     status: "Completed",
@@ -1492,6 +1488,7 @@ export const ELEMENT_DATA: any[] = [
   {
     id: "#18933",
     device: "Laptop",
+    modelName: "Model_18933",
     // user: "Wiktoria",
     date: "2022-05-22",
     status: "Completed",

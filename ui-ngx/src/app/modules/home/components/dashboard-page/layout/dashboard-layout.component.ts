@@ -45,7 +45,7 @@ import { map } from 'rxjs/operators';
 export class DashboardLayoutComponent extends PageComponent implements ILayoutController, DashboardCallbacks, OnInit, OnDestroy {
 
   layoutCtxValue: DashboardPageLayoutContext;
-  dashboardStyle: {[klass: string]: any} = null;
+  dashboardStyle: { [klass: string]: any } = null;
   backgroundImage$: Observable<SafeStyle | string>;
 
   hotKeys: Hotkey[] = [];
@@ -87,15 +87,15 @@ export class DashboardLayoutComponent extends PageComponent implements ILayoutCo
   @Input()
   popoverComponent?: TbPopoverComponent = null;
 
-  @ViewChild('dashboard', {static: true}) dashboard: IDashboardComponent;
+  @ViewChild('dashboard', { static: true }) dashboard: IDashboardComponent;
 
   private rxSubscriptions = new Array<Subscription>();
 
   constructor(protected store: Store<AppState>,
-              private translate: TranslateService,
-              private itembuffer: ItemBufferService,
-              private imagePipe: ImagePipe,
-              private sanitizer: DomSanitizer) {
+    private translate: TranslateService,
+    private itembuffer: ItemBufferService,
+    private imagePipe: ImagePipe,
+    private sanitizer: DomSanitizer) {
     super(store);
     this.initHotKeys();
   }
@@ -121,78 +121,80 @@ export class DashboardLayoutComponent extends PageComponent implements ILayoutCo
   private initHotKeys(): void {
     this.hotKeys.push(
       new Hotkey('ctrl+c', (event: KeyboardEvent) => {
-          if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
-            const widget = this.dashboard.getSelectedWidget();
-            if (widget) {
-              event.preventDefault();
-              this.copyWidget(event, widget);
-            }
+        if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
+          const widget = this.dashboard.getSelectedWidget();
+          if (widget) {
+            event.preventDefault();
+            this.copyWidget(event, widget);
           }
-          return false;
-        }, null,
+        }
+        return false;
+      }, null,
         this.translate.instant('action.copy'))
     );
     this.hotKeys.push(
       new Hotkey('ctrl+r', (event: KeyboardEvent) => {
-          if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
-            const widget = this.dashboard.getSelectedWidget();
-            if (widget) {
-              event.preventDefault();
-              this.copyWidgetReference(event, widget);
-            }
+        if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
+          const widget = this.dashboard.getSelectedWidget();
+          if (widget) {
+            event.preventDefault();
+            this.copyWidgetReference(event, widget);
           }
-          return false;
-        }, null,
+        }
+        return false;
+      }, null,
         this.translate.instant('action.copy-reference'))
     );
     this.hotKeys.push(
       new Hotkey('ctrl+v', (event: KeyboardEvent) => {
-          if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
-            if (this.itembuffer.hasWidget()) {
-              event.preventDefault();
-              this.pasteWidget(event);
-            }
+        if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
+          if (this.itembuffer.hasWidget()) {
+            event.preventDefault();
+            this.pasteWidget(event);
           }
-          return false;
-        }, null,
+        }
+        return false;
+      }, null,
         this.translate.instant('action.paste'))
     );
     this.hotKeys.push(
       new Hotkey('ctrl+i', (event: KeyboardEvent) => {
-          if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
-            if (this.itembuffer.canPasteWidgetReference(this.dashboardCtx.getDashboard(),
-              this.dashboardCtx.state, this.layoutCtx.id)) {
-              event.preventDefault();
-              this.pasteWidgetReference(event);
-            }
+        if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
+          if (this.itembuffer.canPasteWidgetReference(this.dashboardCtx.getDashboard(),
+            this.dashboardCtx.state, this.layoutCtx.id)) {
+            event.preventDefault();
+            this.pasteWidgetReference(event);
           }
-          return false;
-        }, null,
+        }
+        return false;
+      }, null,
         this.translate.instant('action.paste-reference'))
     );
     this.hotKeys.push(
       new Hotkey('ctrl+x', (event: KeyboardEvent) => {
-          if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
-            const widget = this.dashboard.getSelectedWidget();
-            if (widget) {
-              event.preventDefault();
-              this.layoutCtx.dashboardCtrl.removeWidget(event, this.layoutCtx, widget);
-            }
+        if (this.isEdit && !this.isEditingWidget && !this.widgetEditMode) {
+          const widget = this.dashboard.getSelectedWidget();
+          if (widget) {
+            event.preventDefault();
+            this.layoutCtx.dashboardCtrl.removeWidget(event, this.layoutCtx, widget);
           }
-          return false;
-        }, null,
+        }
+        return false;
+      }, null,
         this.translate.instant('action.delete'))
     );
   }
 
   private loadDashboardStyle() {
-    this.dashboardStyle = {'background-color': this.layoutCtx.gridSettings.backgroundColor,
+    this.dashboardStyle = {
+      'background-color': 'none',
       'background-repeat': 'no-repeat',
       'background-attachment': 'scroll',
       'background-size': this.layoutCtx.gridSettings.backgroundSizeMode || '100%',
-      'background-position': '0% 0%'};
+      'background-position': '0% 0%'
+    };
     this.backgroundImage$ = this.layoutCtx.gridSettings.backgroundImageUrl ?
-      this.imagePipe.transform(this.layoutCtx.gridSettings.backgroundImageUrl, {asString: true, ignoreLoadingImage: true}).pipe(
+      this.imagePipe.transform(this.layoutCtx.gridSettings.backgroundImageUrl, { asString: true, ignoreLoadingImage: true }).pipe(
         map((imageUrl) => this.sanitizer.bypassSecurityTrustStyle('url(' + imageUrl + ')'))
       ) : of('none');
   }
@@ -201,8 +203,8 @@ export class DashboardLayoutComponent extends PageComponent implements ILayoutCo
     this.loadDashboardStyle();
     this.dashboard.pauseChangeNotifications();
     setTimeout(() => {
-       this.dashboard.resumeChangeNotifications();
-       this.dashboard.notifyLayoutUpdated();
+      this.dashboard.resumeChangeNotifications();
+      this.dashboard.notifyLayoutUpdated();
     }, 0);
   }
 

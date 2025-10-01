@@ -21,12 +21,11 @@ import { PredictiveMaintenanceComponent } from "@app/modules/home/components/pre
 import { OAuth2Service } from "@core/http/oauth2.service";
 import { Authority } from "@shared/models/authority.enum";
 import { Observable } from "rxjs";
-import { AnomalyDetectionComponent } from "@app/modules/home/pages/predictive-maintenance/anomaly-detection/anomaly-detection-page.module";
 import { RouterTabsComponent } from "../../components/router-tabs.component";
-import { ForcastComponent } from "./forcast/forcast.module";
+import { ForecastComponent } from "./forecast/forecast.module";
 
 @Injectable()
-export class OAuth2LoginProcessingUrlResolver  {
+export class OAuth2LoginProcessingUrlResolver {
   constructor(private oauth2Service: OAuth2Service) {}
 
   resolve(): Observable<string> {
@@ -36,11 +35,11 @@ export class OAuth2LoginProcessingUrlResolver  {
 
 const routes: Routes = [
   {
-    path: "PM",
+    path: "predictiveMaintenance",
     data: {
       breadcrumb: {
         label: "Predictive Maintenance",
-        icon: "mdi:line-up",
+        icon: "mdi:wrench-clock",
       },
       // alarmsMode: AlarmsMode.ALL
     },
@@ -55,27 +54,14 @@ const routes: Routes = [
         },
       },
       {
-        path: "anomaly-detection/:id",
-        component: AnomalyDetectionComponent,
+        path: "forecast/:id",
+        component: ForecastComponent,
         data: {
           auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
-          title: "predictive-maintenance.anomaly-detection",
+          title: "predictive-maintenance.forecast",
           breadcrumb: {
-            label: "Anomaly Detection",
-            icon: "mdi:alert",
-          },
-          isPage: true,
-        },
-      },
-      {
-        path: "forcast/:id",
-        component: ForcastComponent,
-        data: {
-          auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
-          title: "predictive-maintenance.forcast",
-          breadcrumb: {
-            label: "Forcast",
-            icon: "mdi:alert",
+            label: "Model",
+            icon: "mdi:tools",
           },
           isPage: true,
         },

@@ -79,13 +79,4 @@ public class JpaForecastDao extends JpaAbstractDao<ForecastEntity, Forecast> imp
         forecastRepository.flush();
         return result;
     }
-
-    @Override
-    public Forecast activateForecast(TenantId tenantId, ForecastId forecastId) {
-        ForecastEntity forecast = forecastRepository.findForecast(tenantId.getId(), forecastId.getId());
-        forecast.setActive(true);
-        Forecast result = saveAndFlush(tenantId, forecast.toData());
-        return result;
-    }
-
 }

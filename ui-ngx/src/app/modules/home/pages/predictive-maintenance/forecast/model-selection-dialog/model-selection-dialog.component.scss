@@ -1,0 +1,218 @@
+/**
+ * Copyright © 2016-2024 The Thingsboard Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.model-selection-dialog {
+  min-width: 500px;
+  max-width: 700px;
+
+  h2 {
+    margin: 0 0 16px 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+  }
+
+  .search-section {
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+    margin-bottom: 16px;
+  }
+
+  .models-section {
+    max-height: 400px;
+    overflow-y: auto;
+
+    .model-list {
+      .model-option {
+        height: auto !important;
+        min-height: 80px;
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.04);
+        }
+
+        &.current-model {
+          background-color: rgba(25, 118, 210, 0.08);
+          border-left: 4px solid #1976d2;
+        }
+
+        .model-item {
+          width: 100%;
+
+          .model-info {
+            width: 100%;
+
+            .model-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 8px;
+
+              .model-name {
+                margin: 0;
+                font-size: 1.1rem;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+
+                .current-icon {
+                  color: #4caf50;
+                  font-size: 1.2rem;
+                }
+              }
+            }
+
+            .model-details {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+
+              span {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 0.875rem;
+                color: rgba(0, 0, 0, 0.6);
+
+                mat-icon {
+                  font-size: 1rem;
+                  width: 1rem;
+                  height: 1rem;
+                  color: rgba(0, 0, 0, 0.5);
+                }
+
+                &.status-completed {
+                  color: #2e7d32;
+
+                  mat-icon {
+                    color: #4caf50;
+                  }
+                }
+
+                &.status-pending,
+                &.status-running {
+                  color: #f57c00;
+
+                  mat-icon {
+                    color: #ff9800;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .no-models {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 16px;
+      text-align: center;
+      color: rgba(0, 0, 0, 0.5);
+
+      mat-icon {
+        font-size: 3rem;
+        width: 3rem;
+        height: 3rem;
+        margin-bottom: 16px;
+        color: rgba(0, 0, 0, 0.3);
+      }
+
+      p {
+        margin: 0;
+        font-size: 1rem;
+      }
+    }
+  }
+}
+
+// Dark theme support
+.tb-dark {
+  .model-selection-dialog {
+    background: var(--tb-dark-app-bar);
+    color: rgba(255, 255, 255, 0.87);
+
+    h2 {
+      color: rgba(255, 255, 255, 0.87);
+    }
+
+    .search-section {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .models-section {
+      .model-list {
+        .model-option {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.04);
+          }
+
+          &.current-model {
+            background-color: rgba(25, 118, 210, 0.16);
+          }
+
+          .model-item {
+            .model-info {
+              .model-details {
+                span {
+                  color: rgba(255, 255, 255, 0.6);
+
+                  mat-icon {
+                    color: rgba(255, 255, 255, 0.5);
+                  }
+
+                  &.status-completed {
+                    color: #66bb6a;
+
+                    mat-icon {
+                      color: #4caf50;
+                    }
+                  }
+
+                  &.status-pending,
+                  &.status-running {
+                    color: #ffb74d;
+
+                    mat-icon {
+                      color: #ff9800;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      .no-models {
+        color: rgba(255, 255, 255, 0.5);
+
+        mat-icon {
+          color: rgba(255, 255, 255, 0.3);
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,586 @@
+.anomalies-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+// Data Table Styles
+.table-container {
+  flex: 1;
+  overflow: hidden;
+
+  mat-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mat-mdc-table-toolbar {
+    min-height: 48px;
+    padding: 0;
+    border-bottom: 1px solid var(--mat-divider-color);
+    background-color: var(--mat-sidenav-container-background-color);
+    // background-color: #1976d2;
+
+    .toolbar-divider {
+      height: 24px;
+      margin: 0 8px;
+    }
+
+    .title-icon {
+      color: #ff9800;
+      font-size: 1.2em;
+    }
+  }
+
+  .table-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    height: 0; // Force flex calculation
+  }
+
+  .table-scroll-container {
+    flex: 1;
+    overflow: auto;
+    min-height: 0; // Allow flex shrinking
+  }
+
+  .table-footer {
+    flex-shrink: 0;
+    border-top: 1px solid var(--mat-divider-color);
+    background-color: var(--mat-sidenav-container-background-color);
+  }
+
+  .anomalies-table {
+    width: 100%;
+    min-width: 1200px;
+    // border: solid 1px var(--tb-dark-mat-800);
+    // border-radius: 10px;
+
+    .mat-mdc-header-cell {
+      font-weight: 600;
+      padding: 16px 8px;
+      position: sticky;
+      top: 0;
+      background: var(--tb-dark-app-bar);
+
+      // Header content with pin button
+      .header-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+
+        span {
+          flex: 1;
+        }
+
+        .pin-button {
+          width: 24px;
+          height: 24px;
+          line-height: 24px;
+          opacity: 0.6;
+          transition: all 0.3s ease;
+          flex-shrink: 0;
+
+          .pin-icon {
+            font-size: 16px;
+            width: 16px;
+            height: 16px;
+            line-height: 16px;
+            transform: rotate(-45deg);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          &:hover {
+            opacity: 1;
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: scale(1.1);
+
+            .pin-icon {
+              transform: rotate(-45deg) scale(1.1);
+            }
+          }
+
+          &.pinned {
+            opacity: 1;
+            color: #ff9800;
+            background-color: rgba(255, 152, 0, 0.1);
+
+            .pin-icon {
+              transform: rotate(0deg);
+              color: #ff9800;
+            }
+
+            &:hover {
+              background-color: rgba(255, 152, 0, 0.2);
+              transform: scale(1.1);
+
+              .pin-icon {
+                transform: rotate(0deg) scale(1.1);
+              }
+            }
+          }
+        }
+      }
+
+      // Sticky column styles
+      &.sticky-column {
+        background: var(
+          --tb-dark-app-bar,
+          var(--tb-dark-widget, #1c1c1c)
+        ) !important;
+        border-right: 2px solid var(--mat-divider-color) !important;
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1) !important;
+        z-index: 10;
+
+        .header-content .pin-button.pinned {
+          background-color: rgba(255, 152, 0, 0.2);
+        }
+      }
+    }
+
+    .mat-mdc-cell {
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--mat-divider-color);
+      font-size: 13px;
+
+      // Sticky column styles for cells
+      &.sticky-column {
+        background: var(--tb-dark-widget, white) !important;
+        border-right: 2px solid var(--mat-divider-color) !important;
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1) !important;
+        z-index: 10;
+      }
+    }
+
+    .table-row {
+      &:hover {
+        background-color: var(--tb-dark-hover, #f5f5f5);
+
+        .mat-mdc-cell.sticky-column {
+          background: var(--tb-dark-hover, #f5f5f5) !important;
+        }
+      }
+    }
+  }
+
+  mat-paginator {
+    border: none;
+    background-color: inherit;
+  }
+}
+
+// Cell-specific styles
+.severity-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .severity-icon {
+    font-size: 16px;
+  }
+
+  .severity-text {
+    font-weight: 500;
+
+    &.critical {
+      color: #f44336;
+    }
+
+    &.major {
+      color: #ff9800;
+    }
+
+    &.minor {
+      color: #2196f3;
+    }
+  }
+}
+
+.entity-cell {
+  .entity-name {
+    font-weight: 500;
+    // color: #333;
+  }
+}
+
+.error-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .error-name {
+    font-weight: 500;
+    cursor: help;
+    // color: #333;
+  }
+
+  .metrics-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+
+    .metric-chip {
+      background-color: #e3f2fd;
+      color: #1976d2;
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 500;
+      border: 1px solid #bbdefb;
+    }
+  }
+}
+
+.component-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .component-icon {
+    color: #666;
+    font-size: 16px;
+  }
+
+  .component-info {
+    display: flex;
+    flex-direction: column;
+
+    .component-name {
+      font-weight: 500;
+      //   color: #333;
+    }
+
+    .device-type {
+      font-size: 11px;
+      //   color: #666;
+      opacity: 0.7;
+    }
+  }
+}
+
+.date-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .date-icon {
+    color: #666;
+    font-size: 16px;
+    opacity: 0.7;
+  }
+}
+
+.device-type-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .device-type-icon {
+    color: #666;
+    font-size: 16px;
+    opacity: 0.7;
+  }
+}
+
+.location-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .location-icon {
+    color: #666;
+    font-size: 16px;
+  }
+}
+
+.status-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .status-icon {
+    font-size: 16px;
+  }
+
+  .status-text {
+    font-weight: 500;
+
+    &.active {
+      color: #f44336;
+    }
+
+    &.investigating {
+      color: #ff9800;
+    }
+
+    &.resolved {
+      color: #4caf50;
+    }
+  }
+}
+
+.confidence-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .confidence-value {
+    font-weight: 500;
+
+    &.high-confidence {
+      color: #4caf50;
+    }
+
+    &.medium-confidence {
+      color: #ff9800;
+    }
+
+    &.low-confidence {
+      color: #f44336;
+    }
+  }
+
+  .confidence-icon {
+    font-size: 16px;
+    opacity: 0.7;
+  }
+}
+
+.actions-cell {
+  display: flex;
+  gap: 4px;
+
+  .mat-icon-button {
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+
+    .mat-icon {
+      font-size: 16px;
+    }
+  }
+
+  button[disabled] {
+    opacity: 0.5;
+  }
+}
+
+// Dark mode support
+.tb-dark {
+  .anomalies-container {
+    .table-container {
+      mat-card {
+        background-color: #2d2d2d;
+        color: #ffffff;
+      }
+
+      .mat-mdc-table-toolbar {
+        background-color: #2d2d2d;
+        color: #ffffff;
+        border-bottom-color: #404040;
+
+        .title-icon {
+          color: #ffc947;
+        }
+      }
+
+      .table-footer {
+        background-color: #2d2d2d;
+        border-top-color: #404040;
+      }
+
+      .anomalies-table {
+        .mat-mdc-header-cell {
+          background-color: #2d2d2d;
+          color: #ffffff;
+          border-bottom-color: #404040;
+
+          .header-content .pin-button {
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.1);
+            }
+
+            &.pinned {
+              color: #ffc947;
+
+              .pin-icon {
+                color: #ffc947;
+              }
+            }
+          }
+
+          &.sticky-column {
+            background: var(--tb-dark-widget, #1c1c1c) !important;
+            border-right-color: #42a5f5;
+
+            .header-content .pin-button.pinned {
+              background-color: rgba(255, 201, 71, 0.2);
+            }
+          }
+        }
+
+        .mat-mdc-cell {
+          color: #ffffff;
+          border-bottom-color: #404040;
+
+          &.sticky-column {
+            background: var(--tb-dark-widget, #1c1c1c) !important;
+            border-right-color: #42a5f5;
+          }
+        }
+
+        .table-row:hover {
+          background-color: var(--tb-dark-hover, #404040);
+
+          .mat-mdc-cell.sticky-column {
+            background: var(--tb-dark-hover, #404040) !important;
+          }
+        }
+      }
+
+      mat-paginator {
+        background-color: #2d2d2d;
+        color: #ffffff;
+      }
+    }
+
+    .severity-text {
+      &.critical {
+        color: #ff6b6b;
+      }
+
+      &.major {
+        color: #ffa726;
+      }
+
+      &.minor {
+        color: #42a5f5;
+      }
+    }
+
+    .entity-cell .entity-name {
+      color: #64b5f6;
+    }
+
+    .error-cell {
+      .error-name {
+        color: #ffffff;
+      }
+
+      .metrics-chips .metric-chip {
+        background-color: #404040;
+        color: #ffffff;
+        border-color: #606060;
+      }
+    }
+
+    .sensor-icon,
+    .location-icon {
+      color: #64b5f6;
+    }
+
+    .sensor-info {
+      .sensor-name {
+        color: #ffffff;
+      }
+
+      .device-type {
+        color: #aaaaaa;
+      }
+    }
+
+    .date-icon {
+      color: #aaaaaa;
+    }
+
+    .device-type-icon {
+      color: #aaaaaa;
+    }
+
+    .status-text {
+      &.active {
+        color: #ff6b6b;
+      }
+
+      &.investigating {
+        color: #ffa726;
+      }
+
+      &.resolved {
+        color: #66bb6a;
+      }
+    }
+
+    .confidence-value {
+      &.high-confidence {
+        color: #66bb6a;
+      }
+
+      &.medium-confidence {
+        color: #ffa726;
+      }
+
+      &.low-confidence {
+        color: #ff6b6b;
+      }
+    }
+
+    .confidence-icon {
+      color: #aaaaaa;
+    }
+  }
+}
+
+// Refresh button rotation animation
+.rotating {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Expanded styles for model-dashboard container
+.anomalies-container {
+  &.expanded {
+    // Find the closest .model-dashboard ancestor and expand within it
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: var(--tb-dark-app-bar);
+    padding: 1rem;
+
+    .table-container {
+      height: 100%;
+
+      mat-card {
+        height: 100%;
+      }
+    }
+  }
+}
+
+// Ensure the expanded button is properly styled
+.mat-mdc-table-toolbar {
+  .mat-icon-button {
+    transition: all 0.3s ease;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+}

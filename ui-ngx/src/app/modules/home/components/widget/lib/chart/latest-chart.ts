@@ -269,6 +269,7 @@ export abstract class TbLatestChart<S extends LatestChartSettings> {
       height: this.settings.autoScale ? this.initialShapeHeight() : undefined,
     });
     this.latestChartOption = {
+      darkMode: true,
       tooltip: {
         trigger: this.settings.showTooltip ? 'item' : 'none',
         confine: false,
@@ -278,7 +279,7 @@ export abstract class TbLatestChart<S extends LatestChartSettings> {
             ? latestChartTooltipFormatter(this.renderer, this.settings, params, this.units, this.total, this.dataItems)
             : undefined,
         padding: [4, 8],
-        backgroundColor: this.settings.tooltipBackgroundColor,
+        // backgroundColor: this.settings.tooltipBackgroundColor,
         extraCssText: `line-height: 1; backdrop-filter: blur(${this.settings.tooltipBackgroundBlur}px);`,
         position: (pos) => [pos[0] + 10, pos[1] + 10]
       },

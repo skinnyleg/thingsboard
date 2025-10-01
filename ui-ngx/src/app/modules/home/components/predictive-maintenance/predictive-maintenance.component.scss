@@ -13,26 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-.tab-content {
-    padding: 16px;
 
-    img {
-        // max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 16px 0;
-    }
-
-    h2 {
-        margin-top: 0;
-    }
-
-    p {
-        margin: 16px 0;
-    }
-
-    ul {
-        list-style-type: disc;
-        padding-left: 20px;
-    }
+:host {
+  padding: 1em;
+  height: 100%;
 }

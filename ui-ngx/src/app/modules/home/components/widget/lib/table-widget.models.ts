@@ -366,8 +366,10 @@ export function noDataMessage(noDataDisplayMessage: string, defaultMessage: stri
 }
 
 export function constructTableCssString(widgetConfig: WidgetConfig): string {
+  return "";
   const origColor = widgetConfig.color || 'rgba(0, 0, 0, 0.87)';
-  const origBackgroundColor = widgetConfig.backgroundColor || 'rgb(255, 255, 255)';
+  // default widget background
+  const origBackgroundColor = widgetConfig.backgroundColor;
   const currentEntityColor = 'rgba(221, 221, 221, 0.65)';
   const currentEntityStickyColor = tinycolor.mix(origBackgroundColor,
     tinycolor(currentEntityColor).setAlpha(1),  65).toRgbString();

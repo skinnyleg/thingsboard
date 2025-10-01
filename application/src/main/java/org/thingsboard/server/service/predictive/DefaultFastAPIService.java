@@ -18,6 +18,7 @@ package org.thingsboard.server.service.predictive;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
@@ -30,13 +31,20 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class DefaultFastAPIService implements FastAPIService {
-    private final static String baseUrl = "http://0.0.0.0:8000/api/v1/";
+    
+    @Value("${fastapi.base.url:http://fastapi:8000/api/v1/}")
+    private String baseUrl;
 
-    private final RestTemplate restTemplate = new RestTemplateBuilder()
-            .uriTemplateHandler(new DefaultUriBuilderFactory(baseUrl))
-            .setConnectTimeout(Duration.of(15, ChronoUnit.SECONDS))
-            .setReadTimeout(Duration.of(15, ChronoUnit.SECONDS))
-            .build();
+    private final RestTemplate restTemplate;
+
+    public DefaultFastAPIService(@Value("${fastapi.base.url:http://fastapi:8000/api/v1/}") String baseUrl) {
+        this.baseUrl = baseUrl;
+        this.restTemplate = new RestTemplateBuilder()
+                .uriTemplateHandler(new DefaultUriBuilderFactory(baseUrl))
+                .setConnectTimeout(Duration.of(15, ChronoUnit.SECONDS))
+                .setReadTimeout(Duration.of(15, ChronoUnit.SECONDS))
+                .build();
+    }
 
     public JsonNode getHelloWorld() {
         return this.restTemplate.getForObject("predictiveMaintenance", JsonNode.class);
@@ -48,5 +56,13 @@ public class DefaultFastAPIService implements FastAPIService {
         } catch (Exception e) {
             throw new ThingsboardException("Failed to activate forecast", e, ThingsboardErrorCode.GENERAL);
         }
+    }
+
+    public JsonNode getModelsStatus() {
+        return this.restTemplate.getForObject("models/status", JsonNode.class);
+    }
+
+    public JsonNode getModelStatus(ForecastId forecastId) {
+        return this.restTemplate.getForObject("models/{forecastId}/status", JsonNode.class, forecastId);
     }
 }

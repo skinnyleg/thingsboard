@@ -47,7 +47,7 @@
     gap: 16px;
     display: flex;
     flex-direction: column;
-    color: rgba(0, 0, 0, 0.87);
+    // color: rgba(0, 0, 0, 0.87);
     letter-spacing: 0.15px;
     position: relative;
     @media #{$mat-xs} {
@@ -175,7 +175,7 @@
     align-items: center;
     gap: 16px;
     padding: 7px 7px 7px 16px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 6px;
     &.column {
       @include form-row-column;
@@ -584,7 +584,8 @@
     height: 48px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.12);
     &-cell {
-      color: rgba(0, 0, 0, 0.54);
+      // color: rgba(0, 0, 0, 0.54);
+      color: var(--tb-dark-mat-text-500);
     }
   }
 
@@ -655,7 +656,6 @@
     font-size: 14px;
     line-height: 20px;
     letter-spacing: 0.25px;
-    color: rgba(0, 0, 0, 0.54);
     @media #{$mat-md-lg} {
       font-size: 12px;
       line-height: 16px;

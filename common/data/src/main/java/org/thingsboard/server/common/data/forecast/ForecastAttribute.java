@@ -27,10 +27,4 @@ public class ForecastAttribute implements Serializable {
 
     @Schema(description = "String value representing the attribute key", example = "temperature")
     private String key;
-
-    @Schema(description = "String value representing the attribute start date", example = "2021-09-01")
-    private Date startDate;
-
-    @Schema(description = "String value representing the attribute end date", example = "2021-09-30")
-    private Date endDate;
 }
