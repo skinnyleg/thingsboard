@@ -25,7 +25,5 @@ public interface FastAPIService {
 
     public void activateForecast(ForecastId forecastId) throws ThingsboardException;
 
-    public JsonNode getModelsStatus();
-
     public JsonNode getModelStatus(ForecastId forecastId);
 }

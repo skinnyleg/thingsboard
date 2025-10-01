@@ -27,6 +27,9 @@ load_dotenv()
 
 from fastapi.middleware.cors import CORSMiddleware
 
+# Ensure the models directory exists
+os.makedirs(settings.models_path, exist_ok=True)
+
 app = FastAPI(
     root_path=settings.app_root_path,
     debug=settings.app_debug,

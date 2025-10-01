@@ -35,14 +35,6 @@ import { AuthService } from "@core/auth/auth.service";
 import { svgIcons, svgIconsUrl } from "@shared/models/icon.models";
 import { ActionSettingsChangeLanguage } from "@core/settings/settings.actions";
 import { SETTINGS_KEY } from "@core/settings/settings.effects";
-import {
-  enable as enableDarkMode,
-  disable as disableDarkMode,
-  auto as distributedmColorScheme,
-  exportGeneratedCSS as collectCSS,
-  isEnabled as isDarkReaderEnabled
-} from 'darkreader';
-
 
 @Component({
   selector: "tb-root",
@@ -127,14 +119,6 @@ export class AppComponent implements OnInit {
   ngOnInit() {}
 
   ngAfterViewInit() {
-    const isEnabled = isDarkReaderEnabled();
-    if (!isEnabled)
-    enableDarkMode({
-          brightness: 125,
-          contrast: 110,
-          sepia: 0,
-          grayscale: 0
-    });
   }
 
   onActivateComponent($event: any) {

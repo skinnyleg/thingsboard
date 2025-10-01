@@ -26,7 +26,6 @@ services:
     depends_on:
       database:
         condition: service_healthy
-    restart: on-failure:3
     environment:
       - WAIT_HOSTS=thingsboard_db:5432
       - AccountSid=${ACCOUNT_SID:-defaultSid}
@@ -38,6 +37,10 @@ services:
       - APP_PASSWORD=${APP_PASSWORD:-defaultPassword}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://thingsboard:8080,http://thingsboard:4200}
       - MODELS_PATH=/app/models
+      - POSTGRES_HOST=${POSTGRES_HOST:-database}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
@@ -70,6 +73,10 @@ services:
     environment:
       - WAIT_HOSTS=database:5432,model:8000
       - FASTAPI_BASE_URL=http://model:8000/api/v1/
+      - POSTGRES_HOST=${POSTGRES_HOST:-database}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: 30s
@@ -84,6 +91,7 @@ services:
       - m2-cache:/root/.m2
       - npm-cache:/root/.npm
       - gradle-cache:/root/.gradle
+      - pkg-cache:/root/.pkg-cache
     networks:
       - thingsboard
 
@@ -95,8 +103,8 @@ services:
     depends_on:
       thingsboard:
         condition: service_healthy
-    environment:
-      - WAIT_HOSTS=thingsboard:8080,model:8000
+    # environment:
+      # - WAIT_HOSTS=thingsboard:8080,model:8000
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:4200 || exit 1"]
       interval: 1m30s
@@ -202,12 +210,18 @@ volumes:
       type: none
       o: bind
       device: ../thingsboard_gradle/
-  models_data:
+  pkg-cache:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ../thingsboard_models`
+      device: ../thingsboard_pkg_cache/
+  models-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../thingsboard_models
 
 networks:
   thingsboard:

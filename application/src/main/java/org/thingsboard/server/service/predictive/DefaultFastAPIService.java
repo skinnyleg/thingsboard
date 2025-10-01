@@ -52,14 +52,10 @@ public class DefaultFastAPIService implements FastAPIService {
 
     public void activateForecast(ForecastId forecastId) throws ThingsboardException {
         try {
-            this.restTemplate.patchForObject("forecast/{forecastId}/activate", null, JsonNode.class, forecastId);
+            this.restTemplate.patchForObject("models/{forecastId}/activate", null, JsonNode.class, forecastId);
         } catch (Exception e) {
             throw new ThingsboardException("Failed to activate forecast", e, ThingsboardErrorCode.GENERAL);
         }
-    }
-
-    public JsonNode getModelsStatus() {
-        return this.restTemplate.getForObject("models/status", JsonNode.class);
     }
 
     public JsonNode getModelStatus(ForecastId forecastId) {

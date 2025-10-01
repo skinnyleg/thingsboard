@@ -46,12 +46,6 @@ router = APIRouter(
     tags=["notify"],
 )
 
-@app.get("/health")
-def health_check():
-    """Health check endpoint for container monitoring"""
-    # should check if all models are loaded and db 
-
-
 def send_notification(phone, body):
     try:
         res = requests.post(

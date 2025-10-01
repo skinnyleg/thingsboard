@@ -140,11 +140,11 @@ public class PredictiveMaintenanceController extends BaseController {
         checkParameter("forecastId", strForecastId);
         ForecastId forecastId = new ForecastId(toUUID(strForecastId));
         TenantId tenantId = getCurrentUser().getTenantId();
-        
+
         // Ensure the forecast ID and tenant ID are set correctly
         forecast.setId(forecastId);
         forecast.setTenantId(tenantId);
-        
+
         return checkNotNull(forecastsService.save(forecast, getCurrentUser()));
     }
 

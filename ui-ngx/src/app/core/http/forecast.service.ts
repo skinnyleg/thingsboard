@@ -54,7 +54,10 @@ export class ForecastService {
   }
 
   // Save a new forecast
-  addForecast(forecast: ForecastCreate, config?: RequestConfig): Observable<Forecast> {
+  addForecast(
+    forecast: ForecastCreate,
+    config?: RequestConfig
+  ): Observable<Forecast> {
     return this.http.post<Forecast>(
       `${this.baseUrl}`,
       forecast,
@@ -92,8 +95,11 @@ export class ForecastService {
     );
   }
 
-  getForecastStatus(forecastId: string, config?: RequestConfig): Observable<string> {
-    return this.http.get<string>(
+  getForecastStatus(
+    forecastId: string,
+    config?: RequestConfig
+  ): Observable<{ forecast_id: string; status: string }> {
+    return this.http.get<{ forecast_id: string; status: string }>(
       `${this.baseUrl}/${forecastId}/status`,
       defaultHttpOptionsFromConfig(config)
     );

@@ -205,9 +205,9 @@ export class ForecastComponent extends PageComponent implements Order {
         this.device = forecast.device;
         this.forecastName = forecast.id; // Use the forecast ID as the name
         this.date = forecast.date;
-        // fetch status from the service to ensure it's up-to-date
-        
-        // this.status = forecast.status || "inactive";
+
+        // Fetch status from the service to ensure it's up-to-date
+        this.getModelStatus();
       }
     });
   }
@@ -368,9 +368,27 @@ export class ForecastComponent extends PageComponent implements Order {
   }
 
   refreshModel(): void {
-    // Refresh the current forecast model data
+    // Refresh the current forecast model data and status
     if (this.trueId) {
       this.fetchForcast(this.trueId);
+      this.getModelStatus();
+    }
+  }
+
+  getModelStatus(): void {
+    // Fetch the model status from the backend
+    if (this.trueId) {
+      this.forecastService.getForecastStatus(this.trueId).subscribe(
+        (response) => {
+          console.log("Model status fetched:", response);
+          this.status = response.status;
+        },
+        (error) => {
+          console.error("Error fetching model status:", error);
+          // Default to inactive if status fetch fails
+          this.status = "inactive";
+        }
+      );
     }
   }
 
@@ -380,10 +398,8 @@ export class ForecastComponent extends PageComponent implements Order {
       this.forecastService.activateForecast(this.trueId).subscribe(
         () => {
           console.log("Forecast activated successfully");
-          // Update the local status to reflect the change
-          this.status = "active";
-          // Optionally refresh the model data to get the latest status
-          this.refreshModel();
+          // Fetch the updated status from backend
+          this.getModelStatus();
         },
         (error) => {
           console.error("Error activating forecast:", error);
