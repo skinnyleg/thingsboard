@@ -35,7 +35,8 @@ public enum EntityType {
     RULE_CHAIN(11),
     RULE_NODE(12),
     ENTITY_VIEW(15) {
-        // backward compatibility for TbOriginatorTypeSwitchNode to return correct rule node connection.
+        // backward compatibility for TbOriginatorTypeSwitchNode to return correct rule
+        // node connection.
         @Override
         public String getNormalName() {
             return "Entity View";
@@ -58,9 +59,9 @@ public enum EntityType {
     NOTIFICATION(32),
     NOTIFICATION_RULE(33),
     QUEUE_STATS(34),
-    FORECAST(35),
+    PREDICTIVE_MODEL(35),
     CLAIM(36),
-    DETECTOR(37);
+    MODEL_LOG(38, "model_logs");
 
     @Getter
     private final int protoNumber; // Corresponds to EntityTypeProto

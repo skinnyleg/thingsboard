@@ -15,7 +15,7 @@
     limitations under the License.
 
 -->
-<a mat-button class="tb-button-toggle" (click)="toggleSection($event)">
+<a mat-button class="tb-button-toggle" (click)="toggleSection($event)" [attr.data-tooltip]="section.name | translate">
   <tb-icon matButtonIcon *ngIf="section.icon !== null">{{section.icon}}</tb-icon>
   <span>{{section.name | translate}}</span>
   <span class=" pull-right fa fa-chevron-down tb-toggle-icon"

@@ -1,7 +1,10 @@
 {
     "predictive-maintenance": {
         "predictive-maintenance": "Predictive Maintenance",
-        "anomaly-detection": "Anomaly Detection"
+        "anomaly-detection": "Anomaly Detection",
+        "model": "Model",
+        "device-models": "Device Models",
+        "devices": "Predictive Devices"
     },
     "forecast": {
         "delete-model-title": "Delete Model",

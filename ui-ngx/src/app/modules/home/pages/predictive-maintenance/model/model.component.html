@@ -1,0 +1,157 @@
+<!-- New forecast info container -->
+<span class="model-label">Model:</span>
+<div class="forecast-info-container">
+    <div class="forecast-name">
+        <div class="model-select-wrapper">
+            <mat-form-field appearance="outline" class="model-select-field">
+                <mat-select [value]="trueId" (selectionChange)="changeModel($event.value)"
+                    [disabled]="!models || models.length <= 1" panelClass="model-select-panel">
+                    <!-- Search input at the top of the dropdown -->
+                    <div class="search-header" (click)="$event.stopPropagation()">
+                        <mat-form-field appearance="outline" class="search-field">
+                            <mat-icon matPrefix>search</mat-icon>
+                            <input matInput placeholder="Search models..." [(ngModel)]="modelSearchTerm"
+                                (input)="filterModels()" (click)="$event.stopPropagation()">
+                        </mat-form-field>
+                    </div>
+
+                    <!-- Filtered model options -->
+                    <mat-option *ngFor="let model of filteredModels" [value]="model.trueId">
+                        <span class="option-content">
+                            {{ getModelDisplayName(model) }}
+                        </span>
+                    </mat-option>
+
+                    <!-- No results message -->
+                    <mat-option *ngIf="filteredModels.length === 0" disabled>
+                        No models found
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+        </div>
+        <!-- Status icons for all forecast statuses -->
+        <mat-icon class="status-icon-option active" *ngIf="status.toLowerCase() === 'active'" aria-label="Active Status"
+            matTooltip="Active">check_circle</mat-icon>
+        <button mat-icon-button *ngIf="status.toLowerCase() === 'inactive'" class="status-icon-button inactive-activate"
+            (click)="activateModel()" matTooltip="Activate" aria-label="Activate">
+            <mat-icon>play_circle</mat-icon>
+        </button>
+        <mat-icon class="status-icon-option pending" *ngIf="status.toLowerCase() === 'pending' && !progressMessage"
+            aria-label="Pending Status" matTooltip="Pending">schedule</mat-icon>
+        <mat-icon class="status-icon-option pending" *ngIf="status.toLowerCase() === 'pending' && progressMessage"
+            aria-label="Pending Status" [matTooltip]="'Pending: ' + progressMessage.step + ' (' + progressMessage.progress + '%)'">hourglass_empty</mat-icon>
+        <mat-icon class="status-icon-option failed" *ngIf="status.toLowerCase() === 'failed'" aria-label="Failed Status"
+            matTooltip="Failed">error</mat-icon>
+        <span class="device-label">Device:</span>
+        <span class="device-name">{{device}}</span>
+    </div>
+    <div class="forecast-actions">
+        <div class="left-actions">
+            <div class="button-container">
+                <button mat-icon-button (click)="refreshModel()" [matTooltip]="'forecast.refresh-models' | translate"
+                    matTooltipPosition="below">
+                    <mat-icon>refresh</mat-icon>
+                </button>
+                <button mat-icon-button (click)="openLogsDialog()" [disabled]="!trueId" matTooltip="View model logs"
+                    matTooltipPosition="below" class="logs-button">
+                    <span style="position: relative; display: inline-block;">
+                        <mat-icon>description</mat-icon>
+                        <span *ngIf="unreadLogs" class="unread-dot"
+                            style="position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; background: #e53935; border-radius: 50%;"></span>
+                    </span>
+                </button>
+                <button mat-icon-button (click)="toggleViewSelector()"
+                    [matTooltip]="'Select View: ' + getCurrentViewLabel()" matTooltipPosition="below"
+                    class="view-selector-button" [class.active]="showViewSelector">
+                    <mat-icon>view_module</mat-icon>
+                </button>
+                <button mat-icon-button (click)="openEditModelDialog()" [disabled]="!trueId"
+                    matTooltip="Edit current model" matTooltipPosition="below">
+                    <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button (click)="deleteModel()" [disabled]="!trueId"
+                    matTooltip="Delete current model" matTooltipPosition="below" class="delete-button">
+                    <mat-icon>delete</mat-icon>
+                </button>
+                <button mat-raised-button color="primary" (click)="openCreateModelDialog()">
+                    <mat-icon>add</mat-icon>New Model
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="model-dashboard">
+    <!-- Forecast Chart Section with Collapse Button -->
+    <div class="chart-section" [class.collapsed]="forecastChartCollapsed" *ngIf="shouldShowForecastChart()">
+        <div class="section-header" (click)="toggleForecastChart()" role="button"
+            [attr.aria-expanded]="!forecastChartCollapsed" aria-label="Toggle forecast chart section">
+            <button mat-icon-button class="collapse-btn" (click)="$event.stopPropagation(); toggleForecastChart()"
+                [matTooltip]="forecastChartCollapsed ? 'Expand forecast chart' : 'Collapse forecast chart'"
+                matTooltipPosition="right" [attr.aria-expanded]="!forecastChartCollapsed"
+                aria-label="Toggle forecast chart visibility">
+                <mat-icon>{{ forecastChartCollapsed ? 'chevron_right' : 'expand_more' }}</mat-icon>
+            </button>
+            <h3 class="section-title">
+                <mat-icon class="section-icon">trending_up</mat-icon>
+                Forecast
+            </h3>
+            <button mat-icon-button (click)="$event.stopPropagation(); openForecastLogsDialog()" [disabled]="!trueId"
+                class="section-logs-button" matTooltip="View forecast logs" matTooltipPosition="left">
+                <mat-icon>description</mat-icon>
+            </button>
+        </div>
+        <div class="chart-content" [@slideCollapse]="forecastChartCollapsed ? 'collapsed' : 'expanded'">
+            <tb-forecast-chart [deviceId]="deviceId" [Attributes]="Attributes"
+                [forecastId]="trueId"></tb-forecast-chart>
+        </div>
+    </div>
+
+    <!-- Anomalies Section with Collapse Button -->
+    <div class="anomalies-section" [class.collapsed]="anomaliesCollapsed" *ngIf="shouldShowAnomalies()">
+        <div class="section-header" (click)="toggleAnomalies()" role="button" [attr.aria-expanded]="!anomaliesCollapsed"
+            aria-label="Toggle anomalies section">
+            <button mat-icon-button class="collapse-btn" (click)="$event.stopPropagation(); toggleAnomalies()"
+                [matTooltip]="anomaliesCollapsed ? 'Expand anomalies table' : 'Collapse anomalies table'"
+                matTooltipPosition="right" [attr.aria-expanded]="!anomaliesCollapsed"
+                aria-label="Toggle anomalies table visibility">
+                <mat-icon>{{ anomaliesCollapsed ? 'chevron_right' : 'expand_more' }}</mat-icon>
+            </button>
+            <h3 class="section-title">
+                <mat-icon class="section-icon">bug_report</mat-icon>
+                Anomalies
+            </h3>
+            <button mat-icon-button (click)="$event.stopPropagation(); openAnomalyLogsDialog()" [disabled]="!trueId"
+                class="section-logs-button" matTooltip="View anomaly logs" matTooltipPosition="left">
+                <mat-icon>description</mat-icon>
+            </button>
+        </div>
+        <div class="chart-content" [@slideCollapse]="anomaliesCollapsed ? 'collapsed' : 'expanded'">
+            <tb-anomalies [deviceId]="deviceId" [forecastId]="trueId"></tb-anomalies>
+        </div>
+    </div>
+</div>
+
+<!-- Floating View Selector Menu -->
+<div class="view-selector-floating-menu" *ngIf="showViewSelector">
+    <div class="view-selector-overlay" (click)="showViewSelector = false"></div>
+    <div class="view-selector-checkboxes">
+        <div class="menu-header">
+            <h4>Select Views</h4>
+            <button mat-icon-button (click)="showViewSelector = false" class="close-button">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+        <div class="view-options">
+            <div class="view-option" *ngFor="let option of viewOptions">
+                <mat-checkbox [checked]="isViewSelected(option.value)"
+                    (change)="toggleView(option.value, $event.checked)">
+                    <div class="option-content">
+                        <mat-icon>{{ option.icon }}</mat-icon>
+                        <span>{{ option.label }}</span>
+                    </div>
+                </mat-checkbox>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,345 @@
+/**
+ * Copyright © 2016-2024 The Thingsboard Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+:host {
+  padding: 1rem;
+  height: 100%;
+}
+
+.tb-devices-page {
+  border: solid 1px var(--tb-dark-mat-800);
+  border-radius: 4px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tb-devices-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+}
+
+.mat-mdc-table-toolbar {
+  height: 64px;
+
+  .mat-toolbar-tools {
+    height: 64px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+  }
+}
+
+.tb-devices-toolbar-wrapper {
+  width: 100%;
+}
+
+.tb-devices-action-panels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+}
+
+.tb-left-panel {
+  flex: 1;
+}
+
+.tb-right-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.devices-title h4 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.search-field {
+  width: 300px;
+  margin-bottom: -1.25em;
+}
+
+.devices-content-card {
+  flex: 1;
+  // margin: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.table-container {
+  flex: 1;
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.device-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+
+  &.expanded-row {
+    background-color: rgba(63, 81, 181, 0.05);
+  }
+}
+
+.device-name-cell {
+  strong {
+    font-size: 1.1rem;
+  }
+}
+
+.models-count-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  color: rgba(0, 0, 0, 0.87);
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+// Expanded detail styles
+.detail-row {
+  height: 0;
+  min-height: 0;
+
+  td {
+    border-bottom-width: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  &.detail-row-hidden {
+    display: none;
+  }
+}
+
+.element-detail {
+  overflow: hidden;
+  display: block;
+}
+
+.models-list {
+  padding: 24px;
+  background-color: #f5f5f5;
+  border-top: 1px solid #e0e0e0;
+
+  h4 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.87);
+  }
+}
+
+.no-models {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  color: rgba(0, 0, 0, 0.6);
+  font-style: italic;
+
+  mat-icon {
+    color: rgba(0, 0, 0, 0.4);
+  }
+}
+
+.models-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  thead {
+    background-color: #fafafa;
+
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: rgba(0, 0, 0, 0.87);
+      border-bottom: 2px solid #e0e0e0;
+      font-size: 0.875rem;
+    }
+  }
+
+  tbody {
+    tr {
+      cursor: pointer;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: rgba(63, 81, 181, 0.08);
+      }
+
+      &:not(:last-child) {
+        border-bottom: 1px solid #e0e0e0;
+      }
+    }
+
+    td {
+      padding: 12px 16px;
+      font-size: 0.875rem;
+
+      &.model-name {
+        font-weight: 500;
+        color: #3f51b5;
+      }
+
+      &.model-attributes {
+        color: rgba(0, 0, 0, 0.6);
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
+// Dark mode support
+::ng-deep .tb-dark {
+  .tb-devices-toolbar {
+    background: #1c1c1c;
+  }
+
+  .devices-title h4 {
+    color: rgba(255, 255, 255, 0.87);
+  }
+
+  .models-count-badge {
+    color: rgba(255, 255, 255, 0.87);
+  }
+
+  .device-row {
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.04);
+    }
+
+    &.expanded-row {
+      background-color: rgba(63, 81, 181, 0.15);
+    }
+  }
+
+  .models-list {
+    background-color: #2c2c2c;
+    border-top-color: #424242;
+
+    h4 {
+      color: rgba(255, 255, 255, 0.87);
+    }
+  }
+
+  .no-models {
+    color: rgba(255, 255, 255, 0.6);
+
+    mat-icon {
+      color: rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  .models-table {
+    background: #1c1c1c;
+
+    thead {
+      background-color: #2c2c2c;
+
+      th {
+        color: rgba(255, 255, 255, 0.87);
+        border-bottom-color: #424242;
+      }
+    }
+
+    tbody {
+      tr {
+        &:hover {
+          background-color: rgba(63, 81, 181, 0.15);
+        }
+
+        &:not(:last-child) {
+          border-bottom-color: #424242;
+        }
+      }
+
+      td {
+        color: rgba(255, 255, 255, 0.87);
+
+        &.model-name {
+          color: #7986cb;
+        }
+
+        &.model-attributes {
+          color: rgba(255, 255, 255, 0.6);
+        }
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .tb-devices-action-panels {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .search-field {
+    width: 100%;
+  }
+
+  .models-table {
+    font-size: 0.75rem;
+
+    thead th,
+    tbody td {
+      padding: 8px;
+    }
+  }
+}

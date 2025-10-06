@@ -25,6 +25,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.CloseStatus;
@@ -137,6 +138,9 @@ public class DefaultWebSocketService implements WebSocketService {
     private final TbServiceInfoProvider serviceInfoProvider;
     private final TbTenantProfileCache tenantProfileCache;
 
+    @Autowired(required = false)
+    private org.thingsboard.server.service.ws.predictive.PredictiveMaintenanceWebSocketService predictiveMaintenanceWsService;
+
     @Value("${server.ws.ping_timeout:30000}")
     private long pingTimeout;
 
@@ -157,8 +161,10 @@ public class DefaultWebSocketService implements WebSocketService {
         serviceId = serviceInfoProvider.getServiceId();
         executor = ThingsBoardExecutors.newWorkStealingPool(50, getClass());
 
-        pingExecutor = Executors.newSingleThreadScheduledExecutor(ThingsBoardThreadFactory.forName("telemetry-web-socket-ping"));
-        pingExecutor.scheduleWithFixedDelay(this::sendPing, pingTimeout / NUMBER_OF_PING_ATTEMPTS, pingTimeout / NUMBER_OF_PING_ATTEMPTS, TimeUnit.MILLISECONDS);
+        pingExecutor = Executors
+                .newSingleThreadScheduledExecutor(ThingsBoardThreadFactory.forName("telemetry-web-socket-ping"));
+        pingExecutor.scheduleWithFixedDelay(this::sendPing, pingTimeout / NUMBER_OF_PING_ATTEMPTS,
+                pingTimeout / NUMBER_OF_PING_ATTEMPTS, TimeUnit.MILLISECONDS);
 
         cmdsHandlers = new EnumMap<>(WsCmdType.class);
         cmdsHandlers.put(WsCmdType.ATTRIBUTES, newCmdHandler(this::handleWsAttributesSubscriptionCmd));
@@ -172,11 +178,20 @@ public class DefaultWebSocketService implements WebSocketService {
         cmdsHandlers.put(WsCmdType.ALARM_DATA_UNSUBSCRIBE, newCmdHandler(this::handleWsDataUnsubscribeCmd));
         cmdsHandlers.put(WsCmdType.ENTITY_COUNT_UNSUBSCRIBE, newCmdHandler(this::handleWsDataUnsubscribeCmd));
         cmdsHandlers.put(WsCmdType.ALARM_COUNT_UNSUBSCRIBE, newCmdHandler(this::handleWsDataUnsubscribeCmd));
-        cmdsHandlers.put(WsCmdType.NOTIFICATIONS, newCmdHandler(notificationCmdsHandler::handleUnreadNotificationsSubCmd));
-        cmdsHandlers.put(WsCmdType.NOTIFICATIONS_COUNT, newCmdHandler(notificationCmdsHandler::handleUnreadNotificationsCountSubCmd));
-        cmdsHandlers.put(WsCmdType.MARK_NOTIFICATIONS_AS_READ, newCmdHandler(notificationCmdsHandler::handleMarkAsReadCmd));
-        cmdsHandlers.put(WsCmdType.MARK_ALL_NOTIFICATIONS_AS_READ, newCmdHandler(notificationCmdsHandler::handleMarkAllAsReadCmd));
+        cmdsHandlers.put(WsCmdType.NOTIFICATIONS,
+                newCmdHandler(notificationCmdsHandler::handleUnreadNotificationsSubCmd));
+        cmdsHandlers.put(WsCmdType.NOTIFICATIONS_COUNT,
+                newCmdHandler(notificationCmdsHandler::handleUnreadNotificationsCountSubCmd));
+        cmdsHandlers.put(WsCmdType.MARK_NOTIFICATIONS_AS_READ,
+                newCmdHandler(notificationCmdsHandler::handleMarkAsReadCmd));
+        cmdsHandlers.put(WsCmdType.MARK_ALL_NOTIFICATIONS_AS_READ,
+                newCmdHandler(notificationCmdsHandler::handleMarkAllAsReadCmd));
         cmdsHandlers.put(WsCmdType.NOTIFICATIONS_UNSUBSCRIBE, newCmdHandler(notificationCmdsHandler::handleUnsubCmd));
+
+        // Predictive Maintenance - WebSocket Commands
+        if (predictiveMaintenanceWsService != null) {
+            cmdsHandlers.put(WsCmdType.PREDICTIVE_MAINTENANCE, newCmdHandler(this::handlePredictiveMaintenanceCmd));
+        }
     }
 
     @PreDestroy
@@ -259,6 +274,13 @@ public class DefaultWebSocketService implements WebSocketService {
         }
     }
 
+    private void handlePredictiveMaintenanceCmd(WebSocketSessionRef sessionRef,
+            org.thingsboard.server.service.ws.predictive.PredictiveMaintenanceCmd cmd) {
+        if (predictiveMaintenanceWsService != null && validateCmd(sessionRef, cmd)) {
+            predictiveMaintenanceWsService.handleCommand(sessionRef, cmd);
+        }
+    }
+
     @Override
     public void sendUpdate(String sessionId, int cmdId, TelemetrySubscriptionUpdate update) {
         // We substitute the subscriptionId with cmdId for old-style subscriptions.
@@ -309,26 +331,32 @@ public class DefaultWebSocketService implements WebSocketService {
             String sessionId = "[" + sessionRef.getSessionId() + "]";
 
             if (tenantProfileConfiguration.getMaxWsSubscriptionsPerTenant() > 0) {
-                Set<String> tenantSubscriptions = tenantSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getTenantId(), id -> ConcurrentHashMap.newKeySet());
+                Set<String> tenantSubscriptions = tenantSubscriptionsMap.computeIfAbsent(
+                        sessionRef.getSecurityCtx().getTenantId(), id -> ConcurrentHashMap.newKeySet());
                 synchronized (tenantSubscriptions) {
                     tenantSubscriptions.removeIf(subId -> subId.startsWith(sessionId));
                 }
             }
             if (sessionRef.getSecurityCtx().isCustomerUser()) {
                 if (tenantProfileConfiguration.getMaxWsSubscriptionsPerCustomer() > 0) {
-                    Set<String> customerSessions = customerSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getCustomerId(), id -> ConcurrentHashMap.newKeySet());
+                    Set<String> customerSessions = customerSubscriptionsMap.computeIfAbsent(
+                            sessionRef.getSecurityCtx().getCustomerId(), id -> ConcurrentHashMap.newKeySet());
                     synchronized (customerSessions) {
                         customerSessions.removeIf(subId -> subId.startsWith(sessionId));
                     }
                 }
-                if (tenantProfileConfiguration.getMaxWsSubscriptionsPerRegularUser() > 0 && UserPrincipal.Type.USER_NAME.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                    Set<String> regularUserSessions = regularUserSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+                if (tenantProfileConfiguration.getMaxWsSubscriptionsPerRegularUser() > 0 && UserPrincipal.Type.USER_NAME
+                        .equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
+                    Set<String> regularUserSessions = regularUserSubscriptionsMap
+                            .computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
                     synchronized (regularUserSessions) {
                         regularUserSessions.removeIf(subId -> subId.startsWith(sessionId));
                     }
                 }
-                if (tenantProfileConfiguration.getMaxWsSubscriptionsPerPublicUser() > 0 && UserPrincipal.Type.PUBLIC_ID.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                    Set<String> publicUserSessions = publicUserSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+                if (tenantProfileConfiguration.getMaxWsSubscriptionsPerPublicUser() > 0 && UserPrincipal.Type.PUBLIC_ID
+                        .equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
+                    Set<String> publicUserSessions = publicUserSubscriptionsMap
+                            .computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
                     synchronized (publicUserSessions) {
                         publicUserSessions.removeIf(subId -> subId.startsWith(sessionId));
                     }
@@ -339,21 +367,25 @@ public class DefaultWebSocketService implements WebSocketService {
 
     private boolean processSubscription(WebSocketSessionRef sessionRef, SubscriptionCmd cmd) {
         var tenantProfileConfiguration = getTenantProfileConfiguration(sessionRef);
-        if (tenantProfileConfiguration == null) return true;
+        if (tenantProfileConfiguration == null)
+            return true;
 
         String subId = "[" + sessionRef.getSessionId() + "]:[" + cmd.getCmdId() + "]";
         try {
             if (tenantProfileConfiguration.getMaxWsSubscriptionsPerTenant() > 0) {
-                Set<String> tenantSubscriptions = tenantSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getTenantId(), id -> ConcurrentHashMap.newKeySet());
+                Set<String> tenantSubscriptions = tenantSubscriptionsMap.computeIfAbsent(
+                        sessionRef.getSecurityCtx().getTenantId(), id -> ConcurrentHashMap.newKeySet());
                 synchronized (tenantSubscriptions) {
                     if (cmd.isUnsubscribe()) {
                         tenantSubscriptions.remove(subId);
-                    } else if (tenantSubscriptions.size() < tenantProfileConfiguration.getMaxWsSubscriptionsPerTenant()) {
+                    } else if (tenantSubscriptions.size() < tenantProfileConfiguration
+                            .getMaxWsSubscriptionsPerTenant()) {
                         tenantSubscriptions.add(subId);
                     } else {
-                        log.info("[{}][{}][{}] Failed to start subscription. Max tenant subscriptions limit reached"
-                                , sessionRef.getSecurityCtx().getTenantId(), sessionRef.getSecurityCtx().getId(), subId);
-                        msgEndpoint.close(sessionRef, CloseStatus.POLICY_VIOLATION.withReason("Max tenant subscriptions limit reached!"));
+                        log.info("[{}][{}][{}] Failed to start subscription. Max tenant subscriptions limit reached",
+                                sessionRef.getSecurityCtx().getTenantId(), sessionRef.getSecurityCtx().getId(), subId);
+                        msgEndpoint.close(sessionRef,
+                                CloseStatus.POLICY_VIOLATION.withReason("Max tenant subscriptions limit reached!"));
                         return false;
                     }
                 }
@@ -361,42 +393,59 @@ public class DefaultWebSocketService implements WebSocketService {
 
             if (sessionRef.getSecurityCtx().isCustomerUser()) {
                 if (tenantProfileConfiguration.getMaxWsSubscriptionsPerCustomer() > 0) {
-                    Set<String> customerSessions = customerSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getCustomerId(), id -> ConcurrentHashMap.newKeySet());
+                    Set<String> customerSessions = customerSubscriptionsMap.computeIfAbsent(
+                            sessionRef.getSecurityCtx().getCustomerId(), id -> ConcurrentHashMap.newKeySet());
                     synchronized (customerSessions) {
                         if (cmd.isUnsubscribe()) {
                             customerSessions.remove(subId);
-                        } else if (customerSessions.size() < tenantProfileConfiguration.getMaxWsSubscriptionsPerCustomer()) {
+                        } else if (customerSessions.size() < tenantProfileConfiguration
+                                .getMaxWsSubscriptionsPerCustomer()) {
                             customerSessions.add(subId);
                         } else {
-                            log.info("[{}][{}][{}] Failed to start subscription. Max customer subscriptions limit reached"
-                                    , sessionRef.getSecurityCtx().getTenantId(), sessionRef.getSecurityCtx().getId(), subId);
-                            msgEndpoint.close(sessionRef, CloseStatus.POLICY_VIOLATION.withReason("Max customer subscriptions limit reached"));
+                            log.info(
+                                    "[{}][{}][{}] Failed to start subscription. Max customer subscriptions limit reached",
+                                    sessionRef.getSecurityCtx().getTenantId(), sessionRef.getSecurityCtx().getId(),
+                                    subId);
+                            msgEndpoint.close(sessionRef, CloseStatus.POLICY_VIOLATION
+                                    .withReason("Max customer subscriptions limit reached"));
                             return false;
                         }
                     }
                 }
-                if (tenantProfileConfiguration.getMaxWsSubscriptionsPerRegularUser() > 0 && UserPrincipal.Type.USER_NAME.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                    Set<String> regularUserSessions = regularUserSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+                if (tenantProfileConfiguration.getMaxWsSubscriptionsPerRegularUser() > 0 && UserPrincipal.Type.USER_NAME
+                        .equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
+                    Set<String> regularUserSessions = regularUserSubscriptionsMap
+                            .computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
                     synchronized (regularUserSessions) {
-                        if (regularUserSessions.size() < tenantProfileConfiguration.getMaxWsSubscriptionsPerRegularUser()) {
+                        if (regularUserSessions.size() < tenantProfileConfiguration
+                                .getMaxWsSubscriptionsPerRegularUser()) {
                             regularUserSessions.add(subId);
                         } else {
-                            log.info("[{}][{}][{}] Failed to start subscription. Max regular user subscriptions limit reached"
-                                    , sessionRef.getSecurityCtx().getTenantId(), sessionRef.getSecurityCtx().getId(), subId);
-                            msgEndpoint.close(sessionRef, CloseStatus.POLICY_VIOLATION.withReason("Max regular user subscriptions limit reached"));
+                            log.info(
+                                    "[{}][{}][{}] Failed to start subscription. Max regular user subscriptions limit reached",
+                                    sessionRef.getSecurityCtx().getTenantId(), sessionRef.getSecurityCtx().getId(),
+                                    subId);
+                            msgEndpoint.close(sessionRef, CloseStatus.POLICY_VIOLATION
+                                    .withReason("Max regular user subscriptions limit reached"));
                             return false;
                         }
                     }
                 }
-                if (tenantProfileConfiguration.getMaxWsSubscriptionsPerPublicUser() > 0 && UserPrincipal.Type.PUBLIC_ID.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                    Set<String> publicUserSessions = publicUserSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+                if (tenantProfileConfiguration.getMaxWsSubscriptionsPerPublicUser() > 0 && UserPrincipal.Type.PUBLIC_ID
+                        .equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
+                    Set<String> publicUserSessions = publicUserSubscriptionsMap
+                            .computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
                     synchronized (publicUserSessions) {
-                        if (publicUserSessions.size() < tenantProfileConfiguration.getMaxWsSubscriptionsPerPublicUser()) {
+                        if (publicUserSessions.size() < tenantProfileConfiguration
+                                .getMaxWsSubscriptionsPerPublicUser()) {
                             publicUserSessions.add(subId);
                         } else {
-                            log.info("[{}][{}][{}] Failed to start subscription. Max public user subscriptions limit reached"
-                                    , sessionRef.getSecurityCtx().getTenantId(), sessionRef.getSecurityCtx().getId(), subId);
-                            msgEndpoint.close(sessionRef, CloseStatus.POLICY_VIOLATION.withReason("Max public user subscriptions limit reached"));
+                            log.info(
+                                    "[{}][{}][{}] Failed to start subscription. Max public user subscriptions limit reached",
+                                    sessionRef.getSecurityCtx().getTenantId(), sessionRef.getSecurityCtx().getId(),
+                                    subId);
+                            msgEndpoint.close(sessionRef, CloseStatus.POLICY_VIOLATION
+                                    .withReason("Max public user subscriptions limit reached"));
                             return false;
                         }
                     }
@@ -431,19 +480,22 @@ public class DefaultWebSocketService implements WebSocketService {
     }
 
     private void handleWsAttributesSubscriptionByKeys(WebSocketSessionRef sessionRef,
-                                                      AttributesSubscriptionCmd cmd, String sessionId, EntityId entityId,
-                                                      List<String> keys) {
+            AttributesSubscriptionCmd cmd, String sessionId, EntityId entityId,
+            List<String> keys) {
         long queryTs = System.currentTimeMillis();
         FutureCallback<List<AttributeKvEntry>> callback = new FutureCallback<>() {
             @Override
             public void onSuccess(List<AttributeKvEntry> data) {
-                List<TsKvEntry> attributesData = data.stream().map(d -> new BasicTsKvEntry(d.getLastUpdateTs(), d)).collect(Collectors.toList());
+                List<TsKvEntry> attributesData = data.stream().map(d -> new BasicTsKvEntry(d.getLastUpdateTs(), d))
+                        .collect(Collectors.toList());
 
                 Map<String, Long> subState = new HashMap<>(keys.size());
                 keys.forEach(key -> subState.put(key, 0L));
                 attributesData.forEach(v -> subState.put(v.getKey(), v.getTs()));
 
-                TbAttributeSubscriptionScope scope = StringUtils.isEmpty(cmd.getScope()) ? TbAttributeSubscriptionScope.ANY_SCOPE : TbAttributeSubscriptionScope.valueOf(cmd.getScope());
+                TbAttributeSubscriptionScope scope = StringUtils.isEmpty(cmd.getScope())
+                        ? TbAttributeSubscriptionScope.ANY_SCOPE
+                        : TbAttributeSubscriptionScope.valueOf(cmd.getScope());
 
                 Lock subLock = new ReentrantLock();
                 TbAttributeSubscription sub = TbAttributeSubscription.builder()
@@ -492,9 +544,12 @@ public class DefaultWebSocketService implements WebSocketService {
         };
 
         if (StringUtils.isEmpty(cmd.getScope())) {
-            accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_ATTRIBUTES, entityId, getAttributesFetchCallback(sessionRef.getSecurityCtx().getTenantId(), entityId, keys, callback));
+            accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_ATTRIBUTES, entityId,
+                    getAttributesFetchCallback(sessionRef.getSecurityCtx().getTenantId(), entityId, keys, callback));
         } else {
-            accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_ATTRIBUTES, entityId, getAttributesFetchCallback(sessionRef.getSecurityCtx().getTenantId(), entityId, cmd.getScope(), keys, callback));
+            accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_ATTRIBUTES, entityId,
+                    getAttributesFetchCallback(sessionRef.getSecurityCtx().getTenantId(), entityId, cmd.getScope(),
+                            keys, callback));
         }
     }
 
@@ -507,17 +562,21 @@ public class DefaultWebSocketService implements WebSocketService {
 
     private void handleWsHistoryCmd(WebSocketSessionRef sessionRef, GetHistoryCmd cmd) {
         if (!validateCmd(sessionRef, cmd, () -> {
-            if (cmd.getEntityId() == null || cmd.getEntityId().isEmpty() || cmd.getEntityType() == null || cmd.getEntityType().isEmpty()) {
+            if (cmd.getEntityId() == null || cmd.getEntityId().isEmpty() || cmd.getEntityType() == null
+                    || cmd.getEntityType().isEmpty()) {
                 throw new IllegalArgumentException("Device id is empty!");
             }
             if (cmd.getKeys() == null || cmd.getKeys().isEmpty()) {
                 throw new IllegalArgumentException("Keys are empty!");
             }
-        })) return;
+        }))
+            return;
 
         EntityId entityId = EntityIdFactory.getByTypeAndId(cmd.getEntityType(), cmd.getEntityId());
         List<String> keys = new ArrayList<>(getKeys(cmd).orElse(Collections.emptySet()));
-        List<ReadTsKvQuery> queries = keys.stream().map(key -> new BaseReadTsKvQuery(key, cmd.getStartTs(), cmd.getEndTs(), cmd.getInterval(), getLimit(cmd.getLimit()), getAggregation(cmd.getAgg())))
+        List<ReadTsKvQuery> queries = keys.stream()
+                .map(key -> new BaseReadTsKvQuery(key, cmd.getStartTs(), cmd.getEndTs(), cmd.getInterval(),
+                        getLimit(cmd.getLimit()), getAggregation(cmd.getAgg())))
                 .collect(Collectors.toList());
 
         FutureCallback<List<TsKvEntry>> callback = new FutureCallback<List<TsKvEntry>>() {
@@ -540,23 +599,28 @@ public class DefaultWebSocketService implements WebSocketService {
             }
         };
         accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_TELEMETRY, entityId,
-                on(r -> Futures.addCallback(tsService.findAll(sessionRef.getSecurityCtx().getTenantId(), entityId, queries), callback, executor), callback::onFailure));
+                on(r -> Futures.addCallback(
+                        tsService.findAll(sessionRef.getSecurityCtx().getTenantId(), entityId, queries), callback,
+                        executor), callback::onFailure));
     }
 
     private void handleWsAttributesSubscription(WebSocketSessionRef sessionRef,
-                                                AttributesSubscriptionCmd cmd,
-                                                String sessionId,
-                                                EntityId entityId) {
+            AttributesSubscriptionCmd cmd,
+            String sessionId,
+            EntityId entityId) {
         long queryTs = System.currentTimeMillis();
         FutureCallback<List<AttributeKvEntry>> callback = new FutureCallback<>() {
             @Override
             public void onSuccess(List<AttributeKvEntry> data) {
-                List<TsKvEntry> attributesData = data.stream().map(d -> new BasicTsKvEntry(d.getLastUpdateTs(), d)).collect(Collectors.toList());
+                List<TsKvEntry> attributesData = data.stream().map(d -> new BasicTsKvEntry(d.getLastUpdateTs(), d))
+                        .collect(Collectors.toList());
 
                 Map<String, Long> subState = new HashMap<>(attributesData.size());
                 attributesData.forEach(v -> subState.put(v.getKey(), v.getTs()));
 
-                TbAttributeSubscriptionScope scope = StringUtils.isEmpty(cmd.getScope()) ? TbAttributeSubscriptionScope.ANY_SCOPE : TbAttributeSubscriptionScope.valueOf(cmd.getScope());
+                TbAttributeSubscriptionScope scope = StringUtils.isEmpty(cmd.getScope())
+                        ? TbAttributeSubscriptionScope.ANY_SCOPE
+                        : TbAttributeSubscriptionScope.valueOf(cmd.getScope());
 
                 Lock subLock = new ReentrantLock();
                 TbAttributeSubscription sub = TbAttributeSubscription.builder()
@@ -595,11 +659,13 @@ public class DefaultWebSocketService implements WebSocketService {
             }
         };
 
-
         if (StringUtils.isEmpty(cmd.getScope())) {
-            accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_ATTRIBUTES, entityId, getAttributesFetchCallback(sessionRef.getSecurityCtx().getTenantId(), entityId, callback));
+            accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_ATTRIBUTES, entityId,
+                    getAttributesFetchCallback(sessionRef.getSecurityCtx().getTenantId(), entityId, callback));
         } else {
-            accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_ATTRIBUTES, entityId, getAttributesFetchCallback(sessionRef.getSecurityCtx().getTenantId(), entityId, cmd.getScope(), callback));
+            accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_ATTRIBUTES, entityId,
+                    getAttributesFetchCallback(sessionRef.getSecurityCtx().getTenantId(), entityId, cmd.getScope(),
+                            callback));
         }
     }
 
@@ -624,31 +690,41 @@ public class DefaultWebSocketService implements WebSocketService {
     }
 
     private void handleWsTimeSeriesSubscriptionByKeys(WebSocketSessionRef sessionRef,
-                                                      TimeseriesSubscriptionCmd cmd, String sessionId, EntityId entityId) {
+            TimeseriesSubscriptionCmd cmd, String sessionId, EntityId entityId) {
         long startTs;
         long queryTs = System.currentTimeMillis();
         if (cmd.getTimeWindow() > 0) {
             List<String> keys = new ArrayList<>(getKeys(cmd).orElse(Collections.emptySet()));
-            log.debug("[{}] fetching timeseries data for last {} ms for keys: ({}) for device : {}", sessionId, cmd.getTimeWindow(), cmd.getKeys(), entityId);
+            log.debug("[{}] fetching timeseries data for last {} ms for keys: ({}) for device : {}", sessionId,
+                    cmd.getTimeWindow(), cmd.getKeys(), entityId);
             startTs = cmd.getStartTs();
             long endTs = cmd.getStartTs() + cmd.getTimeWindow();
-            List<ReadTsKvQuery> queries = keys.stream().map(key -> new BaseReadTsKvQuery(key, startTs, endTs, cmd.getInterval(),
-                    getLimit(cmd.getLimit()), getAggregation(cmd.getAgg()))).collect(Collectors.toList());
-            final FutureCallback<List<TsKvEntry>> callback = getSubscriptionCallback(sessionRef, cmd, sessionId, entityId, queryTs, startTs, keys);
+            List<ReadTsKvQuery> queries = keys.stream()
+                    .map(key -> new BaseReadTsKvQuery(key, startTs, endTs, cmd.getInterval(),
+                            getLimit(cmd.getLimit()), getAggregation(cmd.getAgg())))
+                    .collect(Collectors.toList());
+            final FutureCallback<List<TsKvEntry>> callback = getSubscriptionCallback(sessionRef, cmd, sessionId,
+                    entityId, queryTs, startTs, keys);
             accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_TELEMETRY, entityId,
-                    on(r -> Futures.addCallback(tsService.findAll(sessionRef.getSecurityCtx().getTenantId(), entityId, queries), callback, executor), callback::onFailure));
+                    on(r -> Futures.addCallback(
+                            tsService.findAll(sessionRef.getSecurityCtx().getTenantId(), entityId, queries), callback,
+                            executor), callback::onFailure));
         } else {
             List<String> keys = new ArrayList<>(getKeys(cmd).orElse(Collections.emptySet()));
             startTs = System.currentTimeMillis();
-            log.debug("[{}] fetching latest timeseries data for keys: ({}) for device : {}", sessionId, cmd.getKeys(), entityId);
-            final FutureCallback<List<TsKvEntry>> callback = getSubscriptionCallback(sessionRef, cmd, sessionId, entityId, queryTs, startTs, keys);
+            log.debug("[{}] fetching latest timeseries data for keys: ({}) for device : {}", sessionId, cmd.getKeys(),
+                    entityId);
+            final FutureCallback<List<TsKvEntry>> callback = getSubscriptionCallback(sessionRef, cmd, sessionId,
+                    entityId, queryTs, startTs, keys);
             accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_TELEMETRY, entityId,
-                    on(r -> Futures.addCallback(tsService.findLatest(sessionRef.getSecurityCtx().getTenantId(), entityId, keys), callback, executor), callback::onFailure));
+                    on(r -> Futures.addCallback(
+                            tsService.findLatest(sessionRef.getSecurityCtx().getTenantId(), entityId, keys), callback,
+                            executor), callback::onFailure));
         }
     }
 
     private void handleWsTimeSeriesSubscription(WebSocketSessionRef sessionRef,
-                                                TimeseriesSubscriptionCmd cmd, String sessionId, EntityId entityId) {
+            TimeseriesSubscriptionCmd cmd, String sessionId, EntityId entityId) {
         long queryTs = System.currentTimeMillis();
         FutureCallback<List<TsKvEntry>> callback = new FutureCallback<List<TsKvEntry>>() {
             @Override
@@ -699,11 +775,15 @@ public class DefaultWebSocketService implements WebSocketService {
             }
         };
         accessValidator.validate(sessionRef.getSecurityCtx(), Operation.READ_TELEMETRY, entityId,
-                on(r -> Futures.addCallback(tsService.findAllLatest(sessionRef.getSecurityCtx().getTenantId(), entityId), callback, executor), callback::onFailure));
+                on(r -> Futures.addCallback(
+                        tsService.findAllLatest(sessionRef.getSecurityCtx().getTenantId(), entityId), callback,
+                        executor), callback::onFailure));
     }
 
-    private FutureCallback<List<TsKvEntry>> getSubscriptionCallback(final WebSocketSessionRef sessionRef, final TimeseriesSubscriptionCmd cmd,
-                                                                    final String sessionId, final EntityId entityId, final long queryTs, final long startTs, final List<String> keys) {
+    private FutureCallback<List<TsKvEntry>> getSubscriptionCallback(final WebSocketSessionRef sessionRef,
+            final TimeseriesSubscriptionCmd cmd,
+            final String sessionId, final EntityId entityId, final long queryTs, final long startTs,
+            final List<String> keys) {
         return new FutureCallback<>() {
             @Override
             public void onSuccess(List<TsKvEntry> data) {
@@ -743,7 +823,8 @@ public class DefaultWebSocketService implements WebSocketService {
             @Override
             public void onFailure(Throwable e) {
                 if (e instanceof TenantRateLimitException || e.getCause() instanceof TenantRateLimitException) {
-                    log.trace("[{}] Tenant rate limit detected for subscription: [{}]:{}", sessionRef.getSecurityCtx().getTenantId(), entityId, cmd);
+                    log.trace("[{}] Tenant rate limit detected for subscription: [{}]:{}",
+                            sessionRef.getSecurityCtx().getTenantId(), entityId, cmd);
                 } else {
                     log.info(FAILED_TO_FETCH_DATA, e);
                 }
@@ -861,14 +942,13 @@ public class DefaultWebSocketService implements WebSocketService {
 
     private void sendPing() {
         long currentTime = System.currentTimeMillis();
-        wsSessionsMap.values().forEach(md ->
-                executor.submit(() -> {
-                    try {
-                        msgEndpoint.sendPing(md.getSessionRef(), currentTime);
-                    } catch (IOException e) {
-                        log.warn("[{}] Failed to send ping:", md.getSessionRef().getSessionId(), e);
-                    }
-                }));
+        wsSessionsMap.values().forEach(md -> executor.submit(() -> {
+            try {
+                msgEndpoint.sendPing(md.getSessionRef(), currentTime);
+            } catch (IOException e) {
+                log.warn("[{}] Failed to send ping:", md.getSessionRef().getSessionId(), e);
+            }
+        }));
     }
 
     private static Optional<Set<String>> getKeys(TelemetryPluginCmd cmd) {
@@ -881,7 +961,8 @@ public class DefaultWebSocketService implements WebSocketService {
         }
     }
 
-    private ListenableFuture<List<AttributeKvEntry>> mergeAllAttributesFutures(List<ListenableFuture<List<AttributeKvEntry>>> futures) {
+    private ListenableFuture<List<AttributeKvEntry>> mergeAllAttributesFutures(
+            List<ListenableFuture<List<AttributeKvEntry>>> futures) {
         return Futures.transform(Futures.successfulAsList(futures),
                 (Function<? super List<List<AttributeKvEntry>>, ? extends List<AttributeKvEntry>>) input -> {
                     List<AttributeKvEntry> tmp = new ArrayList<>();
@@ -892,7 +973,8 @@ public class DefaultWebSocketService implements WebSocketService {
                 }, executor);
     }
 
-    private <T> FutureCallback<ValidationResult> getAttributesFetchCallback(final TenantId tenantId, final EntityId entityId, final List<String> keys, final FutureCallback<List<AttributeKvEntry>> callback) {
+    private <T> FutureCallback<ValidationResult> getAttributesFetchCallback(final TenantId tenantId,
+            final EntityId entityId, final List<String> keys, final FutureCallback<List<AttributeKvEntry>> callback) {
         return new FutureCallback<ValidationResult>() {
             @Override
             public void onSuccess(@Nullable ValidationResult result) {
@@ -912,11 +994,14 @@ public class DefaultWebSocketService implements WebSocketService {
         };
     }
 
-    private <T> FutureCallback<ValidationResult> getAttributesFetchCallback(final TenantId tenantId, final EntityId entityId, final String scope, final List<String> keys, final FutureCallback<List<AttributeKvEntry>> callback) {
+    private <T> FutureCallback<ValidationResult> getAttributesFetchCallback(final TenantId tenantId,
+            final EntityId entityId, final String scope, final List<String> keys,
+            final FutureCallback<List<AttributeKvEntry>> callback) {
         return new FutureCallback<ValidationResult>() {
             @Override
             public void onSuccess(@Nullable ValidationResult result) {
-                Futures.addCallback(attributesService.find(tenantId, entityId, AttributeScope.valueOf(scope), keys), callback, MoreExecutors.directExecutor());
+                Futures.addCallback(attributesService.find(tenantId, entityId, AttributeScope.valueOf(scope), keys),
+                        callback, MoreExecutors.directExecutor());
             }
 
             @Override
@@ -926,7 +1011,8 @@ public class DefaultWebSocketService implements WebSocketService {
         };
     }
 
-    private <T> FutureCallback<ValidationResult> getAttributesFetchCallback(final TenantId tenantId, final EntityId entityId, final FutureCallback<List<AttributeKvEntry>> callback) {
+    private <T> FutureCallback<ValidationResult> getAttributesFetchCallback(final TenantId tenantId,
+            final EntityId entityId, final FutureCallback<List<AttributeKvEntry>> callback) {
         return new FutureCallback<ValidationResult>() {
             @Override
             public void onSuccess(@Nullable ValidationResult result) {
@@ -946,11 +1032,13 @@ public class DefaultWebSocketService implements WebSocketService {
         };
     }
 
-    private <T> FutureCallback<ValidationResult> getAttributesFetchCallback(final TenantId tenantId, final EntityId entityId, final String scope, final FutureCallback<List<AttributeKvEntry>> callback) {
+    private <T> FutureCallback<ValidationResult> getAttributesFetchCallback(final TenantId tenantId,
+            final EntityId entityId, final String scope, final FutureCallback<List<AttributeKvEntry>> callback) {
         return new FutureCallback<ValidationResult>() {
             @Override
             public void onSuccess(@Nullable ValidationResult result) {
-                Futures.addCallback(attributesService.findAll(tenantId, entityId, AttributeScope.valueOf(scope)), callback, MoreExecutors.directExecutor());
+                Futures.addCallback(attributesService.findAll(tenantId, entityId, AttributeScope.valueOf(scope)),
+                        callback, MoreExecutors.directExecutor());
             }
 
             @Override
@@ -978,7 +1066,6 @@ public class DefaultWebSocketService implements WebSocketService {
             }
         };
     }
-
 
     public static Aggregation getAggregation(String agg) {
         return StringUtils.isEmpty(agg) ? DEFAULT_AGGREGATION : Aggregation.valueOf(agg);

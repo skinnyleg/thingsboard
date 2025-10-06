@@ -24,6 +24,7 @@ import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.dao.Dao;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TenantDao extends Dao<Tenant> {
@@ -37,7 +38,7 @@ public interface TenantDao extends Dao<Tenant> {
      * @return saved tenant object
      */
     Tenant save(TenantId tenantId, Tenant tenant);
-    
+
     /**
      * Find tenants by page link.
      * 
@@ -51,4 +52,6 @@ public interface TenantDao extends Dao<Tenant> {
     PageData<TenantId> findTenantsIds(PageLink pageLink);
 
     List<TenantId> findTenantIdsByTenantProfileId(TenantProfileId tenantProfileId);
+
+    Optional<TenantId> findTenantByEmail(String email);
 }

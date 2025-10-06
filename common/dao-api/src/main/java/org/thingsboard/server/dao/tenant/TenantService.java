@@ -25,6 +25,7 @@ import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.dao.entity.EntityDaoService;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 public interface TenantService extends EntityDaoService {
@@ -52,4 +53,6 @@ public interface TenantService extends EntityDaoService {
     void deleteTenants();
 
     PageData<TenantId> findTenantsIds(PageLink pageLink);
+
+    Optional<TenantId> findTenantByEmail(String email);
 }

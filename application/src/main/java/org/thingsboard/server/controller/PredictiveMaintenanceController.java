@@ -19,8 +19,7 @@ package org.thingsboard.server.controller;
 import org.springframework.web.bind.annotation.RestController;
 import org.thingsboard.server.queue.util.TbCoreComponent;
 import org.thingsboard.server.service.predictive.FastAPIService;
-import org.thingsboard.server.service.predictive.TbForecastsService;
-import org.thingsboard.server.service.predictive.TbAnomalyDetectorService;
+import org.thingsboard.server.service.predictive.TbPredictiveModelsService;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -37,13 +36,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.thingsboard.server.common.data.exception.ThingsboardErrorCode;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
-import org.thingsboard.server.common.data.id.ForecastId;
-import org.thingsboard.server.common.data.id.DetectorId;
+import org.thingsboard.server.common.data.id.PredictiveModelId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
-import org.thingsboard.server.common.data.Forecast;
-import org.thingsboard.server.common.data.Detector;
+import org.thingsboard.server.common.data.PredictiveModel;
 import org.thingsboard.server.config.annotations.ApiOperation;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -63,10 +60,7 @@ public class PredictiveMaintenanceController extends BaseController {
     private FastAPIService fastAPIService;
 
     @Autowired
-    protected TbForecastsService forecastsService;
-
-    @Autowired
-    protected TbAnomalyDetectorService anomalyDetectorService;
+    protected TbPredictiveModelsService predictiveModelsService;
 
     @ApiOperation(value = "Get predictiveMaintenance Hello World", notes = "access the hello world in predictive maintenance route directive")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
@@ -76,11 +70,11 @@ public class PredictiveMaintenanceController extends BaseController {
         return fastAPIService.getHelloWorld();
     }
 
-    @ApiOperation(value = "Get predictiveMaintenance forecasts", notes = "access the forecasts in predictive maintenance route directive")
+    @ApiOperation(value = "Get predictiveMaintenance models", notes = "access the predictive models in predictive maintenance route directive")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
     @GetMapping(value = "/forecasts", params = { "pageSize", "page" })
     @ResponseBody
-    public PageData<Forecast> getForcasts(
+    public PageData<PredictiveModel> getPredictiveModels(
             @Parameter(description = "The number of items to return", required = true) @RequestParam int pageSize,
             @Parameter(description = "The page number", required = true) @RequestParam int page,
             @Parameter(description = "The sort property", schema = @Schema(allowableValues = { "name", "createdTime",
@@ -91,128 +85,76 @@ public class PredictiveMaintenanceController extends BaseController {
             throws ThingsboardException {
         TenantId tenantId = getCurrentUser().getTenantId();
         PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);
-        return checkNotNull(forecastsService.findTenantForcasts(tenantId, pageLink));
+        return checkNotNull(predictiveModelsService.findTenantPredictiveModels(tenantId, pageLink));
     }
 
-    // get model status by forecastId
-    @ApiOperation(value = "Get predictiveMaintenance model status by forecastId", notes = "access the model status by forecastId in predictive maintenance route directive")
-    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @GetMapping(value = "/forecasts/{forecastId}/status", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public JsonNode getModelStatus(
-            @Parameter(description = "Forecast Id") @PathVariable("forecastId") String strForecastId)
-            throws ThingsboardException {
-        checkParameter("forecastId", strForecastId);
-        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
-        return fastAPIService.getModelStatus(forecastId);
-    }
-
-    @ApiOperation(value = "Get predictiveMaintenance forecast by id", notes = "access the forecast by id")
+    @ApiOperation(value = "Get predictiveMaintenance model by id", notes = "access the predictive model by id")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
     @GetMapping(value = "/forecasts/{forecastId}")
     @ResponseBody
-    public Forecast getForecast(
-            @Parameter(description = "Forecast Id") @PathVariable("forecastId") String strForecastId)
+    public PredictiveModel getPredictiveModel(
+            @Parameter(description = "Predictive Model Id") @PathVariable("forecastId") String strPredictiveModelId)
             throws ThingsboardException {
-        checkParameter("forecastId", strForecastId);
-        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
-        return checkNotNull(forecastsService.findTenantForecast(getTenantId(), forecastId));
+        checkParameter("forecastId", strPredictiveModelId);
+        PredictiveModelId predictiveModelId = new PredictiveModelId(toUUID(strPredictiveModelId));
+        return checkNotNull(predictiveModelsService.findTenantPredictiveModel(getTenantId(), predictiveModelId));
     }
 
-    @ApiOperation(value = "Post predictiveMaintenance forecast", notes = "access the forecasts in predictive maintenance route directive")
+    @ApiOperation(value = "Get devices with predictive maintenance models count", notes = "Get all tenant devices with their associated predictive maintenance models count using left join")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @PostMapping(value = "/forecasts", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/devices-with-models", params = { "pageSize", "page" })
     @ResponseBody
-    public Forecast saveForecast(@RequestBody Forecast forecast) throws Exception {
-        TenantId tenantId = getCurrentUser().getTenantId();
-        forecast.setId(null);
-        forecast.setTenantId(tenantId);
-        return checkNotNull(forecastsService.save(forecast, getCurrentUser()));
-    }
-
-    @ApiOperation(value = "Update predictiveMaintenance forecast", notes = "Update an existing forecast including view preferences")
-    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @PostMapping(value = "/forecasts/{forecastId}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public Forecast updateForecast(
-            @Parameter(description = "Forecast Id") @PathVariable("forecastId") String strForecastId,
-            @RequestBody Forecast forecast) throws Exception {
-        checkParameter("forecastId", strForecastId);
-        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
-        TenantId tenantId = getCurrentUser().getTenantId();
-
-        // Ensure the forecast ID and tenant ID are set correctly
-        forecast.setId(forecastId);
-        forecast.setTenantId(tenantId);
-
-        return checkNotNull(forecastsService.save(forecast, getCurrentUser()));
-    }
-
-    @ApiOperation(value = "Delete predictiveMaintenance forecast", notes = "access the forecasts in predictive maintenance route directive")
-    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @DeleteMapping(value = "/forecasts/{forecastId}")
-    @ResponseBody
-    public void deleteForecast(@PathVariable("forecastId") String strForecastId) throws ThingsboardException {
-        checkParameter("forecastId", strForecastId);
-        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
-        forecastsService.delete(new Forecast(forecastId), getCurrentUser());
-    }
-
-    @ApiOperation(value = "Activate predictiveMaintenance forecast", notes = "access the forecasts in predictive maintenance route directive")
-    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @PatchMapping(value = "/forecasts/{forecastId}/activate")
-    @ResponseBody
-    public void activateForecast(@PathVariable("forecastId") String strForecastId) throws Exception {
-        checkParameter("forecastId", strForecastId);
-        ForecastId forecastId = new ForecastId(toUUID(strForecastId));
-        // check if forecast exists otherwise not found
-        checkNotNull(forecastsService.findTenantForecast(getTenantId(), forecastId));
-        try {
-            fastAPIService.activateForecast(forecastId);
-        } catch (Exception e) {
-            throw new ThingsboardException("Failed to activate forecast", e, ThingsboardErrorCode.GENERAL);
-        }
-    }
-
-    // create anomaly detector apis
-    @ApiOperation(value = "Get predictiveMaintenance detectors", notes = "access the detectors in predictive maintenance route directive")
-    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @GetMapping(value = "/detectors", params = { "pageSize", "page" })
-    @ResponseBody
-    public PageData<Detector> getDetectors(
+    public PageData<org.thingsboard.server.common.data.DeviceWithModelsCount> getDevicesWithModelsCount(
             @Parameter(description = "The number of items to return", required = true) @RequestParam int pageSize,
             @Parameter(description = "The page number", required = true) @RequestParam int page,
             @Parameter(description = "The sort property", schema = @Schema(allowableValues = { "name", "createdTime",
-                    "entityId" })) @RequestParam(required = false) String sortProperty,
+                    "entityId", "modelsCount" })) @RequestParam(required = false) String sortProperty,
             @Parameter(description = "The sort order", schema = @Schema(allowableValues = { "ASC",
                     "DESC" })) @RequestParam(required = false) String sortOrder,
-            @Parameter(description = "The text search") @RequestParam(required = false) String textSearch)
+            @Parameter(description = "The text search") @RequestParam(required = false) String textSearch,
+            @Parameter(description = "Filter to show only devices with at least one model") @RequestParam(required = false, defaultValue = "false") boolean withModelsOnly)
             throws ThingsboardException {
         TenantId tenantId = getCurrentUser().getTenantId();
         PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);
-        return checkNotNull(anomalyDetectorService.findTenantDetectors(tenantId, pageLink));
+        return checkNotNull(predictiveModelsService.findDevicesWithModelsCount(tenantId, pageLink, withModelsOnly));
     }
 
-    @ApiOperation(value = "Get predictiveMaintenance detector by id", notes = "access the detector by id")
+    @ApiOperation(value = "Post predictiveMaintenance model", notes = "access the predictive models in predictive maintenance route directive")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @GetMapping(value = "/detectors/{detectorId}")
+    @PostMapping(value = "/forecasts", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Detector getDetector(
-            @Parameter(description = "Detector Id") @PathVariable("detectorId") String strDetectorId)
-            throws ThingsboardException {
-        checkParameter("detectorId", strDetectorId);
-        DetectorId detectorId = new DetectorId(toUUID(strDetectorId));
-        return checkNotNull(anomalyDetectorService.findTenantDetector(getTenantId(), detectorId));
-    }
-
-    @ApiOperation(value = "Post predictiveMaintenance detector", notes = "access the detectors in predictive maintenance route directive")
-    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @PostMapping(value = "/detectors", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public Detector saveDetector(@RequestBody Detector detector) throws Exception {
+    public PredictiveModel savePredictiveModel(@RequestBody PredictiveModel predictiveModel) throws Exception {
         TenantId tenantId = getCurrentUser().getTenantId();
-        detector.setId(null);
-        detector.setTenantId(tenantId);
-        return checkNotNull(anomalyDetectorService.save(detector, getCurrentUser()));
+        predictiveModel.setId(null);
+        predictiveModel.setTenantId(tenantId);
+        return checkNotNull(predictiveModelsService.save(predictiveModel, getCurrentUser()));
+    }
+
+    @ApiOperation(value = "Update predictiveMaintenance model", notes = "Update an existing predictive model including view preferences")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @PostMapping(value = "/forecasts/{forecastId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public PredictiveModel updatePredictiveModel(
+            @Parameter(description = "Predictive Model Id") @PathVariable("forecastId") String strPredictiveModelId,
+            @RequestBody PredictiveModel predictiveModel) throws Exception {
+        checkParameter("forecastId", strPredictiveModelId);
+        PredictiveModelId predictiveModelId = new PredictiveModelId(toUUID(strPredictiveModelId));
+        TenantId tenantId = getCurrentUser().getTenantId();
+
+        // Ensure the predictive model ID and tenant ID are set correctly
+        predictiveModel.setId(predictiveModelId);
+        predictiveModel.setTenantId(tenantId);
+
+        return checkNotNull(predictiveModelsService.save(predictiveModel, getCurrentUser()));
+    }
+
+    @ApiOperation(value = "Delete predictiveMaintenance model", notes = "access the predictive models in predictive maintenance route directive")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @DeleteMapping(value = "/forecasts/{forecastId}")
+    @ResponseBody
+    public void deletePredictiveModel(@PathVariable("forecastId") String strPredictiveModelId) throws ThingsboardException {
+        checkParameter("forecastId", strPredictiveModelId);
+        PredictiveModelId predictiveModelId = new PredictiveModelId(toUUID(strPredictiveModelId));
+        predictiveModelsService.delete(new PredictiveModel(predictiveModelId), getCurrentUser());
     }
 }

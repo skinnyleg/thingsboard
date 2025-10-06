@@ -92,7 +92,8 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
     private final ConcurrentMap<String, SessionMetaData> internalSessionMap = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, String> externalSessionMap = new ConcurrentHashMap<>();
 
-    @Autowired @Lazy
+    @Autowired
+    @Lazy
     private WebSocketService webSocketService;
     @Autowired
     private TbTenantProfileCache tenantProfileCache;
@@ -175,7 +176,8 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
         } catch (Exception e) {
             log.debug("{} Failed to decode subscription cmd: {}", sessionRef, e.getMessage(), e);
             if (sessionRef.getSecurityCtx() != null) {
-                webSocketService.sendError(sessionRef, 1, SubscriptionErrorCode.BAD_REQUEST, "Failed to parse the payload");
+                webSocketService.sendError(sessionRef, 1, SubscriptionErrorCode.BAD_REQUEST,
+                        "Failed to parse the payload");
             } else {
                 close(sessionRef, CloseStatus.BAD_DATA.withReason(e.getMessage()));
             }
@@ -234,7 +236,8 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
                 }
             }
             WebSocketSessionRef sessionRef = toRef(session);
-            log.debug("[{}][{}] Session opened from address: {}", sessionRef.getSessionId(), session.getId(), session.getRemoteAddress());
+            log.debug("[{}][{}] Session opened from address: {}", sessionRef.getSessionId(), session.getId(),
+                    session.getRemoteAddress());
             establishSession(session, sessionRef, null);
         } catch (InvalidParameterException e) {
             log.warn("[{}] Failed to start session", session.getId(), e);
@@ -248,7 +251,8 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
         }
     }
 
-    private void establishSession(WebSocketSession session, WebSocketSessionRef sessionRef, SessionMetaData sessionMd) throws IOException {
+    private void establishSession(WebSocketSession session, WebSocketSessionRef sessionRef, SessionMetaData sessionMd)
+            throws IOException {
         if (sessionRef.getSecurityCtx() != null) {
             if (!checkLimits(session, sessionRef)) {
                 return;
@@ -266,7 +270,8 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
             externalSessionMap.put(sessionRef.getSessionId(), session.getId());
             processInWebSocketService(sessionRef, SessionEvent.onEstablished());
             log.info("[{}][{}][{}][{}] Session established from address: {}", sessionRef.getSecurityCtx().getTenantId(),
-                    sessionRef.getSecurityCtx().getId(), sessionRef.getSessionId(), session.getId(), session.getRemoteAddress());
+                    sessionRef.getSecurityCtx().getId(), sessionRef.getSessionId(), session.getId(),
+                    session.getRemoteAddress());
         } else {
             sessionMd = new SessionMetaData(session, sessionRef);
             pendingSessions.put(session.getId(), sessionMd);
@@ -493,10 +498,13 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
             SessionMetaData sessionMd = internalSessionMap.get(internalId);
             if (sessionMd != null) {
                 TenantId tenantId = sessionRef.getSecurityCtx().getTenantId();
-                if (!rateLimitService.checkRateLimit(LimitedApi.WS_UPDATES_PER_SESSION, tenantId, (Object) sessionRef.getSessionId())) {
+                if (!rateLimitService.checkRateLimit(LimitedApi.WS_UPDATES_PER_SESSION, tenantId,
+                        (Object) sessionRef.getSessionId())) {
                     if (blacklistedSessions.putIfAbsent(externalId, sessionRef) == null) {
                         log.info("{} Failed to process session update. Max session updates limit reached", sessionRef);
-                        sessionMd.sendMsg("{\"subscriptionId\":" + subscriptionId + ", \"errorCode\":" + ThingsboardErrorCode.TOO_MANY_UPDATES.getErrorCode() + ", \"errorMsg\":\"Too many updates!\"}");
+                        sessionMd.sendMsg("{\"subscriptionId\":" + subscriptionId + ", \"errorCode\":"
+                                + ThingsboardErrorCode.TOO_MANY_UPDATES.getErrorCode()
+                                + ", \"errorMsg\":\"Too many updates!\"}");
                     }
                     return;
                 } else {
@@ -565,7 +573,8 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
         boolean limitAllowed;
         String sessionId = session.getId();
         if (tenantProfileConfiguration.getMaxWsSessionsPerTenant() > 0) {
-            Set<String> tenantSessions = tenantSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getTenantId(), id -> ConcurrentHashMap.newKeySet());
+            Set<String> tenantSessions = tenantSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getTenantId(),
+                    id -> ConcurrentHashMap.newKeySet());
             synchronized (tenantSessions) {
                 limitAllowed = tenantSessions.size() < tenantProfileConfiguration.getMaxWsSessionsPerTenant();
                 if (limitAllowed) {
@@ -581,7 +590,8 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
 
         if (sessionRef.getSecurityCtx().isCustomerUser()) {
             if (tenantProfileConfiguration.getMaxWsSessionsPerCustomer() > 0) {
-                Set<String> customerSessions = customerSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getCustomerId(), id -> ConcurrentHashMap.newKeySet());
+                Set<String> customerSessions = customerSessionsMap.computeIfAbsent(
+                        sessionRef.getSecurityCtx().getCustomerId(), id -> ConcurrentHashMap.newKeySet());
                 synchronized (customerSessions) {
                     limitAllowed = customerSessions.size() < tenantProfileConfiguration.getMaxWsSessionsPerCustomer();
                     if (limitAllowed) {
@@ -596,30 +606,36 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
             }
             if (tenantProfileConfiguration.getMaxWsSessionsPerRegularUser() > 0
                     && UserPrincipal.Type.USER_NAME.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                Set<String> regularUserSessions = regularUserSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+                Set<String> regularUserSessions = regularUserSessionsMap
+                        .computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
                 synchronized (regularUserSessions) {
-                    limitAllowed = regularUserSessions.size() < tenantProfileConfiguration.getMaxWsSessionsPerRegularUser();
+                    limitAllowed = regularUserSessions.size() < tenantProfileConfiguration
+                            .getMaxWsSessionsPerRegularUser();
                     if (limitAllowed) {
                         regularUserSessions.add(sessionId);
                     }
                 }
                 if (!limitAllowed) {
-                    log.info("{} Failed to start session. Max regular user sessions limit reached", sessionRef.toString());
+                    log.info("{} Failed to start session. Max regular user sessions limit reached",
+                            sessionRef.toString());
                     session.close(CloseStatus.POLICY_VIOLATION.withReason("Max regular user sessions limit reached"));
                     return false;
                 }
             }
             if (tenantProfileConfiguration.getMaxWsSessionsPerPublicUser() > 0
                     && UserPrincipal.Type.PUBLIC_ID.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                Set<String> publicUserSessions = publicUserSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+                Set<String> publicUserSessions = publicUserSessionsMap
+                        .computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
                 synchronized (publicUserSessions) {
-                    limitAllowed = publicUserSessions.size() < tenantProfileConfiguration.getMaxWsSessionsPerPublicUser();
+                    limitAllowed = publicUserSessions.size() < tenantProfileConfiguration
+                            .getMaxWsSessionsPerPublicUser();
                     if (limitAllowed) {
                         publicUserSessions.add(sessionId);
                     }
                 }
                 if (!limitAllowed) {
-                    log.info("{} Failed to start session. Max public user sessions limit reached", sessionRef.toString());
+                    log.info("{} Failed to start session. Max public user sessions limit reached",
+                            sessionRef.toString());
                     session.close(CloseStatus.POLICY_VIOLATION.withReason("Max public user sessions limit reached"));
                     return false;
                 }
@@ -630,32 +646,39 @@ public class TbWebSocketHandler extends TextWebSocketHandler implements WebSocke
 
     private void cleanupLimits(WebSocketSession session, WebSocketSessionRef sessionRef) {
         var tenantProfileConfiguration = getTenantProfileConfiguration(sessionRef);
-        if (tenantProfileConfiguration == null) return;
+        if (tenantProfileConfiguration == null)
+            return;
 
         String sessionId = session.getId();
         rateLimitService.cleanUp(LimitedApi.WS_UPDATES_PER_SESSION, sessionRef.getSessionId());
         blacklistedSessions.remove(sessionRef.getSessionId());
         if (tenantProfileConfiguration.getMaxWsSessionsPerTenant() > 0) {
-            Set<String> tenantSessions = tenantSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getTenantId(), id -> ConcurrentHashMap.newKeySet());
+            Set<String> tenantSessions = tenantSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getTenantId(),
+                    id -> ConcurrentHashMap.newKeySet());
             synchronized (tenantSessions) {
                 tenantSessions.remove(sessionId);
             }
         }
         if (sessionRef.getSecurityCtx().isCustomerUser()) {
             if (tenantProfileConfiguration.getMaxWsSessionsPerCustomer() > 0) {
-                Set<String> customerSessions = customerSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getCustomerId(), id -> ConcurrentHashMap.newKeySet());
+                Set<String> customerSessions = customerSessionsMap.computeIfAbsent(
+                        sessionRef.getSecurityCtx().getCustomerId(), id -> ConcurrentHashMap.newKeySet());
                 synchronized (customerSessions) {
                     customerSessions.remove(sessionId);
                 }
             }
-            if (tenantProfileConfiguration.getMaxWsSessionsPerRegularUser() > 0 && UserPrincipal.Type.USER_NAME.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                Set<String> regularUserSessions = regularUserSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+            if (tenantProfileConfiguration.getMaxWsSessionsPerRegularUser() > 0
+                    && UserPrincipal.Type.USER_NAME.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
+                Set<String> regularUserSessions = regularUserSessionsMap
+                        .computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
                 synchronized (regularUserSessions) {
                     regularUserSessions.remove(sessionId);
                 }
             }
-            if (tenantProfileConfiguration.getMaxWsSessionsPerPublicUser() > 0 && UserPrincipal.Type.PUBLIC_ID.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                Set<String> publicUserSessions = publicUserSessionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+            if (tenantProfileConfiguration.getMaxWsSessionsPerPublicUser() > 0
+                    && UserPrincipal.Type.PUBLIC_ID.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
+                Set<String> publicUserSessions = publicUserSessionsMap
+                        .computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
                 synchronized (publicUserSessions) {
                     publicUserSessions.remove(sessionId);
                 }

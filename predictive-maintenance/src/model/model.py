@@ -1,50 +1,43 @@
-import os
-from fastapi import APIRouter, HTTPException
-from src.settings import settings
+"""
+Main model service module - Combines REST API, WebSocket, and Integration endpoints
 
-router = APIRouter(
-    prefix="/models",
-    tags=["models"],
-)
+This module provides:
+1. REST API endpoints (GET /status, PATCH /activate)
+2. WebSocket endpoints (anomaly prediction, forecast, anomaly streaming)
+3. Background job management system
+4. Socket server integration for ThingsBoard Java backend
 
+Directory Structure:
+- api/          - REST API endpoints
+  - status.py   - GET /{forecast_id}/status
+  - activate.py - PATCH /{forecast_id}/activate
+- ws/           - WebSocket endpoints
+  - predict_anomaly.py   - /ws/{forecast_id}/predict/anomaly
+  - predict_forecast.py  - /ws/{forecast_id}/predict/forecast
+  - anomalies.py         - /ws/{forecast_id}/anomalies
+- shared.py     - Shared utilities (get_data_registry, train_and_save_model)
+- job.py        - Background job management
+- integration.py - Socket server for Java backend integration
 
-@router.get("/{forecast_id}/status")
-def get_model_status(forecast_id: str):
-    """Endpoint to get the status of a specific model by forecast_id"""
-    path = settings.models_path
-    # Check if model.h5 file exists for the given forecast_id
-    model_path = f"{path}/{forecast_id}/model.h5"
+Usage:
+    from src.model.model import router
+    app.include_router(router)
+"""
 
-    if os.path.exists(model_path):
-        return {"forecast_id": forecast_id, "status": "active"}
-    else:
-        return {"forecast_id": forecast_id, "status": "inactive"}
+from fastapi import APIRouter
+from src.model.api import router as api_router
+from src.model.ws import router as ws_router
 
+# Create main router that combines all sub-routers
+router = APIRouter()
 
-@router.patch("/{forecast_id}/activate")
-def activate_model(forecast_id: str):
-    """Endpoint to activate a specific model by forecast_id"""
-    try:
-        path = settings.models_path
-        forecast_dir = f"{path}/{forecast_id}"
-        model_path = f"{forecast_dir}/model.h5"
+# Include REST API routes
+router.include_router(api_router)
 
-        # Create directory if it doesn't exist (including parent directories)
-        os.makedirs(forecast_dir, exist_ok=True)
+# Include WebSocket routes
+router.include_router(ws_router)
 
-        # Create .h5 file if it doesn't exist
-        # Use try-except here to handle the case where even checking existence might fail
-        try:
-            exists = os.path.exists(model_path)
-        except (FileNotFoundError, OSError):
-            exists = False
+# Socket server integration is auto-started in integration.py
+# To disable: Set environment variable ENABLE_SOCKET_SERVER=false
 
-        if not exists:
-            with open(model_path, "w") as f:
-                f.write("")
-
-        return {"forecast_id": forecast_id, "status": "active"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to activate model: {str(e)}"
-        )
+__all__ = ["router"]

@@ -26,7 +26,7 @@ export const environment = {
   // @ts-ignore
   supportedLangs: SUPPORTED_LANGS,
   defaultLang: 'en_US',
-  WT_ACCESS_TOKEN: "xxxxxx",
+  WT_ACCESS_TOKEN: 'xxxxxx',
   phone_id: 'xxxxx',
   host: '10.152.116.13', // 10.152.116.10
 };

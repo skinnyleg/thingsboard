@@ -21,6 +21,19 @@
                 "plugin:@angular-eslint/template/process-inline-templates"
             ],
             "rules": {
+                "@typescript-eslint/lines-between-class-members": [
+                    "error",
+                    {
+                        "enforce": [
+                            {
+                                "blankLine": "always",
+                                "prev": "*",
+                                "next": "*"
+                            }
+                        ],
+                        "exceptAfterSingleLine": true
+                    }
+                ],
                 "@typescript-eslint/explicit-member-accessibility": [
                     "off",
                     {
@@ -34,7 +47,9 @@
                 "@angular-eslint/component-selector": [
                     "error",
                     {
-                        "prefix": [ "tb" ]
+                        "prefix": [
+                            "tb"
+                        ]
                     }
                 ],
                 "id-blacklist": [

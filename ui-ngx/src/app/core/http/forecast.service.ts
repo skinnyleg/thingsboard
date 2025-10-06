@@ -14,25 +14,25 @@
 /// limitations under the License.
 ///
 
-import { Injectable } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
-import { Observable } from "rxjs";
-import { defaultHttpOptionsFromConfig, RequestConfig } from "./http-utils"; // Import utility functions if available
-import { PageData, PageLink } from "@app/shared/public-api";
-import { Order } from "@app/modules/home/models/predictive-maintenance.models";
-import { Forecast, ForecastCreate } from "@app/shared/models/forecast.models";
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { defaultHttpOptionsFromConfig, RequestConfig } from './http-utils'; // Import utility functions if available
+import { PageData, PageLink } from '@app/shared/public-api';
+import { Order } from '@app/modules/home/models/predictive-maintenance.models';
+import { Forecast, ForecastCreate } from '@app/shared/models/forecast.models';
 // import { Order } from '../components/forecast/forcast-page.component'; // Adjust import path as needed
 
 @Injectable({
-  providedIn: "root",
+  providedIn: 'root',
 })
-export class ForecastService {
-  private baseUrl = "/api/forecasts"; // Base URL for your API
+export class PredictiveModelsService {
+  private baseUrl = '/api/forecasts'; // Base URL for your API
 
   constructor(private http: HttpClient) {}
 
   // Fetch forecasts with pagination (PageLink handling like in DeviceService)
-  getForecastsByPage(
+  getPredictiveModelsByPage(
     pageLink: PageLink,
     config?: RequestConfig
   ): Observable<PageData<any>> {
@@ -42,8 +42,8 @@ export class ForecastService {
     );
   }
 
-  // Fetch a specific forecast by its ID
-  getForecast(
+  // Fetch a specific predictive model by its ID
+  getPredictiveModel(
     forecastId: string,
     config?: RequestConfig
   ): Observable<Forecast> {
@@ -53,8 +53,8 @@ export class ForecastService {
     );
   }
 
-  // Save a new forecast
-  addForecast(
+  // Save a new predictive model
+  addPredictiveModelConfig(
     forecast: ForecastCreate,
     config?: RequestConfig
   ): Observable<Forecast> {
@@ -65,8 +65,8 @@ export class ForecastService {
     );
   }
 
-  // Update an existing forecast
-  updateForecast(forecast: any, config?: RequestConfig): Observable<Forecast> {
+  // Update an existing predictive model
+  updatePredictiveModel(forecast: any, config?: RequestConfig): Observable<Forecast> {
     const forecastId = forecast.id?.id || forecast.id;
     return this.http.post<Forecast>(
       `${this.baseUrl}/${forecastId}`,
@@ -75,8 +75,8 @@ export class ForecastService {
     );
   }
 
-  // Activate a forecast
-  activateForecast(
+  // Activate a predictive model
+  activatePredictiveModel(
     forecastId: string,
     config?: RequestConfig
   ): Observable<void> {
@@ -87,20 +87,44 @@ export class ForecastService {
     );
   }
 
-  // Delete a forecast by its ID
-  deleteForecast(forecastId: string, config?: RequestConfig): Observable<void> {
+  // Delete a predictive model by its ID
+  deletePredictiveModel(forecastId: string, config?: RequestConfig): Observable<void> {
     return this.http.delete<void>(
       `${this.baseUrl}/${forecastId}`,
       defaultHttpOptionsFromConfig(config)
     );
   }
 
-  getForecastStatus(
+  getPredictiveModelStatus(
     forecastId: string,
     config?: RequestConfig
   ): Observable<{ forecast_id: string; status: string }> {
     return this.http.get<{ forecast_id: string; status: string }>(
       `${this.baseUrl}/${forecastId}/status`,
+      defaultHttpOptionsFromConfig(config)
+    );
+  }
+
+  // Fetch forecasts by device ID
+  getForecastsByDeviceId(
+    deviceId: string,
+    config?: RequestConfig
+  ): Observable<PageData<any>> {
+    return this.http.get<PageData<any>>(
+      `${this.baseUrl}/device/${deviceId}`,
+      defaultHttpOptionsFromConfig(config)
+    );
+  }
+
+  // Fetch devices with their predictive maintenance models count
+  getDevicesWithModelsCount(
+    pageLink: PageLink,
+    withModelsOnly: boolean = false,
+    config?: RequestConfig
+  ): Observable<PageData<any>> {
+    const params = `${pageLink.toQuery()}&withModelsOnly=${withModelsOnly}`;
+    return this.http.get<PageData<any>>(
+      `/api/devices-with-models${params}`,
       defaultHttpOptionsFromConfig(config)
     );
   }

@@ -34,9 +34,9 @@ import org.thingsboard.server.dao.util.SqlDao;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 
 /**
  * Created by Valerii Sosliuk on 4/30/2017.
@@ -81,7 +81,8 @@ public class JpaTenantDao extends JpaAbstractDao<TenantEntity, Tenant> implement
 
     @Override
     public PageData<TenantId> findTenantsIds(PageLink pageLink) {
-        return DaoUtil.pageToPageData(tenantRepository.findTenantsIds(DaoUtil.toPageable(pageLink))).mapData(TenantId::fromUUID);
+        return DaoUtil.pageToPageData(tenantRepository.findTenantsIds(DaoUtil.toPageable(pageLink)))
+                .mapData(TenantId::fromUUID);
     }
 
     @Override
@@ -94,5 +95,11 @@ public class JpaTenantDao extends JpaAbstractDao<TenantEntity, Tenant> implement
         return tenantRepository.findTenantIdsByTenantProfileId(tenantProfileId.getId()).stream()
                 .map(TenantId::fromUUID)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<TenantId> findTenantByEmail(String email) {
+        UUID tenantUUID = tenantRepository.findTenantByEmail(email);
+        return Objects.nonNull(tenantUUID) ? Optional.of(TenantId.fromUUID(tenantUUID)) : Optional.empty();
     }
 }

@@ -65,6 +65,7 @@ export class HomeComponent
 
   sidenavMode: "over" | "push" | "side" = "side";
   sidenavOpened = true;
+  sidenavMinimized = true;
 
   logo = "assets/analytic-board-logo.svg";
 
@@ -136,6 +137,10 @@ export class HomeComponent
     if (this.sidenavMode === "over") {
       this.sidenav.toggle();
     }
+  }
+
+  toggleSidenavMinimized() {
+    this.sidenavMinimized = !this.sidenavMinimized;
   }
 
   toggleFullscreen() {

@@ -21,12 +21,7 @@ EXPOSE 1883
 
 EXPOSE 8883
 
-CMD ["sh", "-c", "\
-    java -jar application/target/thingsboard-3.7.0-boot.jar \
-    --spring.datasource.url=jdbc:postgresql://\
-    ${POSTGRES_HOST:-database}:5432/${POSTGRES_DB:-thingsboard} \
-    --spring.datasource.username=${POSTGRES_USER:-postgres} \
-    --spring.datasource.password=${POSTGRES_PASSWORD:-postgres}\
-    "]
+CMD ["sh", "-c", "java -jar application/target/thingsboard-3.7.0-boot.jar --spring.datasource.url=jdbc:postgresql://${POSTGRES_HOST:-database}:5432/${POSTGRES_DB:-thingsboard} --spring.datasource.username=${POSTGRES_USER:-postgres} --spring.datasource.password=${POSTGRES_PASSWORD:-postgres}"]
+# CMD ["sh", "-c", "java -jar application/target/thingsboard-3.7.0-boot.jar"]
 # CMD [ "tail", "-f"]
 

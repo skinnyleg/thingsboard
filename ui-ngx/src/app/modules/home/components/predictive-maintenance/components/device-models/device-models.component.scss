@@ -1,0 +1,327 @@
+/**
+ * Copyright © 2016-2024 The Thingsboard Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+:host {
+  padding: 1rem;
+  height: 100%;
+}
+
+.tb-device-models-page {
+  border: solid 1px var(--tb-dark-mat-800);
+  border-radius: 4px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tb-device-models-toolbar {
+  background: #fff;
+  z-index: 5;
+  position: relative;
+
+  .mat-mdc-table-toolbar {
+    height: 64px;
+
+    .mat-toolbar-tools {
+      height: 64px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      box-sizing: border-box;
+      width: 100%;
+      padding: 0 8px;
+    }
+  }
+
+  .tb-device-models-toolbar-wrapper {
+    width: 100%;
+  }
+
+  .tb-device-models-action-panels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .tb-device-models-action-panel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    &.tb-left-panel {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &.tb-right-panel {
+      flex-shrink: 0;
+    }
+  }
+
+  .device-models-title {
+    h4 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 400;
+      line-height: 1.2;
+      color: rgba(0, 0, 0, 0.87);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.device-models-content-card {
+  flex: 1;
+  margin: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+
+  .container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .table-container {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+
+    table {
+      width: 100%;
+      background: #fff;
+
+      th.mat-header-cell {
+        font-weight: 600;
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.87);
+        padding: 16px 12px;
+        white-space: nowrap;
+      }
+
+      td.mat-cell {
+        padding: 16px 12px;
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.87);
+      }
+
+      .model-name-cell {
+        font-weight: 500;
+        color: #1976d2;
+      }
+
+      .models-count-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background-color: rgba(0, 0, 0, 0.08);
+        color: rgba(0, 0, 0, 0.87);
+        border-radius: 12px;
+        font-weight: 500;
+        font-size: 0.875rem;
+      }
+
+      .attributes-cell {
+        max-width: 300px;
+
+        .attributes-text {
+          display: block;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+
+        button {
+          width: 36px;
+          height: 36px;
+          line-height: 36px;
+        }
+      }
+
+      .model-row {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.04);
+        }
+
+        &:active {
+          background-color: rgba(0, 0, 0, 0.08);
+        }
+      }
+
+      tr.mat-header-row {
+        height: 56px;
+      }
+
+      tr.mat-row {
+        height: 60px;
+      }
+    }
+  }
+
+  mat-paginator {
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+    background: #fff;
+  }
+}
+
+// Dark theme styles
+::ng-deep .tb-dark {
+  .tb-device-models-toolbar {
+    background: #303030;
+
+    .device-models-title h4 {
+      color: rgba(255, 255, 255, 0.87);
+    }
+  }
+
+  .device-models-content-card {
+    background: #424242;
+
+    .table-container {
+      table {
+        background: #424242;
+
+        th.mat-header-cell {
+          color: rgba(255, 255, 255, 0.87);
+          border-bottom-color: rgba(255, 255, 255, 0.12);
+        }
+
+        td.mat-cell {
+          color: rgba(255, 255, 255, 0.87);
+          border-bottom-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .model-name-cell {
+          color: #64b5f6;
+        }
+
+        .models-count-badge {
+          background-color: rgba(255, 255, 255, 0.12);
+          color: rgba(255, 255, 255, 0.87);
+        }
+
+        .model-row {
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+          }
+
+          &:active {
+            background-color: rgba(255, 255, 255, 0.12);
+          }
+        }
+      }
+    }
+
+    mat-paginator {
+      background: #424242;
+      border-top-color: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.87);
+    }
+  }
+}
+
+// Responsive styles
+@media (max-width: 768px) {
+  .tb-device-models-toolbar {
+    .tb-device-models-toolbar-content {
+      height: auto;
+      min-height: 64px;
+      padding: 8px;
+    }
+
+    .tb-device-models-action-panels {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .tb-device-models-action-panel {
+      width: 100%;
+
+      &.tb-left-panel {
+        gap: 8px;
+      }
+
+      &.tb-right-panel {
+        justify-content: flex-end;
+      }
+    }
+
+    .device-models-title h4 {
+      font-size: 1.125rem;
+    }
+  }
+
+  .device-models-content-card {
+    margin: 8px;
+
+    .table-container {
+      table {
+        // Hide less important columns on mobile
+        .mat-column-anomalyAlgorithm,
+        .mat-column-date {
+          display: none;
+        }
+
+        .attributes-cell {
+          max-width: 150px;
+        }
+      }
+    }
+  }
+}
+
+// Loading state
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+
+  mat-spinner {
+    margin: auto;
+  }
+}
+
+::ng-deep .tb-dark .loading-overlay {
+  background: rgba(0, 0, 0, 0.6);
+}

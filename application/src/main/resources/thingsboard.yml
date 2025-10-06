@@ -127,6 +127,42 @@ plugins:
   # Comma-separated package list used during classpath scanning for plugins
   scan_packages: "${PLUGINS_SCAN_PACKAGES:org.thingsboard.server.extensions,org.thingsboard.rule.engine}"
 
+# Predictive Maintenance configuration parameters
+predictive-maintenance:
+  # Enable initial loading of sample data (for first-time setup)
+  # This creates devices and loads data with a 30-day window
+  load-sample-data: "${PM_LOAD_SAMPLE_DATA:false}"
+  # Automatically reload timeseries data on startup with current timestamps
+  # This keeps the data window ending at the current time
+  # If both are enabled, this waits for load-sample-data to complete first
+  auto-load-on-startup: "${PM_AUTO_LOAD_ON_STARTUP:false}"
+  # Path to CSV data files (relative to classpath)
+  data-path: "${PM_DATA_PATH:predictive-maintenance/data}"
+  # Tenant email to create predictive maintenance resources
+  tenant-email: "${PM_TENANT_EMAIL:tenant@thingsboard.org}"
+  # Enable/disable automatic rollback on failure
+  rollback-on-failure: "${PM_ROLLBACK_ON_FAILURE:true}"
+  # Exit application on data loading failure
+  exit-on-failure: "${PM_EXIT_ON_FAILURE:true}"
+  # Machine filtering configuration
+  machine-filter:
+    # Comma-separated list of specific machine IDs to load (e.g., "1,2,3,4,5")
+    # If empty: loads the first N machines up to max-machines limit
+    # If non-empty: loads only the specified machines (must not exceed max-machines)
+    machine-ids: "${PM_MACHINE_IDS:}"
+    # Maximum number of machines allowed to be loaded
+    # - When machine-ids is empty: limits to first N machines
+    # - When machine-ids is specified: validation limit (throws exception if exceeded)
+    max-machines: "${PM_MAX_MACHINES:100}"
+  # Python model service connection parameters
+  python-service:
+    # Host where Python FastAPI service is running
+    host: "${PM_PYTHON_SERVICE_HOST:localhost}"
+    # Socket port for model training requests (not HTTP/WebSocket port)
+    port: "${PM_PYTHON_SERVICE_PORT:9000}"
+    # Socket timeout in milliseconds (default: 5 minutes for model training)
+    timeout: "${PM_PYTHON_SERVICE_TIMEOUT:300000}"
+
 # Security parameters
 security:
   # JWT Token parameters

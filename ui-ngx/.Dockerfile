@@ -8,7 +8,4 @@ RUN npm i -g @angular/cli
 
 WORKDIR /app/ui-ngx
 
-RUN yarn install
-
-CMD ["yarn", "start"]
-# CMD ["tail", "-f"]
+CMD ["sh", "-c", "yarn start"]

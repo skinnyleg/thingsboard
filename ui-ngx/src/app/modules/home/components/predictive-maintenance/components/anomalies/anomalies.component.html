@@ -9,8 +9,75 @@
                         style="padding: 16px; font-size: 20px; font-weight: 500; color: white; display: flex; align-items: center; gap: 8px;">
                         <mat-icon class="title-icon">bug_report</mat-icon>
                         Anomalies
+                        <!-- Live stream indicator -->
+                        <span *ngIf="forecastId" class="stream-indicator" [class.connected]="isStreamConnected"
+                            [class.error]="streamError"
+                            [matTooltip]="streamError || (isStreamConnected ? 'Live stream connected' : 'Connecting to stream...')"
+                            matTooltipPosition="right">
+                            <mat-icon class="stream-icon">
+                                {{ isStreamConnected ? 'wifi' : (streamError ? 'wifi_off' : 'sync') }}
+                            </mat-icon>
+                            <span class="stream-text">
+                                {{ isStreamConnected ? 'LIVE' : (streamError ? 'ERROR' : 'CONNECTING') }}
+                            </span>
+                        </span>
                     </div>
                     <span fxFlex></span>
+                    <!-- Date Filter Icon -->
+                    <button mat-icon-button [matMenuTriggerFor]="dateFilterMenu" #dateFilterTrigger="matMenuTrigger"
+                        [matTooltip]="filterStartDate ? 'Filtering from: ' + formatDate(getFilterDateTime() || filterStartDate) : 'Filter by date and time'"
+                        matTooltipPosition="above" [class.filter-active]="filterStartDate">
+                        <mat-icon [color]="filterStartDate ? 'accent' : ''">schedule</mat-icon>
+                    </button>
+                    <mat-menu #dateFilterMenu="matMenu" class="date-filter-menu">
+                        <div class="date-filter-popup" (click)="$event.stopPropagation()">
+                            <div class="filter-header">
+                                <mat-icon>schedule</mat-icon>
+                                <span>Filter by Start Date & Time</span>
+                            </div>
+                            <mat-form-field appearance="outline" class="date-picker-field">
+                                <mat-label>Start Date</mat-label>
+                                <input matInput [matDatepicker]="picker" [(ngModel)]="filterStartDate"
+                                    placeholder="Select start date">
+                                <mat-datepicker-toggle matSuffix [for]="picker">
+                                    <mat-icon matDatepickerToggleIcon>event</mat-icon>
+                                </mat-datepicker-toggle>
+                                <mat-datepicker #picker></mat-datepicker>
+                            </mat-form-field>
+                            <div class="time-inputs">
+                                <mat-form-field appearance="outline" class="time-field">
+                                    <mat-label>Hour</mat-label>
+                                    <input matInput type="number" [(ngModel)]="filterHour" min="0" max="23"
+                                        placeholder="HH">
+                                </mat-form-field>
+                                <span class="time-separator">:</span>
+                                <mat-form-field appearance="outline" class="time-field">
+                                    <mat-label>Minute</mat-label>
+                                    <input matInput type="number" [(ngModel)]="filterMinute" min="0" max="59"
+                                        placeholder="MM">
+                                </mat-form-field>
+                                <span class="time-separator">:</span>
+                                <mat-form-field appearance="outline" class="time-field">
+                                    <mat-label>Second</mat-label>
+                                    <input matInput type="number" [(ngModel)]="filterSecond" min="0" max="59"
+                                        placeholder="SS">
+                                </mat-form-field>
+                            </div>
+                            <div class="filter-actions">
+                                <button mat-raised-button color="primary"
+                                    (click)="applyDateFilter(); dateFilterTrigger.closeMenu()"
+                                    [disabled]="!filterStartDate">
+                                    <mat-icon>check</mat-icon>
+                                    Apply
+                                </button>
+                                <button mat-button (click)="clearDateFilter(); dateFilterTrigger.closeMenu()">
+                                    <mat-icon>refresh</mat-icon>
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+                    </mat-menu>
+                    <mat-divider vertical class="toolbar-divider"></mat-divider>
                     <button mat-icon-button matTooltip="Refresh table" matTooltipPosition="above"
                         (click)="refreshTable()" [disabled]="isRefreshing">
                         <mat-icon [class.rotating]="isRefreshing">refresh</mat-icon>

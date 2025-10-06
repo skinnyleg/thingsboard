@@ -15,7 +15,7 @@
     limitations under the License.
 
 -->
-<a mat-button routerLinkActive="tb-active" [routerLinkActiveOptions]="{paths: 'subset', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored'}" routerLink="{{section.path}}">
+<a mat-button routerLinkActive="tb-active" [routerLinkActiveOptions]="{paths: 'subset', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored'}" routerLink="{{section.path}}" [attr.data-tooltip]="section.name | translate">
   <tb-icon matButtonIcon *ngIf="section.icon !== null">{{section.icon}}</tb-icon>
   <span>{{section.name | translate}}</span>
 </a>

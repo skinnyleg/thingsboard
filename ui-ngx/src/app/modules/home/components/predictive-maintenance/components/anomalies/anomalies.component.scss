@@ -32,6 +32,73 @@
       color: #ff9800;
       font-size: 1.2em;
     }
+
+    // Live stream indicator
+    .stream-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      background-color: rgba(255, 152, 0, 0.2);
+      color: #ff9800;
+      transition: all 0.3s ease;
+
+      .stream-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      &.connected {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+
+        .stream-icon {
+          animation: none;
+        }
+      }
+
+      &.error {
+        background-color: rgba(244, 67, 54, 0.2);
+        color: #f44336;
+
+        .stream-icon {
+          animation: shake 0.5s ease-in-out;
+        }
+      }
+
+      .stream-text {
+        font-size: 10px;
+      }
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    @keyframes shake {
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+      25% {
+        transform: translateX(-4px);
+      }
+      75% {
+        transform: translateX(4px);
+      }
+    }
   }
 
   .table-content {
@@ -581,6 +648,144 @@
 
     &:hover {
       background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+// Date filter icon
+.filter-active {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #ff9800;
+    border: 2px solid var(--tb-dark-app-bar);
+  }
+}
+
+// Date filter popup styles
+::ng-deep .date-filter-menu {
+  .mat-mdc-menu-content {
+    padding: 0;
+  }
+}
+
+.date-filter-popup {
+  padding: 16px;
+  min-width: 280px;
+
+  .filter-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--mat-primary-color, #1976d2);
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .date-picker-field {
+    width: 100%;
+    margin-bottom: 8px;
+
+    ::ng-deep {
+      .mat-mdc-text-field-wrapper {
+        padding-bottom: 0;
+      }
+
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+
+  .time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+
+    .time-field {
+      flex: 1;
+
+      ::ng-deep {
+        .mat-mdc-text-field-wrapper {
+          padding-bottom: 0;
+        }
+
+        .mat-mdc-form-field-subscript-wrapper {
+          display: none;
+        }
+
+        input {
+          text-align: center;
+        }
+      }
+    }
+
+    .time-separator {
+      font-size: 24px;
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.6);
+      padding: 0 4px;
+      margin-top: -8px;
+    }
+  }
+
+  .filter-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    .mat-mdc-raised-button {
+      flex: 1;
+    }
+  }
+}
+
+// Dark mode for date filter
+.tb-dark {
+  .filter-active::after {
+    background-color: #ffc947;
+    border-color: #2d2d2d;
+  }
+
+  .date-filter-popup {
+    background-color: #2d2d2d;
+    color: #ffffff;
+
+    .filter-header {
+      color: #ffc947;
+    }
+
+    .time-inputs {
+      .time-separator {
+        color: rgba(255, 255, 255, 0.6);
+      }
     }
   }
 }

@@ -57,11 +57,40 @@ app.include_router(notify_router)
 @app.get("/health")
 def health_check():
     """Health check endpoint for container monitoring"""
-    # should check if all models are loaded and db connection is ok
-    return {
+    import os
+    from library.core.data_registry import DataRegistry
+
+    status = {
         "status": "healthy",
         "service": "predictive-maintenance",
+        "database": {"configured": False, "connection": "unknown"},
     }
+
+    # Check if DATABASE_URL is configured
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        status["database"]["configured"] = True
+        # Mask password in URL for security
+        safe_url = database_url.split("@")[-1] if "@" in database_url else database_url
+        status["database"]["url"] = f"***@{safe_url}"
+
+        # Test database connection
+        try:
+            registry = DataRegistry(database_url)
+            # Try a simple query to verify connection
+            with registry.engine.connect() as conn:
+                conn.execute("SELECT 1")
+            status["database"]["connection"] = "connected"
+        except Exception as e:
+            status["database"]["connection"] = "failed"
+            status["database"]["error"] = str(e)
+            status["status"] = "degraded"
+    else:
+        status["database"][
+            "url"
+        ] = "postgresql://postgres:postgres@localhost:5432/thingsboard (default)"
+
+    return status
 
 
 @app.get("/api/predictiveMaintenance")

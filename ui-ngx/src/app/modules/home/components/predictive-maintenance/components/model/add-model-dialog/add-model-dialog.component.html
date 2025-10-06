@@ -1,0 +1,226 @@
+<!--
+
+    Copyright © 2016-2024 The Thingsboard Authors
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<h2 mat-dialog-title>{{ isEditMode ? 'Edit Model' : 'Create Your Model' }}</h2>
+
+<mat-dialog-content class="dialog-content">
+  <!-- Progress Bar -->
+  <div class="progress-container">
+    <div class="progress-steps">
+      <div class="step" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
+        <div class="step-number" [class.edit-mode]="isEditMode">{{ isEditMode ? '✎' : '1' }}</div>
+        <div class="step-label">{{ isEditMode ? 'Edit Setup' : 'Model Setup' }}</div>
+      </div>
+      <div class="progress-line" [class.active]="currentStep > 1"></div>
+      <div class="step" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
+        <div class="step-number" [class.edit-mode]="isEditMode">{{ isEditMode ? '⚙' : '2' }}</div>
+        <div class="step-label">{{ isEditMode ? 'Update Settings' : 'Algorithm & Dates' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1: Model Setup -->
+  <div *ngIf="currentStep === 1" class="step-content">
+
+    <!-- Edit mode indicator -->
+    <div *ngIf="isEditMode" class="edit-mode-banner">
+      <mat-icon>edit</mat-icon>
+      <span>Editing existing model</span>
+    </div>
+
+    <mat-label>Model Name:</mat-label>
+    <mat-form-field appearance="outline" class="full-width">
+      <input matInput [formControl]="forecastNameControl" placeholder="Enter model name"
+        [attr.aria-label]="'Model name input'" />
+      <mat-error *ngIf="forecastNameControl.invalid && forecastNameControl.touched">Model name is required.</mat-error>
+    </mat-form-field>
+
+    <!-- Autocomplete for device selection -->
+    <mat-label>Device Name:</mat-label>
+    <mat-form-field appearance="outline" class="full-width">
+      <input type="text" matInput [formControl]="myControl" [matAutocomplete]="auto"
+        #deviceInput
+        (focus)="onDeviceInputFocus()"
+        (click)="onDeviceInputClick($event)"
+        (keydown.arrowDown)="onArrowDown($event)"
+        placeholder="e.g., Temperature Sensor 01, Motor Controller A..." [attr.aria-label]="'Device name input'" />
+      <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn" autoActiveFirstOption
+        (opened)="onAutocompleteOpened()"
+        (optionSelected)="onDeviceSelected($event.option.value)">
+        <mat-option *ngFor="let device of filteredDevices | async" [value]="device">
+          {{ device.name }}
+        </mat-option>
+      </mat-autocomplete>
+      <mat-hint *ngIf="devicesList.length > 0">
+        {{ getDeviceNamesHint() }}
+      </mat-hint>
+    </mat-form-field>
+
+    <!-- Message if no telemetry available -->
+    <div *ngIf="noTelemetryMessage" class="no-telemetry-message small-text">
+      <mat-icon class="info-icon">warning</mat-icon>
+      {{ noTelemetryMessage }}
+    </div>
+
+    <!-- Fields with telemetry attributes -->
+    <div class="fields-container">
+      <mat-label *ngIf="selectedDevice && availableTelemetry.length > 0">Time-Series Keys (Optional):</mat-label>
+      <p *ngIf="selectedDevice && fields.length === 0 && availableTelemetry.length > 0" class="optional-message">
+        <mat-icon class="info-icon">info</mat-icon>
+        Select time-series keys (ts_kv) from the database for specific forecasting, or proceed without them for general
+        model creation.
+      </p>
+      <div *ngFor="let field of fields; let i = index">
+        <div class="field">
+          <!-- Button to remove the field -->
+          <button mat-icon-button (click)="removeField(i)" class="delete_button"
+            [attr.aria-label]="'Remove time-series key ' + (i + 1)">
+            <mat-icon>remove_circle</mat-icon>
+          </button>
+
+          <!-- Select dropdown for telemetry keys from database -->
+          <mat-label>Time-Series Key {{ i + 1 }}:</mat-label>
+          <mat-form-field appearance="outline" class="input-field">
+            <mat-select [(ngModel)]="field.key" placeholder="Select from database"
+              [attr.aria-label]="'Time-series key ' + (i + 1) + ' selection'">
+              <mat-option *ngFor="let telemetry of getFilteredTelemetry(i)" [value]="telemetry">
+                {{ telemetry }}
+              </mat-option>
+            </mat-select>
+            <mat-hint>
+              Select from available ts_kv keys in database
+            </mat-hint>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Button to add a new field -->
+      <button *ngIf="canAddField" mat-raised-button color="primary" (click)="addField()"
+        [disabled]="!selectedDevice || availableTelemetry.length === 0" [attr.aria-label]="'Add new time-series key'">
+        <mat-icon>add_circle</mat-icon> Add Time-Series Key
+      </button>
+
+      <!-- Helper text when no telemetry available -->
+      <p *ngIf="selectedDevice && availableTelemetry.length === 0" class="no-keys-message">
+        <mat-icon class="warning-icon">info_outline</mat-icon>
+        No time-series keys found in database for this device. Ensure the device has ts_kv data before adding
+        attributes.
+      </p>
+    </div>
+  </div>
+
+  <!-- Step 2: Algorithm & Dates -->
+  <div *ngIf="currentStep === 2" class="step-content">
+
+    <!-- Forecast Date Range Section -->
+    <div class="global-date-section">
+      <mat-label>Forecast Date Range:</mat-label>
+      <div class="date-time-range" fxLayout="row" fxLayoutGap="16px" fxLayout.xs="column" fxLayoutGap.xs="8px">
+        <mat-form-field appearance="outline" fxFlex>
+          <mat-label>Forecast Start Date & Time</mat-label>
+          <mat-datetimepicker-toggle [for]="forecastStartPicker" matSuffix></mat-datetimepicker-toggle>
+          <mat-datetimepicker #forecastStartPicker type="datetime" openOnFocus="true"></mat-datetimepicker>
+          <input matInput [(ngModel)]="globalStartDate" [matDatetimepicker]="forecastStartPicker"
+            placeholder="Select start date and time" [attr.aria-label]="'Forecast start date and time'" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" fxFlex>
+          <mat-label>Forecast End Date & Time</mat-label>
+          <mat-datetimepicker-toggle [for]="forecastEndPicker" matSuffix></mat-datetimepicker-toggle>
+          <mat-datetimepicker #forecastEndPicker type="datetime" openOnFocus="true"></mat-datetimepicker>
+          <input matInput [(ngModel)]="globalEndDate" [matDatetimepicker]="forecastEndPicker"
+            placeholder="Select end date and time" [attr.aria-label]="'Forecast end date and time'" />
+        </mat-form-field>
+      </div>
+      <mat-error *ngIf="globalStartDate && globalEndDate && globalStartDate >= globalEndDate">
+        End date must be after start date
+      </mat-error>
+    </div>
+
+    <!-- Forecast Algorithm Selection -->
+    <div class="algorithm-section">
+      <mat-label>Select Algorithm for Forecast:</mat-label>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-select [formControl]="forecastAlgorithmControl" placeholder="e.g., ARIMA, LSTM, Linear Regression..."
+          [attr.aria-label]="'Forecast algorithm selection'">
+          <mat-option *ngFor="let algorithm of forecastAlgorithmOptions" [value]="algorithm.value">
+            {{ algorithm.label }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="forecastAlgorithmControl.invalid && forecastAlgorithmControl.touched">
+          Please select a forecast algorithm
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Anomalies Date Range Section -->
+    <div class="anomalies-date-section">
+      <mat-label>Date Range for Anomalies:</mat-label>
+      <div class="date-time-range" fxLayout="row" fxLayoutGap="16px" fxLayout.xs="column" fxLayoutGap.xs="8px">
+        <mat-form-field appearance="outline" fxFlex>
+          <mat-label>Anomalies Start Date & Time</mat-label>
+          <mat-datetimepicker-toggle [for]="anomaliesStartPicker" matSuffix></mat-datetimepicker-toggle>
+          <mat-datetimepicker #anomaliesStartPicker type="datetime" openOnFocus="true"></mat-datetimepicker>
+          <input matInput [(ngModel)]="anomaliesStartDate" [matDatetimepicker]="anomaliesStartPicker"
+            placeholder="Select start date and time" [attr.aria-label]="'Anomalies start date and time'" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" fxFlex>
+          <mat-label>Anomalies End Date & Time</mat-label>
+          <mat-datetimepicker-toggle [for]="anomaliesEndPicker" matSuffix></mat-datetimepicker-toggle>
+          <mat-datetimepicker #anomaliesEndPicker type="datetime" openOnFocus="true"></mat-datetimepicker>
+          <input matInput [(ngModel)]="anomaliesEndDate" [matDatetimepicker]="anomaliesEndPicker"
+            placeholder="Select end date and time" [attr.aria-label]="'Anomalies end date and time'" />
+        </mat-form-field>
+      </div>
+      <mat-error *ngIf="anomaliesStartDate && anomaliesEndDate && anomaliesStartDate >= anomaliesEndDate">
+        End date must be after start date
+      </mat-error>
+    </div>
+
+    <!-- Anomalies Algorithm Selection -->
+    <div class="anomalies-algorithm-section">
+      <mat-label>Select Algorithm for Anomalies:</mat-label>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-select [formControl]="anomaliesAlgorithmControl"
+          placeholder="e.g., Isolation Forest, One-Class SVM, LOF..."
+          [attr.aria-label]="'Anomalies algorithm selection'">
+          <mat-option *ngFor="let algorithm of anomaliesAlgorithmOptions" [value]="algorithm.value">
+            {{ algorithm.label }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="anomaliesAlgorithmControl.invalid && anomaliesAlgorithmControl.touched">
+          Please select an anomalies algorithm
+        </mat-error>
+      </mat-form-field>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()" [attr.aria-label]="'Cancel forecast creation'">Cancel</button>
+  <button *ngIf="currentStep > 1" mat-button (click)="previousStep()" [attr.aria-label]="'Go to previous step'">
+    <mat-icon>arrow_back</mat-icon> Previous
+  </button>
+  <button *ngIf="currentStep < totalSteps" mat-raised-button color="primary" [disabled]="!isCurrentStepValid()"
+    (click)="nextStep()" [attr.aria-label]="'Go to next step'">
+    Next <mat-icon>arrow_forward</mat-icon>
+  </button>
+  <button *ngIf="currentStep === totalSteps" mat-raised-button color="primary" [disabled]="!isFormValid"
+    (click)="onConfirm()"
+    [attr.aria-label]="isEditMode ? 'Confirm and update forecast' : 'Confirm and create forecast'">
+    {{ isEditMode ? 'Update Model' : 'Create Model' }}
+  </button>
+</mat-dialog-actions>

@@ -25,11 +25,74 @@
   mat-sidenav-container {
     flex: 1;
   }
+
+  mat-sidenav-container.sidenav-minimized {
+    ::ng-deep mat-sidenav-content {
+      margin-left: 64px !important;
+      transition: margin-left 0.3s ease;
+    }
+  }
+
+  mat-sidenav-container:not(.sidenav-minimized) {
+    ::ng-deep mat-sidenav-content {
+      margin-left: 250px !important;
+      transition: margin-left 0.3s ease;
+    }
+  }
   mat-sidenav.tb-site-sidenav {
     // background: black;
     width: 250px;
+    transition: width 0.3s ease;
     @media (max-width:456px) {
       width: calc(100% - 56px);
+    }
+
+    &.minimized {
+      width: 64px;
+      
+      .tb-nav-header-toolbar {
+        .tb-logo-title {
+          display: none;
+        }
+        
+        & > div {
+          width: 0;
+          overflow: hidden;
+        }
+      }
+      
+      .tb-side-menu-toolbar {
+        overflow: hidden;
+        ::ng-deep {
+          .tb-side-menu {
+            a.mat-mdc-button,
+            button.mat-mdc-button {
+              padding: 0;
+              justify-content: center;
+              min-width: 64px;
+
+              .mat-icon,
+              tb-icon {
+                margin-right: 0;
+                margin-left: 0;
+              }
+
+              span.mdc-button__label {
+                display: none !important;
+              }
+
+              .tb-toggle-icon {
+                display: none !important;
+              }
+            }
+
+            // Hide submenu items in minimized mode
+            .tb-menu-toggle-list {
+              display: none;
+            }
+          }
+        }
+      }
     }
 
     // width: 0;
@@ -45,6 +108,9 @@
         flex-shrink: 0;
         white-space: nowrap;
         border-bottom: 1px solid rgba(0, 0, 0, .12);
+        display: flex;
+        align-items: center;
+
         & > div {
           height: 64px;
           .tb-logo-title {
@@ -54,6 +120,18 @@
             padding-inline: 22px;
             max-height: 100%;
             margin: auto;
+            transition: opacity 0.2s ease;
+          }
+        }
+
+        .minimize-btn {
+          flex-shrink: 0;
+          margin-right: 8px;
+          opacity: 0.7;
+          transition: opacity 0.2s ease;
+
+          &:hover {
+            opacity: 1;
           }
         }
       }
@@ -74,5 +152,43 @@
   .tb-main-content {
     overflow: auto;
     position: relative;
+  }
+}
+
+// Tooltips for minimized sidebar (global styles)
+::ng-deep {
+  mat-sidenav.tb-site-sidenav.minimized {
+    .tb-side-menu {
+      a.mat-mdc-button,
+      button.mat-mdc-button {
+        position: relative;
+
+        &::after {
+          content: attr(data-tooltip);
+          position: absolute;
+          left: 100%;
+          top: 50%;
+          transform: translateY(-50%) translateX(-4px);
+          margin-left: 8px;
+          padding: 8px 12px;
+          background: rgba(33, 33, 33, 0.95);
+          color: white;
+          border-radius: 4px;
+          font-size: 14px;
+          font-weight: 500;
+          white-space: nowrap;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+          z-index: 1000;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        &:hover::after {
+          opacity: 1;
+          transform: translateY(-50%) translateX(0);
+        }
+      }
+    }
   }
 }

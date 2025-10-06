@@ -30,7 +30,8 @@ public class ModelConstants {
     public static final UUID NULL_UUID = Uuids.startOf(0);
     public static final TenantId SYSTEM_TENANT = TenantId.fromUUID(ModelConstants.NULL_UUID);
 
-    // this is the difference between midnight October 15, 1582 UTC and midnight January 1, 1970 UTC as 100 nanosecond units
+    // this is the difference between midnight October 15, 1582 UTC and midnight
+    // January 1, 1970 UTC as 100 nanosecond units
     public static final long EPOCH_DIFF = 122192928000000000L;
 
     /**
@@ -75,7 +76,9 @@ public class ModelConstants {
     public static final String USER_CREDENTIALS_TABLE_NAME = "user_credentials";
     public static final String USER_CREDENTIALS_USER_ID_PROPERTY = USER_ID_PROPERTY;
     public static final String USER_CREDENTIALS_ENABLED_PROPERTY = "enabled";
-    public static final String USER_CREDENTIALS_PASSWORD_PROPERTY = "password"; //NOSONAR, the constant used to identify password column name (not password value itself)
+    public static final String USER_CREDENTIALS_PASSWORD_PROPERTY = "password"; // NOSONAR, the constant used to
+                                                                                // identify password column name (not
+                                                                                // password value itself)
     public static final String USER_CREDENTIALS_ACTIVATE_TOKEN_PROPERTY = "activate_token";
     public static final String USER_CREDENTIALS_RESET_TOKEN_PROPERTY = "reset_token";
     public static final String USER_CREDENTIALS_ADDITIONAL_PROPERTY = "additional_info";
@@ -669,16 +672,195 @@ public class ModelConstants {
     public static final String MOBILE_APP_SETTINGS_IOS_CONFIG_PROPERTY = "ios_config";
     public static final String MOBILE_APP_SETTINGS_QR_CODE_CONFIG_PROPERTY = "qr_code_config";
 
-    protected static final String[] NONE_AGGREGATION_COLUMNS = new String[]{LONG_VALUE_COLUMN, DOUBLE_VALUE_COLUMN, BOOLEAN_VALUE_COLUMN, STRING_VALUE_COLUMN, JSON_VALUE_COLUMN, KEY_COLUMN, TS_COLUMN};
+    /**
+     * Predictive Model constants.
+     */
+    public static final String PREDICTIVE_MODEL_TABLE_NAME = "predictive_maintenance_config";
+    public static final String PREDICTIVE_MODEL_TENANT_ID_PROPERTY = TENANT_ID_PROPERTY;
+    public static final String PREDICTIVE_MODEL_DEVICE_ID_PROPERTY = DEVICE_ID_PROPERTY;
+    public static final String PREDICTIVE_MODEL_NAME_PROPERTY = NAME_PROPERTY;
+    public static final String PREDICTIVE_MODEL_FORECAST_ALGORITHM_PROPERTY = "forecast_algorithm";
+    public static final String PREDICTIVE_MODEL_FORECAST_START_DATE_PROPERTY = "forecast_start_date";
+    public static final String PREDICTIVE_MODEL_FORECAST_END_DATE_PROPERTY = "forecast_end_date";
+    public static final String PREDICTIVE_MODEL_ANOMALY_ALGORITHM_PROPERTY = "anomaly_algorithm";
+    public static final String PREDICTIVE_MODEL_ANOMALY_START_DATE_PROPERTY = "anomaly_start_date";
+    public static final String PREDICTIVE_MODEL_ANOMALY_END_DATE_PROPERTY = "anomaly_end_date";
+    public static final String PREDICTIVE_MODEL_ATTRIBUTES_PROPERTY = "attributes";
+    public static final String PREDICTIVE_MODEL_VIEW_PREFERENCES_PROPERTY = "view_preferences";
 
-    protected static final String[] COUNT_AGGREGATION_COLUMNS = new String[]{count(LONG_VALUE_COLUMN), count(DOUBLE_VALUE_COLUMN), count(BOOLEAN_VALUE_COLUMN), count(STRING_VALUE_COLUMN), count(JSON_VALUE_COLUMN), max(TS_COLUMN)};
+    // Legacy constants for backward compatibility (deprecated)
+    @Deprecated
+    public static final String FORECAST_TABLE_NAME = PREDICTIVE_MODEL_TABLE_NAME;
+    @Deprecated
+    public static final String FORECAST_TENANT_ID_PROPERTY = PREDICTIVE_MODEL_TENANT_ID_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_DEVICE_ID_PROPERTY = PREDICTIVE_MODEL_DEVICE_ID_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_NAME_PROPERTY = PREDICTIVE_MODEL_NAME_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_FORECAST_ALGORITHM_PROPERTY = PREDICTIVE_MODEL_FORECAST_ALGORITHM_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_FORECAST_START_DATE_PROPERTY = PREDICTIVE_MODEL_FORECAST_START_DATE_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_FORECAST_END_DATE_PROPERTY = PREDICTIVE_MODEL_FORECAST_END_DATE_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_ANOMALY_ALGORITHM_PROPERTY = PREDICTIVE_MODEL_ANOMALY_ALGORITHM_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_ANOMALY_START_DATE_PROPERTY = PREDICTIVE_MODEL_ANOMALY_START_DATE_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_ANOMALY_END_DATE_PROPERTY = PREDICTIVE_MODEL_ANOMALY_END_DATE_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_ATTRIBUTES_PROPERTY = PREDICTIVE_MODEL_ATTRIBUTES_PROPERTY;
+    @Deprecated
+    public static final String FORECAST_VIEW_PREFERENCES_PROPERTY = PREDICTIVE_MODEL_VIEW_PREFERENCES_PROPERTY;
 
-    protected static final String[] MIN_AGGREGATION_COLUMNS =
-            ArrayUtils.addAll(COUNT_AGGREGATION_COLUMNS, new String[]{min(LONG_VALUE_COLUMN), min(DOUBLE_VALUE_COLUMN), min(BOOLEAN_VALUE_COLUMN), min(STRING_VALUE_COLUMN), min(JSON_VALUE_COLUMN)});
-    protected static final String[] MAX_AGGREGATION_COLUMNS =
-            ArrayUtils.addAll(COUNT_AGGREGATION_COLUMNS, new String[]{max(LONG_VALUE_COLUMN), max(DOUBLE_VALUE_COLUMN), max(BOOLEAN_VALUE_COLUMN), max(STRING_VALUE_COLUMN), max(JSON_VALUE_COLUMN)});
-    protected static final String[] SUM_AGGREGATION_COLUMNS =
-            ArrayUtils.addAll(COUNT_AGGREGATION_COLUMNS, new String[]{sum(LONG_VALUE_COLUMN), sum(DOUBLE_VALUE_COLUMN)});
+    /**
+     * Model log constants.
+     */
+    public static final String MODEL_LOG_TABLE_NAME = "model_logs";
+    public static final String MODEL_LOG_MODEL_ID_PROPERTY = "model_id";
+    public static final String MODEL_LOG_TENANT_ID_PROPERTY = TENANT_ID_PROPERTY;
+    public static final String MODEL_LOG_DEVICE_ID_PROPERTY = DEVICE_ID_PROPERTY;
+    public static final String MODEL_LOG_TIMESTAMP_PROPERTY = "timestamp";
+    public static final String MODEL_LOG_LEVEL_PROPERTY = "log_level";
+    public static final String MODEL_LOG_MESSAGE_PROPERTY = "message";
+    public static final String MODEL_LOG_SOURCE_PROPERTY = "source";
+    public static final String MODEL_LOG_METADATA_PROPERTY = "metadata";
+
+    /**
+     * Device error constants.
+     */
+    public static final String DEVICE_ERROR_TABLE_NAME = "device_errors";
+    public static final String DEVICE_ERROR_DEVICE_ID_PROPERTY = DEVICE_ID_PROPERTY;
+    public static final String DEVICE_ERROR_TIME_PROPERTY = "error_time";
+    public static final String DEVICE_ERROR_CODE_PROPERTY = "error_code";
+    public static final String DEVICE_ERROR_TYPE_PROPERTY = "error_type";
+    public static final String DEVICE_ERROR_SEVERITY_PROPERTY = "error_severity";
+    public static final String DEVICE_ERROR_DESCRIPTION_PROPERTY = "error_description";
+    public static final String DEVICE_ERROR_COMPONENT_PROPERTY = "component";
+    public static final String DEVICE_ERROR_RECOVERY_TIME_PROPERTY = "recovery_time";
+    public static final String DEVICE_ERROR_WAS_AUTO_RECOVERED_PROPERTY = "was_auto_recovered";
+    public static final String DEVICE_ERROR_LED_TO_FAILURE_PROPERTY = "led_to_failure";
+    public static final String DEVICE_ERROR_METADATA_PROPERTY = "metadata";
+    public static final String DEVICE_ERROR_CREATED_AT_PROPERTY = "created_at";
+
+    /**
+     * Device failure constants.
+     */
+    public static final String DEVICE_FAILURE_TABLE_NAME = "device_failures";
+    public static final String DEVICE_FAILURE_DEVICE_ID_PROPERTY = DEVICE_ID_PROPERTY;
+    public static final String DEVICE_FAILURE_TIME_PROPERTY = "failure_time";
+    public static final String DEVICE_FAILURE_DETECTION_TIME_PROPERTY = "detection_time";
+    public static final String DEVICE_FAILURE_RESOLVED_TIME_PROPERTY = "resolved_time";
+    public static final String DEVICE_FAILURE_TYPE_PROPERTY = "failure_type";
+    public static final String DEVICE_FAILURE_SEVERITY_PROPERTY = "failure_severity";
+    public static final String DEVICE_FAILURE_DESCRIPTION_PROPERTY = "failure_description";
+    public static final String DEVICE_FAILURE_ROOT_CAUSE_PROPERTY = "root_cause";
+    public static final String DEVICE_FAILURE_DOWNTIME_HOURS_PROPERTY = "downtime_hours";
+    public static final String DEVICE_FAILURE_REPAIR_COST_PROPERTY = "repair_cost";
+    public static final String DEVICE_FAILURE_REPLACED_PARTS_PROPERTY = "replaced_parts";
+    public static final String DEVICE_FAILURE_MAINTENANCE_ACTIONS_PROPERTY = "maintenance_actions";
+    public static final String DEVICE_FAILURE_WAS_PREDICTED_PROPERTY = "was_predicted";
+    public static final String DEVICE_FAILURE_PREDICTION_LEAD_TIME_HOURS_PROPERTY = "prediction_lead_time_hours";
+    public static final String DEVICE_FAILURE_METADATA_PROPERTY = "metadata";
+    public static final String DEVICE_FAILURE_CREATED_AT_PROPERTY = "created_at";
+
+    // Legacy constants for backward compatibility (deprecated)
+    @Deprecated
+    public static final String MACHINE_FAILURE_TABLE_NAME = DEVICE_FAILURE_TABLE_NAME;
+    @Deprecated
+    public static final String MACHINE_FAILURE_DEVICE_ID_PROPERTY = DEVICE_FAILURE_DEVICE_ID_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_TIME_PROPERTY = DEVICE_FAILURE_TIME_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_DETECTION_TIME_PROPERTY = DEVICE_FAILURE_DETECTION_TIME_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_RESOLVED_TIME_PROPERTY = DEVICE_FAILURE_RESOLVED_TIME_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_TYPE_PROPERTY = DEVICE_FAILURE_TYPE_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_SEVERITY_PROPERTY = DEVICE_FAILURE_SEVERITY_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_DESCRIPTION_PROPERTY = DEVICE_FAILURE_DESCRIPTION_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_ROOT_CAUSE_PROPERTY = DEVICE_FAILURE_ROOT_CAUSE_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_DOWNTIME_HOURS_PROPERTY = DEVICE_FAILURE_DOWNTIME_HOURS_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_REPAIR_COST_PROPERTY = DEVICE_FAILURE_REPAIR_COST_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_REPLACED_PARTS_PROPERTY = DEVICE_FAILURE_REPLACED_PARTS_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_MAINTENANCE_ACTIONS_PROPERTY = DEVICE_FAILURE_MAINTENANCE_ACTIONS_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_WAS_PREDICTED_PROPERTY = DEVICE_FAILURE_WAS_PREDICTED_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_PREDICTION_LEAD_TIME_HOURS_PROPERTY = DEVICE_FAILURE_PREDICTION_LEAD_TIME_HOURS_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_METADATA_PROPERTY = DEVICE_FAILURE_METADATA_PROPERTY;
+    @Deprecated
+    public static final String MACHINE_FAILURE_CREATED_AT_PROPERTY = DEVICE_FAILURE_CREATED_AT_PROPERTY;
+
+    /**
+     * Device maintenance constants.
+     */
+    public static final String DEVICE_MAINTENANCE_TABLE_NAME = "device_maintenance";
+    public static final String DEVICE_MAINTENANCE_DEVICE_ID_PROPERTY = DEVICE_ID_PROPERTY;
+    public static final String DEVICE_MAINTENANCE_TYPE_PROPERTY = "maintenance_type";
+    public static final String DEVICE_MAINTENANCE_DATE_PROPERTY = "maintenance_date";
+    public static final String DEVICE_MAINTENANCE_DURATION_HOURS_PROPERTY = "duration_hours";
+    public static final String DEVICE_MAINTENANCE_COST_PROPERTY = "cost";
+    public static final String DEVICE_MAINTENANCE_TECHNICIAN_PROPERTY = "technician";
+    public static final String DEVICE_MAINTENANCE_DESCRIPTION_PROPERTY = "description";
+    public static final String DEVICE_MAINTENANCE_PARTS_REPLACED_PROPERTY = "parts_replaced";
+    public static final String DEVICE_MAINTENANCE_ACTIONS_PERFORMED_PROPERTY = "actions_performed";
+    public static final String DEVICE_MAINTENANCE_NEXT_MAINTENANCE_DATE_PROPERTY = "next_maintenance_date";
+    public static final String DEVICE_MAINTENANCE_METADATA_PROPERTY = "metadata";
+    public static final String DEVICE_MAINTENANCE_CREATED_AT_PROPERTY = "created_at";
+
+    // Legacy constants for backward compatibility (deprecated)
+    @Deprecated
+    public static final String MAINTENANCE_LOG_TABLE_NAME = DEVICE_MAINTENANCE_TABLE_NAME;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_DEVICE_ID_PROPERTY = DEVICE_MAINTENANCE_DEVICE_ID_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_TYPE_PROPERTY = DEVICE_MAINTENANCE_TYPE_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_DATE_PROPERTY = DEVICE_MAINTENANCE_DATE_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_DURATION_HOURS_PROPERTY = DEVICE_MAINTENANCE_DURATION_HOURS_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_COST_PROPERTY = DEVICE_MAINTENANCE_COST_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_TECHNICIAN_PROPERTY = DEVICE_MAINTENANCE_TECHNICIAN_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_DESCRIPTION_PROPERTY = DEVICE_MAINTENANCE_DESCRIPTION_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_PARTS_REPLACED_PROPERTY = DEVICE_MAINTENANCE_PARTS_REPLACED_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_ACTIONS_PERFORMED_PROPERTY = DEVICE_MAINTENANCE_ACTIONS_PERFORMED_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_NEXT_MAINTENANCE_DATE_PROPERTY = DEVICE_MAINTENANCE_NEXT_MAINTENANCE_DATE_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_METADATA_PROPERTY = DEVICE_MAINTENANCE_METADATA_PROPERTY;
+    @Deprecated
+    public static final String MAINTENANCE_LOG_CREATED_AT_PROPERTY = DEVICE_MAINTENANCE_CREATED_AT_PROPERTY;
+
+    protected static final String[] NONE_AGGREGATION_COLUMNS = new String[] { LONG_VALUE_COLUMN, DOUBLE_VALUE_COLUMN,
+            BOOLEAN_VALUE_COLUMN, STRING_VALUE_COLUMN, JSON_VALUE_COLUMN, KEY_COLUMN, TS_COLUMN };
+
+    protected static final String[] COUNT_AGGREGATION_COLUMNS = new String[] { count(LONG_VALUE_COLUMN),
+            count(DOUBLE_VALUE_COLUMN), count(BOOLEAN_VALUE_COLUMN), count(STRING_VALUE_COLUMN),
+            count(JSON_VALUE_COLUMN), max(TS_COLUMN) };
+
+    protected static final String[] MIN_AGGREGATION_COLUMNS = ArrayUtils.addAll(COUNT_AGGREGATION_COLUMNS,
+            new String[] { min(LONG_VALUE_COLUMN), min(DOUBLE_VALUE_COLUMN), min(BOOLEAN_VALUE_COLUMN),
+                    min(STRING_VALUE_COLUMN), min(JSON_VALUE_COLUMN) });
+    protected static final String[] MAX_AGGREGATION_COLUMNS = ArrayUtils.addAll(COUNT_AGGREGATION_COLUMNS,
+            new String[] { max(LONG_VALUE_COLUMN), max(DOUBLE_VALUE_COLUMN), max(BOOLEAN_VALUE_COLUMN),
+                    max(STRING_VALUE_COLUMN), max(JSON_VALUE_COLUMN) });
+    protected static final String[] SUM_AGGREGATION_COLUMNS = ArrayUtils.addAll(COUNT_AGGREGATION_COLUMNS,
+            new String[] { sum(LONG_VALUE_COLUMN), sum(DOUBLE_VALUE_COLUMN) });
     protected static final String[] AVG_AGGREGATION_COLUMNS = SUM_AGGREGATION_COLUMNS;
 
     public static String min(String s) {

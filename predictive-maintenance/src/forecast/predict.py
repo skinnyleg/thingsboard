@@ -12,11 +12,21 @@ Data = NewType("Data", Dict[str, List[Union[int, str]]])
 # MODEL_PATH = "data/models/model.h5"
 MODEL_PATH = settings.models_path + "/model.h5"
 
-model = load_model(MODEL_PATH)
-print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
+# Try to load model, but don't fail if it's not available
 import os
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"
+
+model = None
+try:
+    if os.path.exists(MODEL_PATH):
+        model = load_model(MODEL_PATH)
+        print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
+        print(f"Model loaded successfully from {MODEL_PATH}")
+    else:
+        print(f"Warning: Model file not found at {MODEL_PATH}. Predictions will not be available.")
+except Exception as e:
+    print(f"Warning: Failed to load model: {e}. Predictions will not be available.")
+
 scaler = MinMaxScaler()
 
 import logging

@@ -53,4 +53,7 @@ public interface TenantRepository extends JpaRepository<TenantEntity, UUID> {
 
     @Query("SELECT t.id FROM TenantEntity t where t.tenantProfileId = :tenantProfileId")
     List<UUID> findTenantIdsByTenantProfileId(@Param("tenantProfileId") UUID tenantProfileId);
+
+    @Query("SELECT t.id FROM TenantEntity t where t.email = :email")
+    UUID findTenantByEmail(@Param("email") String email);
 }

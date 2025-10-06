@@ -44,7 +44,7 @@ public enum Resource {
     EDGE(EntityType.EDGE),
     RPC(EntityType.RPC),
     QUEUE(EntityType.QUEUE),
-    FORECAST(EntityType.FORECAST),
+    PREDICTIVE_MODEL(EntityType.PREDICTIVE_MODEL),
     CLAIM(EntityType.CLAIM),
     VERSION_CONTROL,
     NOTIFICATION(EntityType.NOTIFICATION_TARGET, EntityType.NOTIFICATION_TEMPLATE,

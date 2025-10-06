@@ -1,4 +1,4 @@
-import { ForecastService } from "./../../../../core/http/forecast.service";
+import { PredictiveModelsService } from "./../../../../core/http/forecast.service";
 ///
 /// Copyright © 2016-2024 The Thingsboard Authors
 ///
@@ -17,12 +17,14 @@ import { ForecastService } from "./../../../../core/http/forecast.service";
 
 import { Injectable, NgModule } from "@angular/core";
 import { RouterModule, Routes } from "@angular/router";
-import { PredictiveMaintenanceComponent } from "@app/modules/home/components/predictive-maintenance/predictive-maintenance.component";
+import { ConfigurationsListComponent } from "@app/modules/home/components/predictive-maintenance/components/configurations-list/configurations-list.component";
+import { DevicesListComponent } from "@app/modules/home/components/predictive-maintenance/components/devices-list/devices-list.component";
+import { DeviceModelsComponent } from "@app/modules/home/components/predictive-maintenance/components/device-models/device-models.component";
 import { OAuth2Service } from "@core/http/oauth2.service";
 import { Authority } from "@shared/models/authority.enum";
 import { Observable } from "rxjs";
 import { RouterTabsComponent } from "../../components/router-tabs.component";
-import { ForecastComponent } from "./forecast/forecast.module";
+import { ModelComponent } from "./model/model.component";
 
 @Injectable()
 export class OAuth2LoginProcessingUrlResolver {
@@ -41,24 +43,45 @@ const routes: Routes = [
         label: "Predictive Maintenance",
         icon: "mdi:wrench-clock",
       },
-      // alarmsMode: AlarmsMode.ALL
     },
     children: [
       {
         path: "",
-        component: PredictiveMaintenanceComponent,
+        component: ConfigurationsListComponent,
         data: {
           auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
-          title: "predictive-maintenance.predictive-maintenance",
+          title: "predictive-maintenance.configurations",
           isPage: true,
         },
       },
       {
-        path: "forecast/:id",
-        component: ForecastComponent,
+        path: "devices",
+        component: DevicesListComponent,
         data: {
           auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
-          title: "predictive-maintenance.forecast",
+          title: "predictive-maintenance.devices",
+          isPage: true,
+        },
+      },
+      {
+        path: "device/:deviceId/models",
+        component: DeviceModelsComponent,
+        data: {
+          auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
+          title: "predictive-maintenance.device-models",
+          breadcrumb: {
+            label: "Device Models",
+            icon: "mdi:view-list",
+          },
+          isPage: true,
+        },
+      },
+      {
+        path: "model/:id",
+        component: ModelComponent,
+        data: {
+          auth: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
+          title: "predictive-maintenance.model",
           breadcrumb: {
             label: "Model",
             icon: "mdi:tools",

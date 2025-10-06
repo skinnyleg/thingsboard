@@ -18,24 +18,31 @@ package org.thingsboard.server.service.predictive;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.thingsboard.server.common.data.exception.ThingsboardErrorCode;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
-import org.thingsboard.server.common.data.id.ForecastId;
+import org.thingsboard.server.common.data.id.PredictiveModelId;
+import org.thingsboard.server.service.ws.PythonWebSocketClientService;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class DefaultFastAPIService implements FastAPIService {
-    
+
     @Value("${fastapi.base.url:http://fastapi:8000/api/v1/}")
     private String baseUrl;
 
     private final RestTemplate restTemplate;
+
+    @Autowired
+    private PythonWebSocketClientService pythonWebSocketService;
 
     public DefaultFastAPIService(@Value("${fastapi.base.url:http://fastapi:8000/api/v1/}") String baseUrl) {
         this.baseUrl = baseUrl;
@@ -50,15 +57,15 @@ public class DefaultFastAPIService implements FastAPIService {
         return this.restTemplate.getForObject("predictiveMaintenance", JsonNode.class);
     }
 
-    public void activateForecast(ForecastId forecastId) throws ThingsboardException {
+    public void activatePredictiveModel(PredictiveModelId predictiveModelId) throws ThingsboardException {
         try {
-            this.restTemplate.patchForObject("models/{forecastId}/activate", null, JsonNode.class, forecastId);
+            log.info("[ACTIVATE] DefaultFastAPIService: Sending activate command for predictive model ID: {}", predictiveModelId);
+            // Use unified WebSocket endpoint instead of REST
+            pythonWebSocketService.sendActivateCommand(predictiveModelId);
+            log.info("[ACTIVATE] DefaultFastAPIService: Activate command sent successfully for predictive model ID: {}", predictiveModelId);
         } catch (Exception e) {
-            throw new ThingsboardException("Failed to activate forecast", e, ThingsboardErrorCode.GENERAL);
+            log.error("[ACTIVATE] DefaultFastAPIService: Failed to send activate command for predictive model ID: {}", predictiveModelId, e);
+            throw new ThingsboardException("Failed to activate predictive model", e, ThingsboardErrorCode.GENERAL);
         }
-    }
-
-    public JsonNode getModelStatus(ForecastId forecastId) {
-        return this.restTemplate.getForObject("models/{forecastId}/status", JsonNode.class, forecastId);
     }
 }

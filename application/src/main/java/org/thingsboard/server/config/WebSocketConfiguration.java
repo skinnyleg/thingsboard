@@ -15,30 +15,38 @@
  */
 package org.thingsboard.server.config;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 import org.thingsboard.server.controller.plugin.TbWebSocketHandler;
+import org.thingsboard.server.controller.ws.ModelWebSocketHandler;
 import org.thingsboard.server.queue.util.TbCoreComponent;
 
 @Configuration
 @TbCoreComponent
 @EnableWebSocket
-@RequiredArgsConstructor
 @Slf4j
 public class WebSocketConfiguration implements WebSocketConfigurer {
 
     public static final String WS_API_ENDPOINT = "/api/ws";
     public static final String WS_PLUGINS_ENDPOINT = "/api/ws/plugins/";
+    public static final String WS_MODEL_ENDPOINT = "/api/ws/model";
     private static final String WS_API_MAPPING = "/api/ws/**";
 
-    private final WebSocketHandler wsHandler;
+    private final TbWebSocketHandler tbWebSocketHandler;
+    private final ModelWebSocketHandler modelWebSocketHandler;
+
+    public WebSocketConfiguration(
+            @Qualifier("tbWebSocketHandler") TbWebSocketHandler tbWebSocketHandler,
+            ModelWebSocketHandler modelWebSocketHandler) {
+        this.tbWebSocketHandler = tbWebSocketHandler;
+        this.modelWebSocketHandler = modelWebSocketHandler;
+    }
 
     @Bean
     public ServletServerContainerFactoryBean createWebSocketContainer() {
@@ -50,11 +58,11 @@ public class WebSocketConfiguration implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        if (!(wsHandler instanceof TbWebSocketHandler)) {
-            log.error("TbWebSocketHandler expected but [{}] provided", wsHandler);
-            throw new RuntimeException("TbWebSocketHandler expected but " + wsHandler + " provided");
-        }
-        registry.addHandler(wsHandler, WS_API_MAPPING).setAllowedOriginPatterns("*");
+        log.info("Registering ThingsBoard WebSocket handler at {}", WS_API_MAPPING);
+        registry.addHandler(tbWebSocketHandler, WS_API_MAPPING).setAllowedOriginPatterns("*");
+
+        log.info("Registering Model WebSocket handler at {}", WS_MODEL_ENDPOINT);
+        registry.addHandler(modelWebSocketHandler, WS_MODEL_ENDPOINT).setAllowedOriginPatterns("*");
     }
 
 }

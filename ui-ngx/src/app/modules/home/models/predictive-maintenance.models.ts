@@ -2,9 +2,14 @@ export interface Order {
   id: string;
   trueId: string;
   device: string;
+  deviceId?: string;
   modelName?: string;
   date: string;
   attributesText?: string;
+  modelsCount?: number;
+  errorsCount?: number;
+  failuresCount?: number;
+  maintenanceCount?: number;
 }
 
 export interface ForecastField {

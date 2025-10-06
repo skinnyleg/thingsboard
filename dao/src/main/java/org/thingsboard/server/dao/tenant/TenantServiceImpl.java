@@ -215,6 +215,11 @@ public class TenantServiceImpl extends AbstractCachedEntityService<TenantId, Ten
     }
 
     @Override
+    public Optional<TenantId> findTenantByEmail(String email) {
+        return tenantDao.findTenantByEmail(email);
+    }
+
+    @Override
     public boolean tenantExists(TenantId tenantId) {
         return existsTenantCache.getAndPutInTransaction(tenantId, () -> tenantDao.existsById(tenantId, tenantId.getId()), false);
     }

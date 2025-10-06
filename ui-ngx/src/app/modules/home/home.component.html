@@ -15,18 +15,28 @@
     limitations under the License.
 
 -->
-<mat-sidenav-container>
+<mat-sidenav-container [class.sidenav-minimized]="sidenavMinimized">
   <mat-sidenav #sidenav class="tb-site-sidenav mat-elevation-z2"
+               [class.minimized]="sidenavMinimized"
                [disableClose]="sidenavOpened"
                (click)="sidenavClicked()"
                [mode]="sidenavMode"
-               [opened]="sidenavOpened && !forceFullscreen">
+               [opened]="sidenavOpened && !forceFullscreen"
+               [attr.data-minimized]="sidenavMinimized">
     <header class="tb-nav-header">
       <mat-toolbar class="tb-nav-header-toolbar">
         <div fxFlex="auto" fxLayout="row">
           <img [src]="logo"
                aria-label="logo" class="tb-logo-title"/>
         </div>
+        <button mat-icon-button
+                class="minimize-btn"
+                fxHide.lt-md
+                (click)="toggleSidenavMinimized(); $event.stopPropagation()"
+                [matTooltip]="sidenavMinimized ? 'Expand sidebar' : 'Minimize sidebar'"
+                matTooltipPosition="right">
+          <mat-icon>{{ sidenavMinimized ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+        </button>
       </mat-toolbar>
     </header>
     <mat-toolbar fxFlex="0%" class="tb-side-menu-toolbar" fxLayout="column" role="navigation">

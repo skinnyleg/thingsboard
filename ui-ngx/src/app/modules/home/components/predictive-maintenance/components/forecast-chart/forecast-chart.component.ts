@@ -594,7 +594,7 @@ export class ForecastChartComponent
     this.alarmsWs$.subscribe({
       next: (msg) => {
         const data = msg.data?.data ?? msg.update;
-        console.log({ data });
+        // console.log({ data });
         data.forEach((alarm) => alarms.set(alarm.id.id, alarm));
         const areas = Array.from(alarms.values()).map((alarm) => [
           { xAxis: alarm.startTs },
@@ -627,72 +627,73 @@ export class ForecastChartComponent
         (e) => e.name.toLowerCase() == "pressure historical forecast"
       ).data,
     ];
-    this.dataWs = webSocket({
-      url: "ws://" + environment.host + ":8080/api/ws",
-    });
-    this.dataWs.subscribe({
-      next: (
-        (tmp = null) =>
-        (data) => {
-          Object.keys(data.data).forEach((key) => {
-            let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
-            values.sort((a, b) => a[0] - b[0]);
-            const list = key == "pressure" ? pressureData : historyForecastData;
-            if (key == "pressure" && tmp) {
-              historyForecastData.push(tmp);
-              tmp = null;
-            }
-            values = list.concat([values[values.length - 1]]);
-            values.sort((a, b) => a[0] - b[0]);
-            if (key == "forecast") {
-              tmp = values.pop();
-            }
+    // DISABLED: Forecast chart WebSocket subscription (focusing on anomalies only)
+    // this.dataWs = webSocket({
+    //   url: "ws://" + environment.host + ":8080/api/ws",
+    // });
+    // this.dataWs.subscribe({
+    //   next: (
+    //     (tmp = null) =>
+    //     (data) => {
+    //       Object.keys(data.data).forEach((key) => {
+    //         let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
+    //         values.sort((a, b) => a[0] - b[0]);
+    //         const list = key == "pressure" ? pressureData : historyForecastData;
+    //         if (key == "pressure" && tmp) {
+    //           historyForecastData.push(tmp);
+    //           tmp = null;
+    //         }
+    //         values = list.concat([values[values.length - 1]]);
+    //         values.sort((a, b) => a[0] - b[0]);
+    //         if (key == "forecast") {
+    //           tmp = values.pop();
+    //         }
 
-            values = values.slice(
-              -Math.floor(
-                (this.selected.seconds / this.selected.interval) * 1000
-              ) + 20
-            );
+    //         values = values.slice(
+    //           -Math.floor(
+    //             (this.selected.seconds / this.selected.interval) * 1000
+    //           ) + 20
+    //         );
 
-            pressureData = key == "pressure" ? values : [...pressureData];
-            historyForecastData =
-              key == "forecast" ? values : [...historyForecastData];
-          });
-        }
-      )(),
-    });
-    const headers = {
-      "x-authorization": "Bearer " + localStorage.getItem("jwt_token"),
-      "content-type": "application/json",
-    };
-    const forecast = await fetch("/api/forecasts/" + this.forecastId, {
-      headers,
-    })
-      .then(async (res) =>
-        !res.ok ? { error: res.statusText } : { data: await res.json() }
-      )
-      .catch((err) => ({ error: err }));
-    if (forecast.error) return Promise.reject(forecast.error);
-    // @ts-ignore
-    const device_id = forecast.data.deviceId?.id;
-    this.dataWs.next({
-      authCmd: {
-        cmdId: 0,
-        token: localStorage.getItem("jwt_token"),
-      },
-      cmds: [
-        {
-          cmdId: 10,
-          entityType: "DEVICE",
-          entityId: device_id,
-          keys: "pressure,forecast",
-          startTs: Date.now(),
-          timeWindow: Date.now(),
-          scope: "LATEST_TELEMETRY",
-          type: "TIMESERIES",
-        },
-      ],
-    });
+    //         pressureData = key == "pressure" ? values : [...pressureData];
+    //         historyForecastData =
+    //           key == "forecast" ? values : [...historyForecastData];
+    //       });
+    //     }
+    //   )(),
+    // });
+    // const headers = {
+    //   "x-authorization": "Bearer " + localStorage.getItem("jwt_token"),
+    //   "content-type": "application/json",
+    // };
+    // const forecast = await fetch("/api/forecasts/" + this.forecastId, {
+    //   headers,
+    // })
+    //   .then(async (res) =>
+    //     !res.ok ? { error: res.statusText } : { data: await res.json() }
+    //   )
+    //   .catch((err) => ({ error: err }));
+    // if (forecast.error) return Promise.reject(forecast.error);
+    // // @ts-ignore
+    // const device_id = forecast.data.deviceId?.id;
+    // this.dataWs.next({
+    //   authCmd: {
+    //     cmdId: 0,
+    //     token: localStorage.getItem("jwt_token"),
+    //   },
+    //   cmds: [
+    //     {
+    //       cmdId: 10,
+    //       entityType: "DEVICE",
+    //       entityId: device_id,
+    //       keys: "pressure,forecast",
+    //       startTs: Date.now(),
+    //       timeWindow: Date.now(),
+    //       scope: "LATEST_TELEMETRY",
+    //       type: "TIMESERIES",
+    //     },
+    //   ],
+    // });
     this.forecastWs = webSocket({
       url:
         "ws://" +
@@ -877,7 +878,7 @@ export class ForecastChartComponent
       this.seriesHidden = [];
       this.originalSeriesData = {};
 
-      console.log("Refreshing forecast chart connections...");
+      // console.log("Refreshing forecast chart connections...");
 
       // Small delay to ensure connections are properly closed
       setTimeout(() => {
@@ -887,7 +888,7 @@ export class ForecastChartComponent
         // Reset refresh state after a short delay
         setTimeout(() => {
           this.isRefreshing = false;
-          console.log("Forecast chart refresh completed");
+          // console.log("Forecast chart refresh completed");
         }, 1500);
       }, 500);
     } catch (error) {

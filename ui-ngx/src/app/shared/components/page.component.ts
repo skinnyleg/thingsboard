@@ -26,7 +26,9 @@ import { AbstractControl } from '@angular/forms';
 export abstract class PageComponent implements OnDestroy {
 
   isLoading$: Observable<boolean>;
+
   loadingSubscription: Subscription;
+
   disabledOnLoadFormControls: Array<AbstractControl> = [];
 
   showMainLoadingBar = true;
