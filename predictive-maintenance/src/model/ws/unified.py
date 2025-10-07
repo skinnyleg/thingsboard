@@ -518,7 +518,7 @@ async def handle_activate(
         )
 
         try:
-            print(f"[ACTIVATE] Starting anomaly predictor training...")
+            print(f"[ACTIVATE] Starting anomaly predictor training...", flush=True)
             anomaly_result = await asyncio.to_thread(
                 train_and_save_model,
                 model_id=f"{forecast_id}/anomaly_predictor",
@@ -527,7 +527,7 @@ async def handle_activate(
                 data_registry=data_registry,
                 days_back=90,
             )
-            print(f"[ACTIVATE] Anomaly predictor training completed")
+            print(f"[ACTIVATE] Anomaly predictor training completed: {anomaly_result}", flush=True)
 
             await websocket.send_json(
                 {
@@ -541,66 +541,23 @@ async def handle_activate(
                 }
             )
         except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"[ACTIVATE ERROR] Training failed: {str(e)}", flush=True)
+            print(f"[ACTIVATE ERROR] Traceback:\n{error_trace}", flush=True)
             await websocket.send_json(
                 {
                     "commandId": command_id,
-                    "type": "progress",
+                    "type": "error",
                     "step": "anomaly_failed",
                     "message": f"AnomalyPredictor training failed: {str(e)}",
                     "progress": 50,
                     "timestamp": datetime.now().isoformat() + "Z",
                 }
             )
+            return  # Stop activation on training failure
 
-        # Train ForecastModel
-        await websocket.send_json(
-            {
-                "commandId": command_id,
-                "type": "progress",
-                "step": "training_forecast",
-                "message": "Training ForecastModel...",
-                "progress": 55,
-                "timestamp": datetime.now().isoformat() + "Z",
-            }
-        )
-
-        # try:
-        #     forecast_result = train_and_save_model(
-        #         model_id=f"{forecast_id}/forecast_model",
-        #         model_type="ForecastModel",
-        #         device_id=device_id,
-        #         data_registry=data_registry,
-        #         sensor_key="sensor_00",
-        #         sensor_name=f"sensor_{forecast_id}",
-        #         days_back=90,
-        #         time_column="timestamp",
-        #         value_column="value",
-        #     )
-
-        #     await websocket.send_json(
-        #         {
-        #             "commandId": command_id,
-        #             "type": "progress",
-        #             "step": "forecast_complete",
-        #             "message": "ForecastModel trained successfully",
-        #             "progress": 95,
-        #             "metrics": forecast_result.get("training_results", {}),
-        #             "timestamp": datetime.now().isoformat() + "Z",
-        #         }
-        #     )
-        # except Exception as e:
-        #     await websocket.send_json(
-        #         {
-        #             "commandId": command_id,
-        #             "type": "progress",
-        #             "step": "forecast_failed",
-        #             "message": f"ForecastModel training failed: {str(e)}",
-        #             "progress": 95,
-        #             "timestamp": datetime.now().isoformat() + "Z",
-        #         }
-        #     )
-
-        # Start prediction jobs
+        # Start prediction job
         print(f"[ACTIVATE] Starting prediction job...")
         await asyncio.to_thread(
             start_prediction_job,
@@ -609,9 +566,6 @@ async def handle_activate(
             device_id
         )
         print(f"[ACTIVATE] Prediction job started")
-        # start_prediction_job(
-        #     f"{forecast_id}/forecast_model", "ForecastModel", device_id
-        # )
 
         # Send completion
         await websocket.send_json(

@@ -63,17 +63,38 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
     For AnomalyPredictor: Checks for anomalies every 5 minutes
     For ForecastModel: Generates forecasts every 1 hour
     """
+    print(f"[PREDICTION JOB] {model_id} - Worker thread started for {model_type}, device_id={device_id}", flush=True)
     add_model_log(model_id, "info", f"Prediction job started for {model_type}")
 
     try:
         # Load model
+        print(f"[PREDICTION JOB] {model_id} - Initializing model worker", flush=True)
+        add_model_log(model_id, "info", f"Initializing model worker for {model_type}")
         path = settings.models_path
         model_dir = Path(path) / model_id
+        add_model_log(model_id, "info", f"Model directory: {model_dir}")
 
         if model_type == "AnomalyPredictor":
-            model = AnomalyPredictor(name=model_id, algorithm_name="xgboost")
+            add_model_log(model_id, "info", "Getting data registry...")
+            # Get data registry for fetching real-time data
+            from src.model.shared import get_data_registry
+            data_registry = get_data_registry()
+            add_model_log(model_id, "info", f"Data registry obtained: {data_registry is not None}")
+
+            add_model_log(model_id, "info", "Creating AnomalyPredictor instance...")
+            model = AnomalyPredictor(
+                name=model_id,
+                algorithm_name="xgboost",
+                data_registry=data_registry
+            )
+            add_model_log(model_id, "info", "AnomalyPredictor created successfully")
+
+            add_model_log(model_id, "info", f"Loading model from {model_dir}...")
             model.load(model_dir)
-            interval = 300  # 5 minutes
+            add_model_log(model_id, "info", "Model loaded successfully from disk")
+
+            # interval = 300  # 5 minutes
+            interval = 20  # 20 seconds for testing
 
         elif model_type == "ForecastModel":
             model = ForecastModel(name=model_id, algorithm_name="prophet")
@@ -88,27 +109,62 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
             "info",
             f"Model loaded successfully, running predictions every {interval}s",
         )
+        print(f"[PREDICTION JOB] {model_id} - Model loaded successfully, starting prediction loop with {interval}s interval", flush=True)
 
         # Prediction loop
         iteration = 0
+        print(f"[PREDICTION JOB] {model_id} - Entering prediction loop", flush=True)
         while True:
             with job_lock:
                 if (
                     model_id not in active_jobs
                     or active_jobs[model_id]["status"] != "running"
                 ):
+                    print(f"[PREDICTION JOB] {model_id} - Job stopped by user", flush=True)
                     add_model_log(model_id, "info", "Job stopped by user")
                     break
 
             try:
                 iteration += 1
+                print(f"[PREDICTION JOB] {model_id} - Starting iteration #{iteration}", flush=True)
                 add_model_log(
                     model_id, "info", f"Running prediction iteration #{iteration}"
                 )
 
                 if model_type == "AnomalyPredictor":
                     # Fetch latest sensor data and predict
-                    # TODO: Implement real-time sensor data fetching
+                    print(f"[PREDICTION JOB] {model_id} - Iteration {iteration}: Fetching latest data for device {device_id}", flush=True)
+                    add_model_log(
+                        model_id, "info", f"Fetching latest data for device {device_id}"
+                    )
+
+                    latest_data = model.fetch_latest(device_id)
+
+                    print(f"[PREDICTION JOB] {model_id} - Fetched {len(latest_data)} rows of data", flush=True)
+                    add_model_log(
+                        model_id, "info", f"Fetched {len(latest_data)} rows of data"
+                    )
+
+                    if latest_data.empty:
+                        print(f"[PREDICTION JOB] {model_id} - No data available for prediction", flush=True)
+                        add_model_log(
+                            model_id, "warn", "No data available for prediction"
+                        )
+                        continue
+
+                    print(f"[PREDICTION JOB] {model_id} - Running prediction on data with columns: {list(latest_data.columns)}", flush=True)
+                    add_model_log(
+                        model_id, "info", f"Running prediction on data with columns: {list(latest_data.columns)}"
+                    )
+
+                    result = model.predict(latest_data)
+
+                    print(f"[PREDICTION JOB] {model_id} - Prediction result: {result}", flush=True)
+                    add_model_log(
+                        model_id,
+                        "prediction",
+                        f"Anomaly prediction result: {result}",
+                    )
                     add_model_log(
                         model_id,
                         "info",
@@ -133,17 +189,28 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                         active_jobs[model_id]["iterations"] = iteration
 
             except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
+                print(f"[PREDICTION JOB] {model_id} - Prediction failed: {str(e)}", flush=True)
+                print(f"[PREDICTION JOB] {model_id} - Traceback:\n{error_details}", flush=True)
                 add_model_log(model_id, "error", f"Prediction failed: {str(e)}")
+                add_model_log(model_id, "error", f"Traceback: {error_details}")
 
             # Sleep until next interval
+            print(f"[PREDICTION JOB] {model_id} - Sleeping for {interval}s until next iteration", flush=True)
             threading.Event().wait(interval)
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"[PREDICTION JOB] {model_id} - Job worker crashed: {str(e)}", flush=True)
+        print(f"[PREDICTION JOB] {model_id} - Crash traceback:\n{error_details}", flush=True)
         add_model_log(model_id, "error", f"Job worker crashed: {str(e)}")
     finally:
         with job_lock:
             if model_id in active_jobs:
                 active_jobs[model_id]["status"] = "stopped"
+        print(f"[PREDICTION JOB] {model_id} - Job worker terminated", flush=True)
         add_model_log(model_id, "info", "Job worker terminated")
 
 

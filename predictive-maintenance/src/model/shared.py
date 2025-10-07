@@ -143,8 +143,12 @@ def train_and_save_model(
         }
 
     # Save model
+    print(f"[TRAIN_AND_SAVE] About to save model to {model_dir}", flush=True)
+    print(f"[TRAIN_AND_SAVE] Model algorithms: {list(model.algorithms.keys())}", flush=True)
+    print(f"[TRAIN_AND_SAVE] Model is_trained: {model.is_trained}", flush=True)
     model.save(model_dir)
     logger.info(f"Model saved to {model_dir}")
+    print(f"[TRAIN_AND_SAVE] Model save completed", flush=True)
 
     return {
         "status": "success",

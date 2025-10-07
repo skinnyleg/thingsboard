@@ -79,6 +79,15 @@ export interface AnomalyReport {
   confidence: number;
 }
 
+export interface AnomalyLogs {
+  logs: Array<{
+    timestamp: string;
+    level: string; // 'info', 'warn', 'error', 'prediction', etc.
+    message: string;
+  }>;
+  count: number;
+}
+
 @Component({
   selector: 'tb-anomalies',
   standalone: true,
@@ -533,12 +542,12 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
         }
         break;
 
-      case 'anomaly':
-        // Subsequent messages: real-time single anomalies
-        if (data.data && !Array.isArray(data.data)) {
-          this.handleNewAnomaly(data.data);
-        }
-        break;
+      // case 'anomaly':
+      //   // Subsequent messages: real-time single anomalies
+      //   if (data.data && !Array.isArray(data.data)) {
+      //     this.handleNewAnomaly(data.data);
+      //   }
+      //   break;
 
       case 'error':
         console.error('[Anomalies] Stream error:', data.message);

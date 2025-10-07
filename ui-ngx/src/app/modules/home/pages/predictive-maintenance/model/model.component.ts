@@ -31,7 +31,7 @@ import {
 } from '../../../components/predictive-maintenance/components/model/add-model-dialog/add-model-dialog.component';
 import { ModelSelectionDialogComponent } from './model-selection-dialog/model-selection-dialog.component';
 import { ModelLogsDialogComponent } from './model-logs-dialog/model-logs-dialog.component';
-import { AnomaliesComponent } from '../../../components/predictive-maintenance/components/anomalies/anomalies.component';
+import { AnomaliesComponent, AnomalyLogs } from '../../../components/predictive-maintenance/components/anomalies/anomalies.component';
 import { CommonModule } from '@angular/common';
 import { ForecastChartComponent } from '../../../components/predictive-maintenance/components/forecast-chart/forecast-chart.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -166,7 +166,7 @@ export class ModelComponent extends PageComponent implements Order {
   }
 
   changeModel(value: any) {
-    this.router.navigateByUrl('/predictiveMaintenance/forecast/' + value);
+    this.router.navigateByUrl('/predictiveMaintenance/model/' + value);
 
     this.deviceId = '';
     this.Attributes = [];
@@ -210,35 +210,11 @@ export class ModelComponent extends PageComponent implements Order {
     this.modelWebSocketService.connect();
 
     this.init();
-
-    // Subscribe to job logs
-    this.modelWebSocketService.requestJobLogs(this.trueId).subscribe((msg) => {
-        console.log('Log message received:', msg);
-    });
-
-    // Subscribe to real-time job status updates
-    this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
-        console.log('Job status update received:', msg);
-        if (msg?.data) {
-          this.currentIteration = msg.data.iteration || 0;
-          this.jobStatus = msg.data.status;
-          this.lastRunTime = msg.data.last_run;
-
-          // Update main status if job is running (ensure it's a string)
-          // if (this.jobStatus === 'running') {
-          //   this.status = 'active';
-          // } else if (this.jobStatus === 'stopped' || this.jobStatus === 'not_found') {
-          //   this.status = 'inactive';
-          // }
-          if (msg.data.model_exists) {
-            this.status = 'active';
-          }
-        }
-    });
   }
 
   private init() {
     this.route.params.subscribe((params) => {
+      console.log('Route params:', params);
       if (params.id) {
         this.id = params.id;
         this.fetchPredictiveModelConfig(params.id);
@@ -269,6 +245,53 @@ export class ModelComponent extends PageComponent implements Order {
         this.device = forecast.device;
         this.forecastName = forecast.id; // Use the forecast ID as the name
         this.date = forecast.date;
+
+        this.modelWebSocketService.cleanUp();
+
+        // Subscribe to job logs
+        this.modelWebSocketService.requestJobLogs(this.trueId).subscribe((msg) => {
+            console.log('Log message received:', msg);
+            msg.data.logs.forEach(log => {
+              if (log.level === 'prediction') {
+                console.log('Job prediction:', log.message);
+              } else {
+                console.log('Job log:', log.message);
+              }
+            });
+            // msg?..forEach((log: AnomalyLogs) => {
+            // if (log.type === 'prediction') {
+            //   console.log('Job prediction:', log.message);
+            // } else {
+            //   console.log('Job log:', log.message);
+            // }
+          // });
+        });
+
+        // Subscribe to real-time job status updates
+        this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
+          // if (msg.type === 'prediction') {
+          //   console.log('Job prediction:', msg.data.logs);
+          // } else {
+          //   console.log('Job status message received:', msg);
+          // }
+          if (msg?.data) {
+            this.currentIteration = msg.data.iteration || 0;
+            this.jobStatus = msg.data.status;
+              this.lastRunTime = msg.data.last_run;
+
+              // Update main status if job is running (ensure it's a string)
+              // if (this.jobStatus === 'running') {
+              //   this.status = 'active';
+              // } else if (this.jobStatus === 'stopped' || this.jobStatus === 'not_found') {
+              //   this.status = 'inactive';
+              // }
+              if (msg.data.model_exists) {
+                this.status = 'active';
+              } else {
+                this.status = 'inactive';
+              }
+            }
+        });
 
         // Fetch status from the service to ensure it's up-to-date
         // this.getModelStatus();

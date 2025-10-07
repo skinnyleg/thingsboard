@@ -229,7 +229,17 @@ class AnomalyPredictor(BaseModel):
 
         # Prepare data
         X = data[self.feature_columns]
-        y = data["failure_component"]
+        y_raw = data["failure_component"]
+
+        # Encode string labels to integers for XGBoost
+        from sklearn.preprocessing import LabelEncoder
+        self.label_encoder = LabelEncoder()
+        y = self.label_encoder.fit_transform(y_raw)
+
+        # Store class mapping for later use
+        self.class_labels = self.label_encoder.classes_
+        logger.info(f"Class mapping: {dict(enumerate(self.class_labels))}")
+        print(f"[TRAIN] Class mapping: {dict(enumerate(self.class_labels))}", flush=True)
 
         # Train algorithm
         metrics = self.algorithm.train(X, y)
@@ -286,11 +296,17 @@ class AnomalyPredictor(BaseModel):
         X = data[self.feature_columns]
         output = self.algorithm.predict(X)
 
-        predictions = output.predictions  # Predicted component labels
+        predictions_encoded = output.predictions  # Integer predictions
         probabilities = output.probabilities  # Shape: (n_samples, n_classes)
 
-        # Get class labels from the algorithm
-        classes = getattr(self.algorithm, 'classes_', ['none', 'comp1', 'comp2', 'comp3', 'comp4'])
+        # Decode integer predictions back to string labels
+        if hasattr(self, 'label_encoder') and hasattr(self, 'class_labels'):
+            predictions = self.label_encoder.inverse_transform(predictions_encoded)
+            classes = self.class_labels
+        else:
+            # Fallback if model was trained without label encoder
+            predictions = predictions_encoded
+            classes = ['none', 'comp1', 'comp2', 'comp3', 'comp4']
 
         # Build component probabilities for each sample
         component_probs_list = []
@@ -307,7 +323,7 @@ class AnomalyPredictor(BaseModel):
             failure_probs.append(failure_prob)
 
         return {
-            "predicted_components": [str(p) for p in predictions.tolist()],
+            "predicted_components": [str(p) for p in predictions],
             "component_probabilities": component_probs_list,
             "failure_probabilities": failure_probs,
             "n_samples": len(data),
@@ -345,6 +361,30 @@ class AnomalyPredictor(BaseModel):
             "prediction_time": result["prediction_time"],
             "classes": result["classes"],
         }
+
+    def save(self, path):
+        """
+        Save the trained model to disk.
+
+        Overrides base class to also save label_encoder for multi-class classification.
+
+        Args:
+            path: Directory path where to save the model
+        """
+        from pathlib import Path
+        import joblib
+
+        # Call parent save method
+        super().save(path)
+
+        # Additionally save label_encoder and class_labels if they exist
+        path = Path(path)
+        if hasattr(self, 'label_encoder') and hasattr(self, 'class_labels'):
+            joblib.dump({
+                'label_encoder': self.label_encoder,
+                'class_labels': self.class_labels
+            }, path / "label_encoder.pkl")
+            print(f"[SAVE] Saved label encoder with classes: {self.class_labels}", flush=True)
 
     def load(self, path):
         """
@@ -390,3 +430,13 @@ class AnomalyPredictor(BaseModel):
             self.feature_columns = loaded_config.feature_columns
         else:
             raise ValueError("Algorithm 'main' not found in loaded model")
+
+        # Load label_encoder if it exists
+        label_encoder_path = path / "label_encoder.pkl"
+        if label_encoder_path.exists():
+            encoder_data = joblib.load(label_encoder_path)
+            self.label_encoder = encoder_data['label_encoder']
+            self.class_labels = encoder_data['class_labels']
+            print(f"[LOAD] Loaded label encoder with classes: {self.class_labels}", flush=True)
+        else:
+            print(f"[LOAD] No label encoder found, using default classes", flush=True)

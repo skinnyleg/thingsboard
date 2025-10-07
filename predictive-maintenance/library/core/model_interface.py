@@ -47,6 +47,20 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
+    def fetch_latest(self, device_id: str, **kwargs) -> pd.DataFrame:
+        """
+        Fetch latest data for predictions.
+
+        Args:
+            device_id: Device or model identifier
+            **kwargs: Additional parameters (e.g., sensor_key, limit)
+
+        Returns:
+            DataFrame with latest data
+        """
+        pass
+
+    @abstractmethod
     def train(self, data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         """
         Train the model on provided data.

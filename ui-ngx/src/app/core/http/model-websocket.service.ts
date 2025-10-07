@@ -17,7 +17,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { AnomalyReport } from '@home/components/predictive-maintenance/components/anomalies/anomalies.component';
+import { AnomalyLogs, AnomalyReport } from '@home/components/predictive-maintenance/components/anomalies/anomalies.component';
 import { AuthService } from '@core/auth/auth.service';
 
 
@@ -34,13 +34,21 @@ enum AnomalyStreamType {
   RESPONSE = 'response',
 }
 
+export interface AnomalyStreamMessageLogs {
+  type: 'logs';
+  forecast_id?: string;
+  message?: string;
+  data?: AnomalyLogs; // Can be single or array for historical
+  timestamp?: string;
+}
+
 export interface AnomalyStreamMessage {
   cmdId: number;
   data?: {
     type: 'connection' | 'anomaly' | 'historical' | 'error';
     forecast_id?: string;
     message?: string;
-    data?: AnomalyReport | AnomalyReport[]; // Can be single or array for historical
+    data?: AnomalyReport | AnomalyReport[] | AnomalyLogs; // Can be single or array for historical
     timestamp?: string;
   };
   errorCode?: number;
@@ -62,7 +70,7 @@ export class ModelWebSocketService {
 
   private cmdIdCounter = 1;
 
-  private responses$ = new Map<AnomalyStreamType, Subject<AnomalyStreamMessage>>();
+  private responses$ = new Map<AnomalyStreamType, Subject<AnomalyStreamMessage | AnomalyStreamMessageLogs>>();
 
   private isAuthenticated = false;
 
@@ -137,11 +145,11 @@ export class ModelWebSocketService {
     }
   }
 
-  private subscribe(type: AnomalyStreamType): Observable<AnomalyStreamMessage> {
+  private subscribe<T extends AnomalyStreamMessage | AnomalyStreamMessageLogs>(type: AnomalyStreamType): Observable<T> {
     if (!this.responses$.has(type)) {
-      this.responses$.set(type, new Subject<AnomalyStreamMessage>());
+      this.responses$.set(type, new Subject<T>());
     }
-    return this.responses$.get(type).asObservable();
+    return this.responses$.get(type).asObservable() as Observable<T>;
   }
 
   /**
@@ -164,7 +172,7 @@ export class ModelWebSocketService {
         this.responses$.get(AnomalyStreamType.ACTIVATE_COMMAND)?.error(message);
         break;
       case 'logs':
-        console.log('[AnomalyStream] Log message:', message);
+        // console.log('[AnomalyStream] Log message:', message);
         this.responses$.get(AnomalyStreamType.SUBSCRIBE_LOGS_COMMAND)?.next(message);
         break;
       case 'job_status':
@@ -185,7 +193,7 @@ export class ModelWebSocketService {
     }
   }
 
-  requestJobLogs(jobId: string): Observable<AnomalyStreamMessage> {
+  requestJobLogs(jobId: string): Observable<AnomalyStreamMessageLogs> {
     const cmdId = this.cmdIdCounter++;
     const cmd = {
       cmdId,
@@ -199,7 +207,7 @@ export class ModelWebSocketService {
     } else {
       this.ws$.next(cmd);
     }
-    return this.subscribe(AnomalyStreamType.SUBSCRIBE_LOGS_COMMAND);
+    return this.subscribe(AnomalyStreamType.SUBSCRIBE_LOGS_COMMAND) as Observable<AnomalyStreamMessageLogs>;
   }
 
   requestJobStatus(jobId: string): Observable<AnomalyStreamMessage> {
@@ -216,7 +224,7 @@ export class ModelWebSocketService {
     } else {
       this.ws$.next(cmd);
     }
-    return this.responses$.get(AnomalyStreamType.JOB_STATUS_COMMAND);
+    return this.responses$.get(AnomalyStreamType.JOB_STATUS_COMMAND) as Observable<AnomalyStreamMessage>;
   }
 
   /**
@@ -285,6 +293,10 @@ export class ModelWebSocketService {
   }
 
   private sentActivateCommand = false;
+
+  cleanUp() {
+    this.sentActivateCommand = false;
+  }
 
   sendActivateCommand(forecastId: string): Observable<AnomalyStreamMessage> {
     if (this.sentActivateCommand) {
