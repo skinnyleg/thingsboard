@@ -385,7 +385,10 @@ class DataRegistry:
 
                 if not telemetry_data:
                     logger.warning(f"No telemetry data found for device {device_id}")
+                    print(f"[FETCH] No telemetry data found for device {device_id}", flush=True)
                     return pd.DataFrame(), None
+
+                print(f"[FETCH] Got {len(telemetry_data)} telemetry records for device {device_id}", flush=True)
 
                 # Pivot telemetry data
                 telemetry_df = pd.DataFrame(telemetry_data)
@@ -393,11 +396,15 @@ class DataRegistry:
                     index="datetime", columns="key", values="value"
                 ).reset_index()
 
+                print(f"[FETCH] After pivot: {telemetry_pivot.shape}, columns: {list(telemetry_pivot.columns)}", flush=True)
+
                 # Resample to 3-hour intervals
                 telemetry_pivot.set_index("datetime", inplace=True)
                 telemetry_3h = (
                     telemetry_pivot.resample("3h").agg(["mean", "std"]).reset_index()
                 )
+
+                print(f"[FETCH] After 3h resample: {telemetry_3h.shape}", flush=True)
 
                 # Flatten column names
                 telemetry_3h.columns = [
@@ -405,31 +412,41 @@ class DataRegistry:
                     for col in telemetry_3h.columns
                 ]
 
-                # Calculate 24-hour rolling features
-                telemetry_pivot_reset = telemetry_pivot.reset_index()
+                # Calculate 24-hour rolling features on the 3h resampled data
+                # Need to work with the 3h data before flattening column names
+                telemetry_3h_temp = telemetry_pivot.resample("3h").agg(["mean", "std"])
                 telemetry_24h_list = []
 
                 for col in telemetry_keys:  # Dynamic telemetry keys
-                    if col in telemetry_pivot.columns:
-                        rolling_mean = (
-                            telemetry_pivot[col].rolling(window=8, center=False).mean()
-                        )  # 8 * 3h = 24h
-                        rolling_std = (
-                            telemetry_pivot[col].rolling(window=8, center=False).std()
-                        )
+                    if (col, 'mean') in telemetry_3h_temp.columns:
+                        mean_col = (col, 'mean')
+                        # Apply 24h rolling window (8 periods of 3h each)
+                        rolling_mean = telemetry_3h_temp[mean_col].rolling(window=8, center=False).mean()
+                        rolling_std = telemetry_3h_temp[mean_col].rolling(window=8, center=False).std()
                         telemetry_24h_list.append(rolling_mean.rename(f"{col}mean_24h"))
-                        telemetry_24h_list.append(rolling_std.rename(f"{col}std_24h"))
+                        telemetry_24h_list.append(rolling_std.rename(f"{col}sd_24h"))
 
-                telemetry_24h = pd.concat(
-                    [telemetry_pivot.reset_index()["datetime"]] + telemetry_24h_list,
-                    axis=1,
-                )
-                telemetry_24h = telemetry_24h.dropna()
+                # Concatenate 24h rolling features
+                if telemetry_24h_list:
+                    telemetry_24h = pd.concat(telemetry_24h_list, axis=1).reset_index()
+                else:
+                    telemetry_24h = telemetry_3h_temp.reset_index()[["datetime"]]
 
-                # Merge 3h and 24h features
+                print(f"[FETCH] 24h features shape before dropna: {telemetry_24h.shape}", flush=True)
+
+                # Merge 3h and 24h features (both on same 3h resampled datetime index)
+                print(f"[FETCH] telemetry_3h shape: {telemetry_3h.shape}, telemetry_24h shape: {telemetry_24h.shape}", flush=True)
                 features_df = telemetry_3h.merge(
-                    telemetry_24h, on="datetime", how="inner"
+                    telemetry_24h, on="datetime", how="left"
                 )
+                print(f"[FETCH] After merge, features_df shape: {features_df.shape}", flush=True)
+
+                # Drop rows where ALL 24h features are NaN (first ~8 periods)
+                feature_cols_24h = [col for col in features_df.columns if '24h' in col]
+                if feature_cols_24h:
+                    print(f"[FETCH] Before dropna on 24h features: {len(features_df)} rows", flush=True)
+                    features_df = features_df.dropna(subset=feature_cols_24h, how='all')
+                    print(f"[FETCH] After dropna on 24h features: {len(features_df)} rows", flush=True)
 
                 # Fetch error counts (24h rolling window)
                 # Query from device_errors table instead of ts_kv
@@ -574,6 +591,8 @@ class DataRegistry:
                     for i in range(1, 5):
                         features_df[f"comp{i}"] = 365
 
+                print(f"[FETCH] Before adding age, features_df shape: {features_df.shape}", flush=True)
+
                 # Add machine age (fetch from device attributes)
                 age_key_id = self._get_key_id('age')
                 machine_age = 10  # Default age
@@ -624,15 +643,22 @@ class DataRegistry:
 
                     failure_data = []
                     for row in failure_result:
+                        # Floor failure time to nearest 3-hour interval to match feature timestamps
+                        failure_dt = pd.to_datetime(row.failure_time)
+                        failure_dt_floored = failure_dt.floor('3H')
                         failure_data.append(
                             {
-                                "datetime": pd.to_datetime(row.failure_time),
+                                "datetime": failure_dt_floored,
                                 "failure_component": row.root_cause if row.root_cause else 'none',
                             }
                         )
 
                     if failure_data:
                         failure_df = pd.DataFrame(failure_data)
+                        print(f"[FETCH] Found {len(failure_df)} failure records", flush=True)
+                        print(f"[FETCH] Failure timestamps (floored to 3h): {failure_df['datetime'].tolist()[:5]}", flush=True)
+                        print(f"[FETCH] Feature datetime range: {features_df['datetime'].min()} to {features_df['datetime'].max()}", flush=True)
+
                         features_with_labels = features_df.merge(
                             failure_df, on="datetime", how="left"
                         )
@@ -640,9 +666,13 @@ class DataRegistry:
                             features_with_labels["failure_component"]
                             .fillna('none')
                         )
+                        print(f"[FETCH] Labels value counts: {labels.value_counts().to_dict()}", flush=True)
+
                         features_df = features_with_labels.drop(
                             "failure_component", axis=1
                         )
+                    else:
+                        print(f"[FETCH] No failure data found for device {device_id}", flush=True)
 
                 # Drop datetime column for training
                 if "datetime" in features_df.columns:
@@ -683,12 +713,13 @@ class DataRegistry:
                 logger.info(
                     f"Fetched {len(features_df)} samples with {len(expected_cols)} features: {expected_cols}"
                 )
+                print(f"[FETCH] Returning features_df with {len(features_df)} samples and labels: {type(labels)}", flush=True)
                 return features_df, labels
 
         except Exception as e:
             logger.error(f"Error fetching anomaly training data: {e}")
             import traceback
-
+            print(f"[FETCH ERROR] Exception occurred: {str(e)}", flush=True)
             traceback.print_exc()
             return pd.DataFrame(), None
 

@@ -118,38 +118,66 @@ class AnomalyPredictor(BaseModel):
             )
 
             if features_df.empty:
-                print(
-                    f"[FETCH] No training data available for device {device_id}, using synthetic data"
+                raise ValueError(
+                    f"No training data available for device {device_id}. "
+                    "Ensure the device has telemetry data (pressure, voltage, rotation, vibration) "
+                    "for at least 24 hours."
                 )
-                return self._generate_sample_data(n_samples=1000)
 
             # Combine features and labels
-            if labels is not None:
-                training_data = features_df.copy()
-                training_data["failure_component"] = labels
-                return training_data
-            else:
-                # If no failure data, create synthetic labels
-                logger.warning("No failure history found, creating synthetic labels")
-                training_data = features_df.copy()
-                # Use voltage mean as proxy for failure risk and assign random components
-                training_data["failure_component"] = 'none'
-                high_risk = training_data["voltmean_3h"] > training_data["voltmean_3h"].quantile(0.9)
-                component_labels = ['comp1', 'comp2', 'comp3', 'comp4']
-                training_data.loc[high_risk, "failure_component"] = np.random.choice(
-                    component_labels, size=high_risk.sum()
+            if labels is None or len(labels) == 0:
+                raise ValueError(
+                    f"No failure history found for device {device_id}. "
+                    "Cannot train model without labeled failure data. "
+                    "Please add failure records to the device_failures table with root_cause values."
                 )
-                return training_data
 
+            training_data = features_df.copy()
+            training_data["failure_component"] = labels
+
+            # Filter out 'none' samples - only train on actual component failures
+            failure_mask = training_data["failure_component"] != 'none'
+            training_data_filtered = training_data[failure_mask]
+
+            if len(training_data_filtered) == 0:
+                raise ValueError(
+                    f"No actual component failures found for device {device_id}. "
+                    "All failure records have root_cause='none' or NULL. "
+                    "Need at least some failures with root_cause in ['comp1', 'comp2', 'comp3', 'comp4']."
+                )
+
+            print(f"[FETCH] Filtered training data: {len(training_data)} -> {len(training_data_filtered)} samples (excluded 'none')", flush=True)
+            print(f"[FETCH] Component distribution: {training_data_filtered['failure_component'].value_counts().to_dict()}", flush=True)
+
+            return training_data_filtered
+
+        except ValueError as ve:
+            # Re-raise ValueError to be caught by caller
+            raise ve
         except Exception as e:
             logger.error(f"Error fetching training data: {e}")
-            logger.warning("Falling back to synthetic data")
-            return self._generate_sample_data(n_samples=1000)
+            raise RuntimeError(f"Failed to fetch training data: {str(e)}")
 
     def fetch_latest(self, device_id, **kwargs):
-        data = self.fetch(device_id)
-        latest_data = data.tail(1)
+        # Fetch features WITHOUT failure labels for prediction
+        if not self.data_registry:
+            raise ValueError("No data registry available")
+
+        features_df, _ = self.data_registry.fetch_anomaly_training_data(
+            device_id=device_id, days_back=30, include_failures=False
+        )
+
+        if features_df.empty:
+            raise ValueError(f"No data available for device {device_id}")
+
+        # Get the latest row
+        latest_data = features_df.tail(1)
         latest_data = latest_data.fillna(0)
+
+        # Ensure failure_component column doesn't exist in prediction data
+        if 'failure_component' in latest_data.columns:
+            latest_data = latest_data.drop('failure_component', axis=1)
+
         return latest_data
 
     def _generate_sample_data(self, n_samples=1000) -> pd.DataFrame:
