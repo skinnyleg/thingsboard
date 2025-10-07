@@ -102,88 +102,55 @@ class AnomalyPredictor(BaseModel):
         import logging
 
         logger = logging.getLogger(__name__)
-        days_back = kwargs.get("days_back", 90)
+        # TODO: Allow configuring days_back later
+        # days_back = kwargs.get("days_back", 5000)
+        days_back = 240
 
         # Use registry if available
-        if self.data_registry:
-            try:
-                logger.info(
-                    f"Fetching training data via registry for device {device_id}"
+        if not self.data_registry:
+            logger.error("No data registry available, using synthetic data")
+            return self._generate_sample_data(n_samples=1000)
+        try:
+            logger.info(f"Fetching training data via registry for device {device_id}")
+
+            features_df, labels = self.data_registry.fetch_anomaly_training_data(
+                device_id=device_id, days_back=days_back, include_failures=True
+            )
+
+            if features_df.empty:
+                print(
+                    f"[FETCH] No training data available for device {device_id}, using synthetic data"
                 )
-
-                features_df, labels = self.data_registry.fetch_anomaly_training_data(
-                    device_id=device_id, days_back=days_back, include_failures=True
-                )
-
-                if features_df.empty:
-                    logger.warning(
-                        f"No training data available for device {device_id}, using synthetic data"
-                    )
-                    return self._generate_sample_data(n_samples=1000)
-
-                # Combine features and labels
-                if labels is not None:
-                    training_data = features_df.copy()
-                    training_data["failure_within_24h"] = labels
-                    return training_data
-                else:
-                    # If no failure data, create synthetic labels
-                    logger.warning(
-                        "No failure history found, creating synthetic labels"
-                    )
-                    training_data = features_df.copy()
-                    # Use voltage mean as proxy for failure risk
-                    training_data["failure_within_24h"] = (
-                        training_data["voltmean_3h"]
-                        > training_data["voltmean_3h"].quantile(0.9)
-                    ).astype(int)
-                    return training_data
-
-            except Exception as e:
-                logger.error(f"Error fetching training data: {e}")
-                logger.warning("Falling back to synthetic data")
                 return self._generate_sample_data(n_samples=1000)
-        else:
-            # Fallback to old method if no registry
-            logger.warning("No data registry provided, using legacy fetch method")
-            from src.db_connector import create_training_dataset_for_anomaly
 
-            try:
-                logger.info(f"Fetching training data for device {device_id}")
-
-                features_df, labels = create_training_dataset_for_anomaly(
-                    device_id=device_id, days_back=days_back, include_failures=True
+            # Combine features and labels
+            if labels is not None:
+                training_data = features_df.copy()
+                training_data["failure_component"] = labels
+                return training_data
+            else:
+                # If no failure data, create synthetic labels
+                logger.warning("No failure history found, creating synthetic labels")
+                training_data = features_df.copy()
+                # Use voltage mean as proxy for failure risk and assign random components
+                training_data["failure_component"] = 'none'
+                high_risk = training_data["voltmean_3h"] > training_data["voltmean_3h"].quantile(0.9)
+                component_labels = ['comp1', 'comp2', 'comp3', 'comp4']
+                training_data.loc[high_risk, "failure_component"] = np.random.choice(
+                    component_labels, size=high_risk.sum()
                 )
+                return training_data
 
-                if features_df.empty:
-                    logger.warning(
-                        f"No training data available for device {device_id}, using synthetic data as fallback"
-                    )
-                    return self._generate_sample_data(n_samples=1000)
+        except Exception as e:
+            logger.error(f"Error fetching training data: {e}")
+            logger.warning("Falling back to synthetic data")
+            return self._generate_sample_data(n_samples=1000)
 
-                # Combine features and labels
-                if labels is not None:
-                    training_data = features_df.copy()
-                    training_data["failure_within_24h"] = labels
-                    return training_data
-                else:
-                    # If no failure data, create synthetic labels for training
-                    logger.warning(
-                        "No failure history found, creating synthetic labels"
-                    )
-                    training_data = features_df.copy()
-                    training_data["failure_within_24h"] = (
-                        training_data.get("voltmean_3h", training_data.mean(axis=1))
-                        > training_data.get(
-                            "voltmean_3h", training_data.mean(axis=1)
-                        ).quantile(0.9)
-                    ).astype(int)
-                    return training_data
-
-            except Exception as e:
-                logger.error(f"Error fetching training data: {e}")
-                logger.warning("Falling back to synthetic data")
-                return self._generate_sample_data(n_samples=1000)
+    def fetch_latest(self, device_id, **kwargs):
+        data = self.fetch(device_id)
+        latest_data = data.tail(1)
+        latest_data = latest_data.fillna(0)
+        return latest_data
 
     def _generate_sample_data(self, n_samples=1000) -> pd.DataFrame:
         """
@@ -204,7 +171,18 @@ class AnomalyPredictor(BaseModel):
             data[f"sensor_{i:02d}"] = base_values
 
         sensor_avg = np.mean([data[f"sensor_{i:02d}"] for i in range(48)], axis=0)
-        data["failure_within_24h"] = (sensor_avg > 90).astype(int)
+
+        # Multi-class target: 'none', 'comp1', 'comp2', 'comp3', 'comp4'
+        failure_component = np.full(n_samples, 'none', dtype=object)
+        failure_indices = sensor_avg > 90
+
+        # Assign random components to failures
+        component_labels = ['comp1', 'comp2', 'comp3', 'comp4']
+        failure_component[failure_indices] = np.random.choice(
+            component_labels, size=np.sum(failure_indices)
+        )
+
+        data["failure_component"] = failure_component
 
         return pd.DataFrame(data)
 
@@ -213,18 +191,18 @@ class AnomalyPredictor(BaseModel):
         Train the model on historical machine data.
 
         Args:
-            data: DataFrame with engineered features and 'failure_within_24h' target
+            data: DataFrame with engineered features and 'failure_component' target
             **kwargs: Additional training parameters
 
         Returns:
             Dictionary with training results
         """
-        if "failure_within_24h" not in data.columns:
-            raise ValueError("Data must contain 'failure_within_24h' target column")
+        if "failure_component" not in data.columns:
+            raise ValueError("Data must contain 'failure_component' target column")
 
         # Extract feature columns dynamically (all columns except target)
         self.feature_columns = [
-            col for col in data.columns if col != "failure_within_24h"
+            col for col in data.columns if col != "failure_component"
         ]
 
         logger = logging.getLogger(__name__)
@@ -237,9 +215,9 @@ class AnomalyPredictor(BaseModel):
             config = SupervisedConfig(
                 name=self.algorithm_name,
                 algorithm_type=AlgorithmType.SUPERVISED,
-                task_type=TaskType.BINARY_CLASSIFICATION,
+                task_type=TaskType.MULTICLASS_CLASSIFICATION,
                 feature_columns=self.feature_columns,
-                target_column="failure_within_24h",
+                target_column="failure_component",
                 hyperparameters=self.algorithm_hyperparams.copy(),
             )
 
@@ -251,7 +229,7 @@ class AnomalyPredictor(BaseModel):
 
         # Prepare data
         X = data[self.feature_columns]
-        y = data["failure_within_24h"]
+        y = data["failure_component"]
 
         # Train algorithm
         metrics = self.algorithm.train(X, y)
@@ -283,15 +261,15 @@ class AnomalyPredictor(BaseModel):
         self, data: pd.DataFrame, threshold: float = 0.5, **kwargs
     ) -> Dict[str, Any]:
         """
-        Predict if machines will fail within 24 hours.
+        Predict which component will fail within 24 hours (multi-class).
 
         Args:
             data: DataFrame with engineered features
-            threshold: Probability threshold for classification
+            threshold: Probability threshold for classification (not used in multi-class)
             **kwargs: Additional parameters
 
         Returns:
-            Dictionary with predictions and probabilities
+            Dictionary with predictions and component probabilities
         """
         if not self.is_trained:
             raise ValueError("Model must be trained before making predictions")
@@ -308,34 +286,48 @@ class AnomalyPredictor(BaseModel):
         X = data[self.feature_columns]
         output = self.algorithm.predict(X)
 
-        predictions = output.predictions
-        probabilities = (
-            output.probabilities[:, 1]
-            if output.probabilities.ndim > 1
-            else output.probabilities
-        )
+        predictions = output.predictions  # Predicted component labels
+        probabilities = output.probabilities  # Shape: (n_samples, n_classes)
+
+        # Get class labels from the algorithm
+        classes = getattr(self.algorithm, 'classes_', ['none', 'comp1', 'comp2', 'comp3', 'comp4'])
+
+        # Build component probabilities for each sample
+        component_probs_list = []
+        for i in range(len(predictions)):
+            sample_probs = {}
+            for j, cls in enumerate(classes):
+                sample_probs[str(cls)] = float(probabilities[i, j])
+            component_probs_list.append(sample_probs)
+
+        # Calculate failure probability (1 - P(none))
+        failure_probs = []
+        for probs in component_probs_list:
+            failure_prob = 1.0 - probs.get('none', 0.0)
+            failure_probs.append(failure_prob)
 
         return {
-            "predictions": predictions.tolist(),
-            "probabilities": probabilities.tolist(),
-            "threshold": threshold,
+            "predicted_components": [str(p) for p in predictions.tolist()],
+            "component_probabilities": component_probs_list,
+            "failure_probabilities": failure_probs,
             "n_samples": len(data),
             "features_used": self.feature_columns,
             "prediction_time": datetime.now().isoformat(),
+            "classes": [str(c) for c in classes],
         }
 
     def predict_single_machine(
         self, feature_dict: Dict[str, float], threshold: float = 0.5
     ) -> Dict[str, Any]:
         """
-        Predict failure for a single machine.
+        Predict which component will fail for a single machine.
 
         Args:
             feature_dict: Dictionary mapping feature names to values
-            threshold: Probability threshold
+            threshold: Probability threshold (not used in multi-class)
 
         Returns:
-            Dictionary with prediction result
+            Dictionary with prediction result including component probabilities
         """
         # Convert to DataFrame
         data = pd.DataFrame([feature_dict])
@@ -345,9 +337,56 @@ class AnomalyPredictor(BaseModel):
 
         # Return single result
         return {
-            "will_fail": bool(result["predictions"][0]),
-            "failure_probability": result["probabilities"][0],
-            "threshold": threshold,
+            "predicted_component": result["predicted_components"][0],
+            "component_probabilities": result["component_probabilities"][0],
+            "failure_probability": result["failure_probabilities"][0],
+            "will_fail": result["predicted_components"][0] != 'none',
             "features_used": result["features_used"],
             "prediction_time": result["prediction_time"],
+            "classes": result["classes"],
         }
+
+    def load(self, path):
+        """
+        Load the trained model from disk.
+
+        Overrides the base class method to properly restore the algorithm reference.
+
+        Args:
+            path: Directory path where the model is saved
+        """
+        from pathlib import Path
+        from ..algorithms.factory import AlgorithmRegistry
+        from ..core.types import SupervisedConfig, TaskType, AlgorithmType
+        import joblib
+
+        path = Path(path)
+
+        # Load metadata first
+        metadata = joblib.load(path / "metadata.pkl")
+        self.name = metadata["name"]
+        self.is_trained = metadata["is_trained"]
+        self.created_at = metadata["created_at"]
+        self.last_updated = metadata.get("last_updated")
+
+        # Load the algorithm if it exists
+        if "main" in metadata["algorithm_keys"]:
+            algorithm_path = path / "algorithm_main.pkl"
+
+            # Load the algorithm data to get the config
+            algorithm_data = joblib.load(algorithm_path)
+            loaded_config = algorithm_data["config"]
+
+            # Create a new algorithm instance with the loaded config
+            self.algorithm = AlgorithmRegistry.create(loaded_config)
+
+            # Now load the trained model into the algorithm
+            self.algorithm.load(algorithm_path)
+
+            # Add to algorithms dict
+            self.add_algorithm("main", self.algorithm)
+
+            # Restore feature columns from the config
+            self.feature_columns = loaded_config.feature_columns
+        else:
+            raise ValueError("Algorithm 'main' not found in loaded model")

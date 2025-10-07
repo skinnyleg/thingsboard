@@ -606,7 +606,7 @@ class DataRegistry:
                         """
                         SELECT
                             failure_time,
-                            1 as failure_label
+                            root_cause
                         FROM device_failures
                         WHERE device_id = :device_id
                         AND failure_time >= :cutoff_time
@@ -627,7 +627,7 @@ class DataRegistry:
                         failure_data.append(
                             {
                                 "datetime": pd.to_datetime(row.failure_time),
-                                "failure_within_24h": row.failure_label,
+                                "failure_component": row.root_cause if row.root_cause else 'none',
                             }
                         )
 
@@ -637,12 +637,11 @@ class DataRegistry:
                             failure_df, on="datetime", how="left"
                         )
                         labels = (
-                            features_with_labels["failure_within_24h"]
-                            .fillna(0)
-                            .astype(int)
+                            features_with_labels["failure_component"]
+                            .fillna('none')
                         )
                         features_df = features_with_labels.drop(
-                            "failure_within_24h", axis=1
+                            "failure_component", axis=1
                         )
 
                 # Drop datetime column for training
