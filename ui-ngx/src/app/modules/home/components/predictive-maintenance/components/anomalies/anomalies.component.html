@@ -10,12 +10,12 @@
                         <mat-icon class="title-icon">bug_report</mat-icon>
                         Anomalies
                         <!-- Live stream indicator -->
-                        <span *ngIf="forecastId" class="stream-indicator" [class.connected]="isStreamConnected"
+                        <span *ngIf="forecastId && isStreamConnected || streamError" class="stream-indicator" [class.connected]="isStreamConnected"
                             [class.error]="streamError"
                             [matTooltip]="streamError || (isStreamConnected ? 'Live stream connected' : 'Connecting to stream...')"
                             matTooltipPosition="right">
                             <span class="stream-text">
-                                {{ isStreamConnected ? 'LIVE' : (streamError ? 'ERROR' : 'CONNECTING') }}
+                                {{ isStreamConnected ? 'LIVE' : (streamError ? 'ERROR' : '') }}
                             </span>
                         </span>
                     </div>
