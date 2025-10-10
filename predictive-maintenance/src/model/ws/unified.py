@@ -178,7 +178,7 @@ async def unified_model_stream(websocket: WebSocket):
                     await asyncio.sleep(5)
 
         # Start subscription updater task
-        updater_task = asyncio.create_task(subscription_updater())
+        # updater_task = asyncio.create_task(subscription_updater())
 
         # Main message handling loop
         while True:
@@ -332,7 +332,7 @@ async def unified_model_stream(websocket: WebSocket):
                                         "timestamp": datetime.now().isoformat() + "Z",
                                     }
                                 ),
-                                loop
+                                loop,
                             )
                         except Exception as e:
                             logger.error(f"Error sending real-time log: {str(e)}")
@@ -340,12 +340,18 @@ async def unified_model_stream(websocket: WebSocket):
                     return log_callback
 
                 # Store the callback and subscribe (pass the event loop)
-                callback = create_log_callback(websocket, forecast_id, asyncio.get_event_loop())
+                callback = create_log_callback(
+                    websocket, forecast_id, asyncio.get_event_loop()
+                )
                 log_callbacks[model_id] = callback
                 subscribe_to_logs(model_id, callback)
 
-                logger.info(f"Client subscribed to real-time logs for forecast {forecast_id}")
-                print(f"[LOG SUBSCRIBE] Client subscribed to real-time logs for forecast {forecast_id}")
+                logger.info(
+                    f"Client subscribed to real-time logs for forecast {forecast_id}"
+                )
+                print(
+                    f"[LOG SUBSCRIBE] Client subscribed to real-time logs for forecast {forecast_id}"
+                )
 
                 await websocket.send_json(
                     {
@@ -467,6 +473,7 @@ async def handle_activate(
 
         # Run synchronous data registry creation in thread pool to avoid blocking event loop
         import asyncio
+
         data_registry = await asyncio.to_thread(get_data_registry)
         print(f"[ACTIVATE] Data registry initialized")
 
@@ -494,6 +501,7 @@ async def handle_activate(
         except Exception as e:
             print(f"[ACTIVATE ERROR] Failed to fetch configuration: {str(e)}")
             import traceback
+
             traceback.print_exc()
             await websocket.send_json(
                 {
@@ -527,7 +535,10 @@ async def handle_activate(
                 data_registry=data_registry,
                 days_back=90,
             )
-            print(f"[ACTIVATE] Anomaly predictor training completed: {anomaly_result}", flush=True)
+            print(
+                f"[ACTIVATE] Anomaly predictor training completed: {anomaly_result}",
+                flush=True,
+            )
 
             await websocket.send_json(
                 {
@@ -542,6 +553,7 @@ async def handle_activate(
             )
         except Exception as e:
             import traceback
+
             error_trace = traceback.format_exc()
             print(f"[ACTIVATE ERROR] Training failed: {str(e)}", flush=True)
             print(f"[ACTIVATE ERROR] Traceback:\n{error_trace}", flush=True)
@@ -557,13 +569,14 @@ async def handle_activate(
             )
             return  # Stop activation on training failure
 
+        # return
         # Start prediction job
         print(f"[ACTIVATE] Starting prediction job...")
         await asyncio.to_thread(
             start_prediction_job,
             f"{forecast_id}/anomaly_predictor",
             "AnomalyPredictor",
-            device_id
+            device_id,
         )
         print(f"[ACTIVATE] Prediction job started")
 
@@ -593,7 +606,9 @@ async def handle_activate(
 
 async def handle_job_status(websocket: WebSocket, command_id: int, forecast_id: str):
     """Handle job status request"""
-    print(f"[JOB STATUS] Received job status request - commandId: {command_id}, forecastId: {forecast_id}")
+    print(
+        f"[JOB STATUS] Received job status request - commandId: {command_id}, forecastId: {forecast_id}"
+    )
     try:
         model_id = f"{forecast_id}/anomaly_predictor"
         job_status = get_job_status(model_id)

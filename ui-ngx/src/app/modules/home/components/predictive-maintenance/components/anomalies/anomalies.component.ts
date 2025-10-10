@@ -77,13 +77,28 @@ export interface AnomalyReport {
   status: 'Active' | 'Resolved' | 'Investigating';
   affectedMetrics: string[];
   confidence: number;
+  // timeRange may be a human-friendly string or an ISO range; startTime/endTime are used in template
+  timeRange?: string;
+  startTime?: string | number; // ISO string or epoch millis
+  endTime?: string | number;
+}
+
+export interface AnomalyPrediction {
+  datetime: string; // ISO date string
+  predicted_failing_component: string;
+  general_failure_probability: number; // 0 to 1
+  component_failure_probabilities: { [component: string]: number }; // e.g., {comp1: 0.9, comp2: 0.1}
+  component_probabilities: { [component: string]: number }; // e.g., {comp1: 0.8, comp2: 0.2, none: 0.0}
+  failure_predicted: boolean;
 }
 
 export interface AnomalyLogs {
   logs: Array<{
     timestamp: string;
     level: string; // 'info', 'warn', 'error', 'prediction', etc.
-    message: string;
+    message: string | {
+      result?: AnomalyPrediction[];
+    };
   }>;
   count: number;
 }
@@ -135,14 +150,23 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
 
   streamError: string | null = null;
 
+  /**
+   * External setter for stream connection status so parent components can update the UI
+   */
+  public setStreamStatus(connected: boolean, error: string | null = null): void {
+    this.isStreamConnected = connected;
+    this.streamError = error;
+  }
+
   displayedColumns: string[] = [
-    'severity',
-    'creationDate',
+    'timeRange',
     'componentType',
+    'confidence',
+    'creationDate',
+    'severity',
     'deviceType',
     'location',
     'status',
-    'confidence',
     'actions',
   ];
 
@@ -150,19 +174,21 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
   stickyColumns: Set<string> = new Set();
 
   allColumns: DisplayColumn[] = [
-    { title: 'Severity', def: 'severity', display: true, selectable: true },
-    {
-      title: 'Creation Date',
-      def: 'creationDate',
-      display: true,
-      selectable: true,
-    },
+    { title: 'Failure Time Range', def: 'timeRange', display: true, selectable: true },
     {
       title: 'Component Type',
       def: 'componentType',
       display: true,
       selectable: true,
     },
+    { title: 'Confidence', def: 'confidence', display: true, selectable: true },
+    {
+      title: 'Prediction Time',
+      def: 'creationDate',
+      display: true,
+      selectable: true,
+    },
+    { title: 'Severity', def: 'severity', display: true, selectable: true },
     {
       title: 'Device Type',
       def: 'deviceType',
@@ -171,7 +197,6 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
     },
     { title: 'Location', def: 'location', display: true, selectable: true },
     { title: 'Status', def: 'status', display: true, selectable: true },
-    { title: 'Confidence', def: 'confidence', display: true, selectable: true },
     { title: 'Actions', def: 'actions', display: true, selectable: false },
   ];
 
@@ -180,7 +205,7 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
   isRefreshing = false;
 
   // Start with empty array - will be populated only from stream
-  private anomalies: AnomalyReport[] = [];
+  private anomalies: Map<string, AnomalyReport> = new Map<string, AnomalyReport>();
 
   // Date filter
   filterStartDate: Date | null = null;
@@ -197,9 +222,38 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
     private translate: TranslateService,
   ) {}
 
+  /**
+   * Public method to add a new anomaly from outside (e.g., parent component)
+   * Accepts an AnomalyReport and adds it to the table
+   */
+  public addAnomaly(anomaly: AnomalyReport): void {
+    console.log(anomaly);
+    this.handleNewAnomaly(anomaly);
+  }
+
+  public updateAnomalies(anomalies: AnomalyReport[]): void {
+    this.anomalies.clear();
+    anomalies.forEach((anomaly) => {
+      // Ensure startTime/endTime exist - try to parse from timeRange (ISO range or single timestamp)
+      if ((!anomaly.startTime || !anomaly.endTime) && anomaly.timeRange) {
+        // Try formats like "2023-01-01T00:00:00Z/2023-01-01T01:00:00Z" or single ISO
+        const parts = anomaly.timeRange.split('/');
+        if (parts.length === 2) {
+          anomaly.startTime = anomaly.startTime || parts[0];
+          anomaly.endTime = anomaly.endTime || parts[1];
+        } else {
+          anomaly.startTime = anomaly.startTime || anomaly.timeRange;
+          anomaly.endTime = anomaly.endTime || anomaly.timeRange;
+        }
+      }
+      this.anomalies.set(anomaly.id, anomaly);
+    });
+    this.dataSource.data = Array.from(this.anomalies.values());
+  }
+
   ngOnInit(): void {
     // Start with empty data
-    this.dataSource.data = this.anomalies;
+    this.dataSource.data = Array.from(this.anomalies.values());
     // Pin the actions column by default
     this.stickyColumns.add('actions');
 
@@ -230,8 +284,31 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
 
-    // Set default sort by creation date in descending order
-    this.sort.active = 'creationDate';
+    // Provide a sorting accessor that converts timeRange/startTime to numeric timestamp
+    this.dataSource.sortingDataAccessor = (item: AnomalyReport, property: string) => {
+      if (property === 'timeRange') {
+        // Prefer explicit startTime if present, otherwise try to parse timeRange field
+        const start = item.startTime || (item.timeRange ? item.timeRange.split('/')[0] : undefined);
+        const ts = start ? new Date(start).getTime() : 0;
+        return isNaN(ts) ? 0 : ts;
+      }
+      if (property === 'creationDate') {
+        const ts = item.creationDate ? new Date(item.creationDate).getTime() : 0;
+        return isNaN(ts) ? 0 : ts;
+      }
+      if (property === 'confidence') {
+        return item.confidence || 0;
+      }
+      // Default string comparison
+      const value: any = (item as any)[property];
+      if (value === null || value === undefined) {
+        return '';
+      }
+      return typeof value === 'string' ? value.toLowerCase() : value;
+    };
+
+    // Set default sort by failure time range (start time) in descending order
+    this.sort.active = 'timeRange';
     this.sort.direction = 'desc';
     this.dataSource.sort = this.sort;
   }
@@ -312,10 +389,10 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
 
   resolveAnomaly(anomaly: AnomalyReport): void {
     // Implementation for resolving anomaly
-    const index = this.anomalies.findIndex((a) => a.id === anomaly.id);
-    if (index !== -1) {
-      this.anomalies[index].status = 'Resolved';
-      this.dataSource.data = [...this.anomalies];
+    const existingAnomaly = this.anomalies.get(anomaly.id);
+    if (existingAnomaly) {
+      existingAnomaly.status = 'Resolved';
+      this.dataSource.data = Array.from(this.anomalies.values());
     }
     // console.log("Resolve anomaly:", anomaly);
   }
@@ -462,11 +539,16 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
    * Connect to real-time anomaly stream via WebSocket
    */
   private connectToAnomalyStream(): void {
-    return;
     if (!this.forecastId) {
       // console.warn(
       //   "[Anomalies] Cannot connect to stream - no forecastId provided"
       // );
+      return;
+    }
+    // If stream subscription hasn't been configured (stream disabled in this build), bail safely
+    if (!this.streamSubscription) {
+      console.warn('[Anomalies] Stream subscription not configured - live streaming disabled');
+      this.isStreamConnected = false;
       return;
     }
 
@@ -537,7 +619,7 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
           // console.log(
           //   `[Anomalies] Received ${data.data.length} historical anomalies`
           // );
-          this.anomalies = data.data;
+          // this.anomalies = data.data;
           this.filterAnomalies(); // Apply current filter to historical data (internal filtering only)
         }
         break;
@@ -565,12 +647,24 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
     // Update creation date to current timestamp (real-time)
     anomaly.creationDate = new Date().toISOString();
 
-    // Add to the top of the list (most recent first)
-    this.anomalies = [anomaly, ...this.anomalies];
+    // Ensure startTime/endTime exist - try to parse from timeRange if needed
+    if ((!anomaly.startTime || !anomaly.endTime) && anomaly.timeRange) {
+      const parts = anomaly.timeRange.split('/');
+      if (parts.length === 2) {
+        anomaly.startTime = anomaly.startTime || parts[0];
+        anomaly.endTime = anomaly.endTime || parts[1];
+      } else {
+        anomaly.startTime = anomaly.startTime || anomaly.timeRange;
+        anomaly.endTime = anomaly.endTime || anomaly.timeRange;
+      }
+    }
+
+    // Add to the top of the list (most recent first) keyed by id
+    this.anomalies.set(anomaly.id, anomaly);
 
     // Always show new real-time anomalies in the table
     // They are fresh data that just arrived, so they should be visible
-    this.dataSource.data = [anomaly, ...this.dataSource.data];
+    this.dataSource.data = Array.from(this.anomalies.values());
 
     // console.log(
     //   `[Anomalies] Added new anomaly to table at ${anomaly.creationDate}. Total: ${this.dataSource.data.length}`
@@ -578,8 +672,10 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
 
     // Optional: Limit the list size to prevent memory issues
     const maxAnomalies = 500;
-    if (this.anomalies.length > maxAnomalies) {
-      this.anomalies = this.anomalies.slice(0, maxAnomalies);
+    if (this.anomalies.size > maxAnomalies) {
+      const excess = this.anomalies.size - maxAnomalies;
+      const keysToRemove = Array.from(this.anomalies.keys()).slice(0, excess);
+      keysToRemove.forEach((key) => this.anomalies.delete(key));
       // console.log(`[Anomalies] Trimmed anomaly list to ${maxAnomalies} items`);
     }
 
@@ -599,7 +695,7 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
     this.isRefreshing = true;
 
     // Clear existing data
-    this.anomalies = [];
+    this.anomalies.clear();
     this.dataSource.data = [];
 
     if (this.forecastId) {
@@ -656,20 +752,20 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
   private filterAnomalies(): void {
     const filterDateTime = this.getFilterDateTime();
     if (!filterDateTime) {
-      this.dataSource.data = [...this.anomalies];
+      // this.dataSource.data = [...this.anomalies];
       return;
     }
 
     const filterTime = filterDateTime.getTime();
-    const filteredAnomalies = this.anomalies.filter((anomaly) => {
-      const anomalyDate = new Date(anomaly.creationDate);
-      return anomalyDate.getTime() >= filterTime;
-    });
+    // const filteredAnomalies = this.anomalies.filter((anomaly) => {
+    //   const anomalyDate = new Date(anomaly.creationDate);
+    //   return anomalyDate.getTime() >= filterTime;
+    // });
 
     // console.log(
     //   `[Anomalies] Filtered ${filteredAnomalies.length} of ${this.anomalies.length} anomalies`
     // );
-    this.dataSource.data = [...filteredAnomalies];
+    // this.dataSource.data = [...filteredAnomalies];
   }
 
   /**

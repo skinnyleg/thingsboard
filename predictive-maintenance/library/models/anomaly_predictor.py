@@ -113,8 +113,14 @@ class AnomalyPredictor(BaseModel):
         try:
             logger.info(f"Fetching training data via registry for device {device_id}")
 
+            # features_df, labels = self.data_registry.fetch_anomaly_training_data(
+            #     device_id=device_id, days_back=days_back, include_failures=True, start_date=None
+            # )
             features_df, labels = self.data_registry.fetch_anomaly_training_data(
-                device_id=device_id, days_back=days_back, include_failures=True
+                device_id=device_id,
+                days_back=days_back,
+                include_failures=True,
+                start_date=datetime(2015, 1, 1, 6, 0, 0),
             )
 
             if features_df.empty:
@@ -135,21 +141,17 @@ class AnomalyPredictor(BaseModel):
             training_data = features_df.copy()
             training_data["failure_component"] = labels
 
-            # Filter out 'none' samples - only train on actual component failures
-            failure_mask = training_data["failure_component"] != 'none'
-            training_data_filtered = training_data[failure_mask]
+            # Use all data for training, including 'none' (no failure) samples
+            print(
+                f"[FETCH] Training data: {len(training_data)} samples (including 'none')",
+                flush=True,
+            )
+            print(
+                f"[FETCH] Component distribution: {training_data['failure_component'].value_counts().to_dict()}",
+                flush=True,
+            )
 
-            if len(training_data_filtered) == 0:
-                raise ValueError(
-                    f"No actual component failures found for device {device_id}. "
-                    "All failure records have root_cause='none' or NULL. "
-                    "Need at least some failures with root_cause in ['comp1', 'comp2', 'comp3', 'comp4']."
-                )
-
-            print(f"[FETCH] Filtered training data: {len(training_data)} -> {len(training_data_filtered)} samples (excluded 'none')", flush=True)
-            print(f"[FETCH] Component distribution: {training_data_filtered['failure_component'].value_counts().to_dict()}", flush=True)
-
-            return training_data_filtered
+            return training_data
 
         except ValueError as ve:
             # Re-raise ValueError to be caught by caller
@@ -158,13 +160,69 @@ class AnomalyPredictor(BaseModel):
             logger.error(f"Error fetching training data: {e}")
             raise RuntimeError(f"Failed to fetch training data: {str(e)}")
 
+    """
+        returns: fetches data and returns dataframes of same
+        columns as the old dataframes from dataset
+        1. telemetry_df: datetime, machineID, volt, rotate, pressure, vibration
+        2. failures_df: datetime, machineID, failure
+        3. maintenance_df: datetime, machineID, comp
+        4. machines_df: machineID, model, age
+        4. errors_df: datetime, machineID, errorID
+    """
+
+    def fetch_raw_data(self, device_id, **kwargs):
+        if not self.data_registry:
+            raise ValueError("No data registry available")
+
+        telemetry_df = self.data_registry.fetch_telemetry_data(
+            device_id=device_id,
+            start_date=kwargs.get("start_date", datetime(2015, 1, 1, 6, 0, 0)),
+        )
+
+        telemetry_df["machineID"] = 1  # from dataset
+
+        failures_df = self.data_registry.fetch_failure_data(
+            device_id=device_id,
+            start_date=kwargs.get("start_date", datetime(2015, 1, 1, 6, 0, 0)),
+        )
+
+        failures_df["machineID"] = 1  # from dataset
+
+        maintenance_df = self.data_registry.fetch_maintenance_data(
+            device_id=device_id,
+            start_date=kwargs.get("start_date", datetime(2015, 1, 1, 6, 0, 0)),
+        )
+
+        maintenance_df["machineID"] = 1  # from dataset
+
+        machines_df = self.data_registry.fetch_machines_data(
+            device_id=device_id,
+        )
+
+        machines_df["machineID"] = 1  # from dataset
+
+        errors_df = self.data_registry.fetch_error_data(
+            device_id=device_id,
+            start_date=kwargs.get("start_date", datetime(2015, 1, 1, 6, 0, 0)),
+        )
+
+        errors_df["machineID"] = 1  # from dataset
+
+        return telemetry_df, failures_df, maintenance_df, machines_df, errors_df
+
     def fetch_latest(self, device_id, **kwargs):
         # Fetch features WITHOUT failure labels for prediction
         if not self.data_registry:
             raise ValueError("No data registry available")
 
+        # features_df, _ = self.data_registry.fetch_anomaly_training_data(
+        #     device_id=device_id, days_back=550, include_failures=False, start_date=None
+        # )
         features_df, _ = self.data_registry.fetch_anomaly_training_data(
-            device_id=device_id, days_back=30, include_failures=False
+            device_id=device_id,
+            days_back=550,
+            include_failures=True,
+            start_date=datetime(2015, 1, 5, 2, 0, 0),
         )
 
         if features_df.empty:
@@ -175,8 +233,8 @@ class AnomalyPredictor(BaseModel):
         latest_data = latest_data.fillna(0)
 
         # Ensure failure_component column doesn't exist in prediction data
-        if 'failure_component' in latest_data.columns:
-            latest_data = latest_data.drop('failure_component', axis=1)
+        if "failure_component" in latest_data.columns:
+            latest_data = latest_data.drop("failure_component", axis=1)
 
         return latest_data
 
@@ -201,11 +259,11 @@ class AnomalyPredictor(BaseModel):
         sensor_avg = np.mean([data[f"sensor_{i:02d}"] for i in range(48)], axis=0)
 
         # Multi-class target: 'none', 'comp1', 'comp2', 'comp3', 'comp4'
-        failure_component = np.full(n_samples, 'none', dtype=object)
+        failure_component = np.full(n_samples, "none", dtype=object)
         failure_indices = sensor_avg > 90
 
         # Assign random components to failures
-        component_labels = ['comp1', 'comp2', 'comp3', 'comp4']
+        component_labels = ["comp1", "comp2", "comp3", "comp4"]
         failure_component[failure_indices] = np.random.choice(
             component_labels, size=np.sum(failure_indices)
         )
@@ -240,13 +298,19 @@ class AnomalyPredictor(BaseModel):
 
         # Create algorithm with dynamic features if not already created
         if self.algorithm is None:
+            # Copy hyperparameters and ensure we don't pass 'random_state' twice
+            hyperparams = (
+                self.algorithm_hyperparams.copy() if self.algorithm_hyperparams else {}
+            )
+            hyperparams.pop("random_state", None)
+
             config = SupervisedConfig(
                 name=self.algorithm_name,
                 algorithm_type=AlgorithmType.SUPERVISED,
                 task_type=TaskType.MULTICLASS_CLASSIFICATION,
                 feature_columns=self.feature_columns,
                 target_column="failure_component",
-                hyperparameters=self.algorithm_hyperparams.copy(),
+                hyperparameters=hyperparams,
             )
 
             self.algorithm = AlgorithmRegistry.create(config)
@@ -261,13 +325,16 @@ class AnomalyPredictor(BaseModel):
 
         # Encode string labels to integers for XGBoost
         from sklearn.preprocessing import LabelEncoder
+
         self.label_encoder = LabelEncoder()
         y = self.label_encoder.fit_transform(y_raw)
 
         # Store class mapping for later use
         self.class_labels = self.label_encoder.classes_
         logger.info(f"Class mapping: {dict(enumerate(self.class_labels))}")
-        print(f"[TRAIN] Class mapping: {dict(enumerate(self.class_labels))}", flush=True)
+        print(
+            f"[TRAIN] Class mapping: {dict(enumerate(self.class_labels))}", flush=True
+        )
 
         # Train algorithm
         metrics = self.algorithm.train(X, y)
@@ -328,13 +395,13 @@ class AnomalyPredictor(BaseModel):
         probabilities = output.probabilities  # Shape: (n_samples, n_classes)
 
         # Decode integer predictions back to string labels
-        if hasattr(self, 'label_encoder') and hasattr(self, 'class_labels'):
+        if hasattr(self, "label_encoder") and hasattr(self, "class_labels"):
             predictions = self.label_encoder.inverse_transform(predictions_encoded)
             classes = self.class_labels
         else:
             # Fallback if model was trained without label encoder
             predictions = predictions_encoded
-            classes = ['none', 'comp1', 'comp2', 'comp3', 'comp4']
+            classes = ["none", "comp1", "comp2", "comp3", "comp4"]
 
         # Build component probabilities for each sample
         component_probs_list = []
@@ -347,11 +414,14 @@ class AnomalyPredictor(BaseModel):
         # Calculate failure probability (1 - P(none))
         failure_probs = []
         for probs in component_probs_list:
-            failure_prob = 1.0 - probs.get('none', 0.0)
+            failure_prob = 1.0 - probs.get("none", 0.0)
             failure_probs.append(failure_prob)
 
+        # Exclude 'none' from predicted_components
+        filtered_predictions = [str(p) for p in predictions if str(p) != "none"]
+
         return {
-            "predicted_components": [str(p) for p in predictions],
+            "predicted_components": filtered_predictions,
             "component_probabilities": component_probs_list,
             "failure_probabilities": failure_probs,
             "n_samples": len(data),
@@ -379,12 +449,19 @@ class AnomalyPredictor(BaseModel):
         # Make prediction
         result = self.predict(data, threshold)
 
-        # Return single result
+        # If no component predicted (i.e., only 'none'), set predicted_component to None and will_fail to False
+        if result["predicted_components"]:
+            predicted_component = result["predicted_components"][0]
+            will_fail = True
+        else:
+            predicted_component = None
+            will_fail = False
+
         return {
-            "predicted_component": result["predicted_components"][0],
+            "predicted_component": predicted_component,
             "component_probabilities": result["component_probabilities"][0],
             "failure_probability": result["failure_probabilities"][0],
-            "will_fail": result["predicted_components"][0] != 'none',
+            "will_fail": will_fail,
             "features_used": result["features_used"],
             "prediction_time": result["prediction_time"],
             "classes": result["classes"],
@@ -407,12 +484,18 @@ class AnomalyPredictor(BaseModel):
 
         # Additionally save label_encoder and class_labels if they exist
         path = Path(path)
-        if hasattr(self, 'label_encoder') and hasattr(self, 'class_labels'):
-            joblib.dump({
-                'label_encoder': self.label_encoder,
-                'class_labels': self.class_labels
-            }, path / "label_encoder.pkl")
-            print(f"[SAVE] Saved label encoder with classes: {self.class_labels}", flush=True)
+        if hasattr(self, "label_encoder") and hasattr(self, "class_labels"):
+            joblib.dump(
+                {
+                    "label_encoder": self.label_encoder,
+                    "class_labels": self.class_labels,
+                },
+                path / "label_encoder.pkl",
+            )
+            print(
+                f"[SAVE] Saved label encoder with classes: {self.class_labels}",
+                flush=True,
+            )
 
     def load(self, path):
         """
@@ -463,8 +546,11 @@ class AnomalyPredictor(BaseModel):
         label_encoder_path = path / "label_encoder.pkl"
         if label_encoder_path.exists():
             encoder_data = joblib.load(label_encoder_path)
-            self.label_encoder = encoder_data['label_encoder']
-            self.class_labels = encoder_data['class_labels']
-            print(f"[LOAD] Loaded label encoder with classes: {self.class_labels}", flush=True)
+            self.label_encoder = encoder_data["label_encoder"]
+            self.class_labels = encoder_data["class_labels"]
+            print(
+                f"[LOAD] Loaded label encoder with classes: {self.class_labels}",
+                flush=True,
+            )
         else:
             print(f"[LOAD] No label encoder found, using default classes", flush=True)

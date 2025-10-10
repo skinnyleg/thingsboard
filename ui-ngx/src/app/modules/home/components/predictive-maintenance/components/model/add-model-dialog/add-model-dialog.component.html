@@ -111,8 +111,19 @@
       <!-- Button to add a new field -->
       <button *ngIf="canAddField" mat-raised-button color="primary" (click)="addField()"
         [disabled]="!selectedDevice || availableTelemetry.length === 0" [attr.aria-label]="'Add new time-series key'">
-        <mat-icon>add_circle</mat-icon> Add Time-Series Key
+        <mat-icon>add_circle</mat-icon> Add Telemetry Key
       </button>
+
+      <!-- add margin -->
+
+      <!-- <div style="margin-top: 16px;"></div> -->
+
+      <!-- Button to add a new field -->
+      <!-- <button *ngIf="canAddField" mat-raised-button color="primary" (click)="addField()"
+        [disabled]="!selectedDevice || availableTelemetry.length === 0" [attr.aria-label]="'Add new time-series key'"> -->
+        <!-- TODO: fetch data from all entity attributes scopes (client/server/shared) -->
+        <!-- <mat-icon>add_circle</mat-icon> Add Attribute Key -->
+      <!-- </button> -->
 
       <!-- Helper text when no telemetry available -->
       <p *ngIf="selectedDevice && availableTelemetry.length === 0" class="no-keys-message">

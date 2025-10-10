@@ -137,6 +137,7 @@ services:
       - FASTAPI_BASE_URL=http://model:8000/api/v1/
       - FASTAPI_WS_URL=ws://model:8000/models/ws/unified
       - PM_LOAD_SAMPLE_DATA=true
+      - PM_LOAD_SAMPLE_DATA_UPDATE_TO_CURRENT_TIME=false
       - PM_AUTO_LOAD_ON_STARTUP=false
       - PM_TENANT_EMAIL=${PM_TENANT_EMAIL:-tenant@thingsboard.org}
       - PM_MACHINE_IDS=${PM_MACHINE_IDS:-1,11}

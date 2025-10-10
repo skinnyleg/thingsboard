@@ -2,6 +2,7 @@
 Shared utilities and constants for model services
 """
 
+from datetime import datetime
 import os
 import logging
 from pathlib import Path
@@ -40,8 +41,16 @@ def get_data_registry() -> DataRegistry:
 MODEL_TYPE_MAP = {
     "AnomalyPredictor": (
         AnomalyPredictor,
-        "xgboost",
-        {"n_estimators": 50, "max_depth": 4, "learning_rate": 0.1},
+        "random_forest",
+        {
+            "n_estimators": 100,
+            "max_depth": 12,
+            "min_samples_split": 8,
+            "min_samples_leaf": 4,
+            "class_weight": "balanced",
+            "n_jobs": -1,
+            "random_state": 42,
+        },
     ),
     "ForecastModel": (
         ForecastModel,
@@ -49,6 +58,8 @@ MODEL_TYPE_MAP = {
         {"seasonality_mode": "multiplicative", "changepoint_prior_scale": 0.05},
     ),
 }
+
+training_results = None
 
 
 def train_and_save_model(
@@ -117,12 +128,65 @@ def train_and_save_model(
 
     # Train model
     if model_type == "AnomalyPredictor":
-        results = model.train(train_data)
-        training_results = {
-            "average_accuracy": results["overall"]["average_accuracy"],
-            "average_f1_score": results["overall"]["average_f1_score"],
-            "training_time": results["overall"]["total_training_time"],
-        }
+        # results = model.train(train_data)
+        # training_results = {
+        #     "average_accuracy": results["overall"]["average_accuracy"],
+        #     "average_f1_score": results["overall"]["average_f1_score"],
+        #     "training_time": results["overall"]["total_training_time"],
+        # }
+        # print(
+        #     f"[TRAIN_AND_SAVE] AnomalyPredictor training results: {training_results}",
+        #     flush=True,
+        # )
+
+        # fetch raw data and train using existing function
+        telemetry_df, failures_df, maintenance_df, machines_df, errors_df = model.fetch_raw_data(
+                device_id=device_id,
+                start_date=datetime(2014, 1, 1)
+            )
+
+        # print all dataframes
+        print("[TRAIN_AND_SAVE] telemetry_df:", flush=True)
+        print(telemetry_df.head(), flush=True)
+        print(telemetry_df.dtypes, flush=True)
+        print("[TRAIN_AND_SAVE] failures_df:", flush=True)
+        print(failures_df.head(), flush=True)
+        print(failures_df.dtypes, flush=True)
+        print("[TRAIN_AND_SAVE] maintenance_df:", flush=True)
+        print(maintenance_df.head(), flush=True)
+        print(maintenance_df.dtypes, flush=True)
+        print("[TRAIN_AND_SAVE] machines_df:", flush=True)
+        print(machines_df.head(), flush=True)
+        print(machines_df.dtypes, flush=True)
+        print("[TRAIN_AND_SAVE] errors_df:", flush=True)
+        print(errors_df.head(), flush=True)
+        print(errors_df.dtypes, flush=True)
+
+        # print distinct values of comp of maintenance_df
+        print("[TRAIN_AND_SAVE] maintenance_df distinct comp values:", flush=True)
+        print(maintenance_df["comp"].unique(), flush=True)
+
+        # print distinct values of failure of failures_df
+        print("[TRAIN_AND_SAVE] failures_df distinct failure values:", flush=True)
+        print(failures_df["failure"].unique(), flush=True)
+
+        from .Failure_prediction_Random_Forest import (
+            train_model,
+            predict_failure,
+            save_models
+        )
+
+        hourly_models, feature_cols, labeled_features_clean = train_model(
+            telemetry_df,
+            errors_df,
+            maintenance_df,
+            failures_df,
+            machines_df,
+        )
+
+        # save models
+        save_models(hourly_models, model_dir)
+
     elif model_type == "ForecastModel":
         sensor_name = kwargs.get("sensor_name", f"sensor_{device_id}")
         time_column = kwargs.get("time_column", "timestamp")
@@ -144,16 +208,27 @@ def train_and_save_model(
 
     # Save model
     print(f"[TRAIN_AND_SAVE] About to save model to {model_dir}", flush=True)
-    print(f"[TRAIN_AND_SAVE] Model algorithms: {list(model.algorithms.keys())}", flush=True)
+    print(
+        f"[TRAIN_AND_SAVE] Model algorithms: {list(model.algorithms.keys())}",
+        flush=True,
+    )
     print(f"[TRAIN_AND_SAVE] Model is_trained: {model.is_trained}", flush=True)
     model.save(model_dir)
     logger.info(f"Model saved to {model_dir}")
     print(f"[TRAIN_AND_SAVE] Model save completed", flush=True)
+
+    # return {
+    #     "status": "success",
+    #     "model_id": model_id,
+    #     "model_type": model_type,
+    #     "model_path": str(model_dir),
+    #     "training_results": training_results,
+    # }
 
     return {
         "status": "success",
         "model_id": model_id,
         "model_type": model_type,
         "model_path": str(model_dir),
-        "training_results": training_results,
+        "training_results": {},
     }

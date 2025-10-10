@@ -1,3 +1,5 @@
+import { ViewChild } from '@angular/core';
+// ...existing code...
 /* eslint-disable @angular-eslint/use-lifecycle-interface */
 import { Component } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -31,7 +33,7 @@ import {
 } from '../../../components/predictive-maintenance/components/model/add-model-dialog/add-model-dialog.component';
 import { ModelSelectionDialogComponent } from './model-selection-dialog/model-selection-dialog.component';
 import { ModelLogsDialogComponent } from './model-logs-dialog/model-logs-dialog.component';
-import { AnomaliesComponent, AnomalyLogs } from '../../../components/predictive-maintenance/components/anomalies/anomalies.component';
+import { AnomaliesComponent, AnomalyReport } from '../../../components/predictive-maintenance/components/anomalies/anomalies.component';
 import { CommonModule } from '@angular/common';
 import { ForecastChartComponent } from '../../../components/predictive-maintenance/components/forecast-chart/forecast-chart.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -89,6 +91,9 @@ import { ModelWebSocketService } from '@app/core/http/model-websocket.service';
   ],
 })
 export class ModelComponent extends PageComponent implements Order {
+  // Reference to the anomalies table component
+  @ViewChild(AnomaliesComponent) anomaliesComponent?: AnomaliesComponent;
+
   deviceId: string; // To pass to the chart
 
   Attributes: string[]; // To store the temperature data
@@ -208,13 +213,72 @@ export class ModelComponent extends PageComponent implements Order {
     this.addDocumentClickListener();
 
     this.modelWebSocketService.connect();
+    // Update anomalies component about connection status (if available)
+    try {
+      // const connected = this.modelWebSocketService.isConnected();
+      // this.anomaliesComponent?.setStreamStatus(connected, connected ? null : null);
+    } catch (e) {
+      // ignore if service is not ready
+    }
+    // Ensure we update anomalies component when the WebSocket actually connects
+    this.modelWebSocketService.onConnect(() => {
+      try {
+        // const connected = this.modelWebSocketService.isConnected();
+        // this.anomaliesComponent?.setStreamStatus(connected, connected ? null : null);
+      } catch (e) {
+        // ignore
+      }
+    });
 
     this.init();
   }
 
+  ngAfterViewInit(): void {
+    // set 3 random anomalies for testing
+        // const testAnomalies: AnomalyReport[] = [
+        //   {
+        //     id: '1',
+        //     reportEntity: this.deviceId,
+        //     errorName: 'Overheat',
+        //     severity: 'Critical',
+        //     creationDate: new Date().toISOString(),
+        //     componentType: 'Engine',
+        //     deviceType: 'Type A',
+        //     location: 'Factory 1',
+        //     description: 'Engine temperature exceeded threshold',
+        //     status: 'Active',
+        //     affectedMetrics: ['temperature'],
+        //     confidence: 95,
+        //     timeRange: '2024-10-01 10:00 - 2024-10-01 10:30'
+        //   },
+        //   {
+        //     id: '2',
+        //     reportEntity: this.deviceId,
+        //     errorName: 'Vibration Alert',
+        //     severity: 'Major',
+        //     creationDate: new Date().toISOString(),
+        //     componentType: 'Motor',
+        //     deviceType: 'Type B',
+        //     location: 'Factory 2',
+        //     description: 'Unusual vibration patterns detected',
+        //     status: 'Investigating',
+        //     affectedMetrics: ['vibration'],
+        //     confidence: 85,
+        //     timeRange: '2024-10-02 14:00 - 2024-10-02 14:45'
+        //   }
+        // ];
+
+        // testAnomalies.forEach((a) => {
+        //   // console.log('Adding test anomaly:', a);
+        //   this.anomaliesComponent.addAnomaly(a);
+        //   if (this.anomaliesComponent) {
+        //   }
+        // });
+  }
+
   private init() {
     this.route.params.subscribe((params) => {
-      console.log('Route params:', params);
+      // console.log('Route params:', params);
       if (params.id) {
         this.id = params.id;
         this.fetchPredictiveModelConfig(params.id);
@@ -250,12 +314,61 @@ export class ModelComponent extends PageComponent implements Order {
 
         // Subscribe to job logs
         this.modelWebSocketService.requestJobLogs(this.trueId).subscribe((msg) => {
-            console.log('Log message received:', msg);
+            // console.log('Log message received:', msg);
             msg.data.logs.forEach(log => {
-              if (log.level === 'prediction') {
+              console.log('Log entry:', log);
+              if (log.level.toLowerCase() === 'prediction') {
                 console.log('Job prediction:', log.message);
+                // Try to parse prediction log as JSON
+
+                if (typeof log.message !== 'string') {
+                  const anomalies: AnomalyReport[] = log.message?.result?.filter((result) =>
+
+                  result.failure_predicted === true
+
+                  ).map((result: any) => {
+                    const confidence = result.general_failure_probability ? Math.round(result.general_failure_probability * 100) : 0;
+                    const severity = confidence >= 90 ? 'Critical' : confidence >= 70 ? 'Major' : 'Minor';
+
+                    // Normalize timeRange -> startTime/endTime if possible
+                    let startTime: string | number | undefined;
+                    let endTime: string | number | undefined;
+                    if (result.datetime) {
+                      const parts = (result.datetime || '').toString().split('/');
+                      if (parts.length === 2) {
+                        startTime = parts[0];
+                        endTime = parts[1];
+                      } else {
+                        startTime = result.datetime;
+                        endTime = result.datetime;
+                      }
+                    }
+
+                    return {
+                      timeRange: result.datetime || '',
+                      startTime,
+                      endTime,
+                      confidence,
+                      affectedMetrics: result.predicted_failing_component ? [result.predicted_failing_component] : [],
+                      componentFailureProbabilities: result.component_failure_probabilities || {},
+                      componentProbabilities: result.component_probabilities || {},
+                      id: result.id || `${this.trueId || 'forecast'}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+                      reportEntity: this.deviceId,
+                      errorName: result.predicted_failing_component || 'Unknown',
+                      severity,
+                      creationDate: result.datetime || new Date().toISOString(),
+                      componentType: result.predicted_failing_component || 'Unknown',
+                      deviceType: 'Unknown',
+                      location: 'Unknown',
+                      description: 'Predicted failure for component ' + (result.predicted_failing_component || 'Unknown'),
+                      status: 'Active',
+                    };
+                  }) || [];
+                  this.anomaliesComponent.updateAnomalies(anomalies || []);
+                }
+
               } else {
-                console.log('Job log:', log.message);
+                // console.log4('Job log:', log.message);
               }
             });
             // msg?..forEach((log: AnomalyLogs) => {
@@ -265,10 +378,13 @@ export class ModelComponent extends PageComponent implements Order {
             //   console.log('Job log:', log.message);
             // }
           // });
+        }, (err) => {
+          console.error('Error receiving job logs:', err);
+          this.anomaliesComponent?.setStreamStatus(false, 'Error receiving job logs');
         });
 
         // Subscribe to real-time job status updates
-        this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
+  this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
           // if (msg.type === 'prediction') {
           //   console.log('Job prediction:', msg.data.logs);
           // } else {
@@ -287,10 +403,14 @@ export class ModelComponent extends PageComponent implements Order {
               // }
               if (msg.data.model_exists) {
                 this.status = 'active';
+                this.anomaliesComponent.setStreamStatus(true, null);
               } else {
                 this.status = 'inactive';
               }
             }
+        }, (err) => {
+          console.error('Error subscribing to job status:', err);
+          this.anomaliesComponent?.setStreamStatus(false, 'Error subscribing to job status');
         });
 
         // Fetch status from the service to ensure it's up-to-date
@@ -405,7 +525,7 @@ export class ModelComponent extends PageComponent implements Order {
     });
 
     dialogRef.afterClosed().subscribe(() => {
-      console.log('Logs dialog closed');
+      // console.log('Logs dialog closed');
     });
   }
 
@@ -428,7 +548,7 @@ export class ModelComponent extends PageComponent implements Order {
     });
 
     dialogRef.afterClosed().subscribe(() => {
-      console.log('Forecast logs dialog closed');
+      // console.log('Forecast logs dialog closed');
     });
   }
 
@@ -451,7 +571,7 @@ export class ModelComponent extends PageComponent implements Order {
     });
 
     dialogRef.afterClosed().subscribe(() => {
-      console.log('Anomaly logs dialog closed');
+      // console.log('Anomaly logs dialog closed');
     });
   }
 
@@ -464,7 +584,7 @@ export class ModelComponent extends PageComponent implements Order {
     // Fetch the current forecast data for editing
     this.predictiveModelsService.getPredictiveModel(this.trueId).subscribe(
       (forecastData) => {
-        console.log('Raw forecast data from service:', forecastData);
+        // console.log('Raw forecast data from service:', forecastData);
 
         // Prepare the data structure that the dialog expects
         const dialogData = {
@@ -487,7 +607,7 @@ export class ModelComponent extends PageComponent implements Order {
           },
         };
 
-        console.log('Opening edit dialog with data:', dialogData);
+        // console.log('Opening edit dialog with data:', dialogData);
 
         const dialogRef = this.dialog.open(AddModelDialogComponent, {
           width: '600px',
@@ -509,7 +629,7 @@ export class ModelComponent extends PageComponent implements Order {
   updateForecast(forecastData: any): void {
     this.predictiveModelsService.updatePredictiveModel(forecastData).subscribe(
       (response) => {
-        console.log('Forecast updated successfully:', response);
+        // console.log('Forecast updated successfully:', response);
         // Refresh the current model to reflect changes
         this.refreshModel();
       },
@@ -537,7 +657,7 @@ export class ModelComponent extends PageComponent implements Order {
       if (result) {
         this.predictiveModelsService.deletePredictiveModel(this.trueId).subscribe(
           () => {
-            console.log('Model deleted successfully');
+            // console.log('Model deleted successfully');
             // Navigate back to predictive maintenance page
             this.router.navigate(['/predictiveMaintenance']);
           },
@@ -553,7 +673,7 @@ export class ModelComponent extends PageComponent implements Order {
     // Call the service to add a forecast
     this.predictiveModelsService.addPredictiveModelConfig(forecast).subscribe(
       (response) => {
-        console.log('Forecast created successfully:', response);
+        // console.log('Forecast created successfully:', response);
         // Navigate back to the forecast list to see the new model
         this.router.navigateByUrl('/PM');
       },
@@ -608,7 +728,7 @@ export class ModelComponent extends PageComponent implements Order {
   jobStatus: 'running' | 'stopped' | 'not_found' | null = null;
 
   activateModel(): void {
-    console.log('Activating model:', this.trueId);
+    // console.log('Activating model:', this.trueId);
     if (!this.trueId) {
       return;
     }
@@ -642,6 +762,7 @@ export class ModelComponent extends PageComponent implements Order {
         this.progressMessage = null;
         this.activationComplete = true;
         this.status = 'active';
+        this.anomaliesComponent.setStreamStatus(true, null);
         // this.getModelStatus();
         break;
       case 'error':
@@ -789,10 +910,10 @@ export class ModelComponent extends PageComponent implements Order {
         // Save the updated forecast
         this.predictiveModelsService.updatePredictiveModel(updatedForecast).subscribe(
           (response) => {
-            console.log(
-              'View preferences saved successfully to database for forecast:',
-              this.trueId
-            );
+            // console.log(
+            //   'View preferences saved successfully to database for forecast:',
+            //   this.trueId
+            // );
           },
           (error) => {
             console.error('Error saving view preferences to database:', error);
@@ -821,10 +942,10 @@ export class ModelComponent extends PageComponent implements Order {
         `forecast-view-${this.trueId}`,
         stringifyForecastViewPreferences(preferences)
       );
-      console.log(
-        'View preferences saved to localStorage as fallback for forecast:',
-        this.trueId
-      );
+      // console.log(
+      //   'View preferences saved to localStorage as fallback for forecast:',
+      //   this.trueId
+      // );
     } catch (error) {
       console.error(
         'Error saving view preferences to localStorage fallback:',

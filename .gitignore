@@ -44,3 +44,5 @@ predictive-maintenance/src/forecast/.jupyter
 
 ./scripts/backup-logs/
 ./scripts/logs/
+
+.venv/

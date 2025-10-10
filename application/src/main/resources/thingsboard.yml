@@ -136,6 +136,8 @@ predictive-maintenance:
   # This keeps the data window ending at the current time
   # If both are enabled, this waits for load-sample-data to complete first
   auto-load-on-startup: "${PM_AUTO_LOAD_ON_STARTUP:false}"
+  # Update existing sample data to current timestamps
+  load-sample-data-update-to-current-time: "${PM_LOAD_SAMPLE_DATA_UPDATE_TO_CURRENT_TIME:true}"
   # Path to CSV data files (relative to classpath)
   data-path: "${PM_DATA_PATH:predictive-maintenance/data}"
   # Tenant email to create predictive maintenance resources

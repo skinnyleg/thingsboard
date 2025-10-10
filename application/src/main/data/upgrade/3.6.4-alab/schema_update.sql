@@ -61,7 +61,7 @@ ALTER TABLE claim
 ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 -- ==============================================================================
--- MODEL LOGS TABLE
+-- MODEL LOGS TABLE - not used now, reserved for future use
 -- Stores execution logs from predictive maintenance models
 -- Supports time window filtering and pagination
 -- ==============================================================================
@@ -83,7 +83,11 @@ CREATE TABLE IF NOT EXISTS model_logs (
 ALTER TABLE model_logs ADD COLUMN IF NOT EXISTS created_time BIGINT;
 
 -- Update created_time for existing rows where it's null (use timestamp as fallback)
-UPDATE model_logs SET created_time = timestamp WHERE created_time IS NULL;
+UPDATE model_logs
+SET
+    created_time = timestamp
+WHERE
+    created_time IS NULL;
 
 -- Make created_time NOT NULL after populating
 ALTER TABLE model_logs ALTER COLUMN created_time SET NOT NULL;

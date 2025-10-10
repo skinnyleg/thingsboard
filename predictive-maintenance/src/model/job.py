@@ -2,14 +2,17 @@
 Job management system for background prediction workers
 """
 
+import json
 import logging
 import threading
 from pathlib import Path
 from datetime import datetime
 from collections import deque
-from typing import Dict, Callable, Set
+import pandas as pd
+from typing import Dict, Callable, Set, Union
 from library import AnomalyPredictor, ForecastModel
 from src.settings import settings
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +29,13 @@ log_broadcasters: Dict[str, Set[Callable]] = {}
 broadcaster_lock = threading.Lock()
 
 
-def add_model_log(model_id: str, level: str, message: str):
+JSONValue = Union[
+    str, int, float, bool, None,
+    dict[str, "JSONValue"],
+    list["JSONValue"],
+]
+
+def add_model_log(model_id: str, level: str, message: JSONValue) -> None:
     """Add log entry for a model and broadcast to WebSocket subscribers"""
     if model_id not in model_logs:
         model_logs[model_id] = deque(maxlen=MAX_LOG_ENTRIES)
@@ -77,24 +86,34 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
         if model_type == "AnomalyPredictor":
             add_model_log(model_id, "info", "Getting data registry...")
             # Get data registry for fetching real-time data
-            from src.model.shared import get_data_registry
-            data_registry = get_data_registry()
-            add_model_log(model_id, "info", f"Data registry obtained: {data_registry is not None}")
+            # from src.model.shared import get_data_registry
+            # data_registry = get_data_registry()
+            # add_model_log(model_id, "info", f"Data registry obtained: {data_registry is not None}")
 
-            add_model_log(model_id, "info", "Creating AnomalyPredictor instance...")
-            model = AnomalyPredictor(
-                name=model_id,
-                algorithm_name="xgboost",
-                data_registry=data_registry
-            )
-            add_model_log(model_id, "info", "AnomalyPredictor created successfully")
+            # add_model_log(model_id, "info", "Creating AnomalyPredictor instance...")
+            # model = AnomalyPredictor(
+            #     name=model_id,
+            #     algorithm_name="xgboost",
+            #     data_registry=data_registry
+            # )
+            # add_model_log(model_id, "info", "AnomalyPredictor created successfully")
 
             add_model_log(model_id, "info", f"Loading model from {model_dir}...")
-            model.load(model_dir)
+            # model.load(model_dir)
+            from .Failure_prediction_Random_Forest import (
+                load_models
+            )
+
+            hourly_models = load_models(model_dir)
+
             add_model_log(model_id, "info", "Model loaded successfully from disk")
 
             # interval = 300  # 5 minutes
             interval = 20  # 20 seconds for testing
+
+            print(f"[PREDICTION JOB] {model_id} - AnomalyPredictor model loaded", flush=True)
+            for hour, mdl in hourly_models.items():
+                print(f"[PREDICTION JOB] {model_id} - Hour {hour} model: {mdl}", flush=True)
 
         elif model_type == "ForecastModel":
             model = ForecastModel(name=model_id, algorithm_name="prophet")
@@ -114,7 +133,7 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
         # Prediction loop
         iteration = 0
         print(f"[PREDICTION JOB] {model_id} - Entering prediction loop", flush=True)
-        while True:
+        while iteration < 1:
             with job_lock:
                 if (
                     model_id not in active_jobs
@@ -138,33 +157,102 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                         model_id, "info", f"Fetching latest data for device {device_id}"
                     )
 
-                    latest_data = model.fetch_latest(device_id)
+                    from .Failure_prediction_Random_Forest import (
+                        predict_failure,
+                        key_hours,
+                        feature_cols,
+                    )
+                    from .shared import get_data_registry
 
-                    print(f"[PREDICTION JOB] {model_id} - Fetched {len(latest_data)} rows of data", flush=True)
-                    add_model_log(
-                        model_id, "info", f"Fetched {len(latest_data)} rows of data"
+                    anomalyModel = AnomalyPredictor(data_registry=get_data_registry())
+
+                    telemetry_df, failures_df, maintenance_df, machines_df, errors_df = anomalyModel.fetch_raw_data(
+                        device_id,
+                        start_date=datetime(2014, 1, 4, 2, 0, 0)
                     )
 
-                    if latest_data.empty:
+                    # latest_data = model.fetch_latest(device_id)
+
+                    print(f"[PREDICTION JOB] {model_id} - Fetched {len(telemetry_df)} rows of data", flush=True)
+                    add_model_log(
+                        model_id, "info", f"Fetched {len(telemetry_df)} rows of data"
+                    )
+
+                    if telemetry_df.empty:
                         print(f"[PREDICTION JOB] {model_id} - No data available for prediction", flush=True)
                         add_model_log(
                             model_id, "warn", "No data available for prediction"
                         )
                         continue
 
-                    print(f"[PREDICTION JOB] {model_id} - Running prediction on data with columns: {list(latest_data.columns)}", flush=True)
+                    print(f"[PREDICTION JOB] {model_id} - Running prediction on data with columns: {list(telemetry_df.columns)}", flush=True)
                     add_model_log(
-                        model_id, "info", f"Running prediction on data with columns: {list(latest_data.columns)}"
+                        model_id, "info", f"Running prediction on data with columns: {list(telemetry_df.columns)}"
                     )
 
-                    result = model.predict(latest_data)
+                    print(f"[PREDICTION JOB] {model_id} - latest data", flush=True)
+                    pd.set_option("display.max_columns", None)
 
-                    print(f"[PREDICTION JOB] {model_id} - Prediction result: {result}", flush=True)
+
+                    print(telemetry_df.head(), flush=True)
+
+
+
+                    predictions = predict_failure(
+                        "2015-01-05 02:00:00",
+                        {},
+                        telemetry_df,
+                        errors_df,
+                        maintenance_df,
+                        failures_df,
+                        machines_df,
+                        feature_cols,
+                        hourly_models,
+                    )
+
+                    # result = model.predict(latest_data)
+
+                    # print(f"[PREDICTION JOB] {model_id} - Prediction result: {result}", flush=True)
+                    # add_model_log(
+                    #     model_id,
+                    #     "prediction",
+                    #     f"Anomaly prediction result: {result}",
+                    # )
+
+                    def to_native(o):
+                        # numbers
+                        if isinstance(o, (np.integer,)):
+                            return int(o)
+                        if isinstance(o, (np.floating,)):
+                            return float(o)
+                        # booleans
+                        if isinstance(o, (np.bool_,)):
+                            return bool(o)
+                        # datetimes
+                        if isinstance(o, (pd.Timestamp, datetime)):
+                            return o.isoformat()
+                        # let json handle other types
+                        return str(o)
+
+                    # ... after you build predictions:
+                    hourly_records = list(predictions["hourly_predictions"].values())
+                    predictions_json_str = json.dumps(hourly_records, default=to_native)
+                    predictions_json = json.loads(predictions_json_str)
+
+
+                    print(f"[PREDICTION JOB] {model_id} - Predictions: {predictions_json}", flush=True)
+
+
                     add_model_log(
                         model_id,
                         "prediction",
-                        f"Anomaly prediction result: {result}",
+                        {
+                            "iteration": iteration,
+                            "device_id": device_id,
+                            "result": predictions_json,
+                        }
                     )
+
                     add_model_log(
                         model_id,
                         "info",

@@ -14,9 +14,6 @@
                             [class.error]="streamError"
                             [matTooltip]="streamError || (isStreamConnected ? 'Live stream connected' : 'Connecting to stream...')"
                             matTooltipPosition="right">
-                            <mat-icon class="stream-icon">
-                                {{ isStreamConnected ? 'wifi' : (streamError ? 'wifi_off' : 'sync') }}
-                            </mat-icon>
                             <span class="stream-text">
                                 {{ isStreamConnected ? 'LIVE' : (streamError ? 'ERROR' : 'CONNECTING') }}
                             </span>
@@ -100,6 +97,59 @@
                 <div class="table-scroll-container">
                     <table mat-table [dataSource]="dataSource" matSort class="anomalies-table">
 
+                        <!-- Confidence Column -->
+                        <ng-container matColumnDef="confidence" [sticky]="isColumnSticky('confidence')">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header
+                                [class.sticky-column]="isColumnSticky('confidence')">
+                                <div class="header-content">
+                                    <span>Confidence</span>
+                                    <button mat-icon-button class="pin-button"
+                                        (click)="toggleColumnSticky('confidence')"
+                                        [matTooltip]="getPinTooltip('confidence')"
+                                        [class.pinned]="isColumnSticky('confidence')">
+                                        <mat-icon class="pin-icon">{{ getPinIcon('confidence') }}</mat-icon>
+                                    </button>
+                                </div>
+                            </th>
+                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('confidence')">
+                                <div class="confidence-cell">
+                                    <span class="confidence-value" [ngClass]="getConfidenceClass(element.confidence)">
+                                        {{ element.confidence }}%
+                                    </span>
+                                    <mat-icon class="confidence-icon"
+                                        [matTooltip]="'Confidence: ' + element.confidence + '%'">
+                                        {{ getConfidenceIcon(element.confidence) }}
+                                    </mat-icon>
+                                </div>
+                            </td>
+                        </ng-container>
+
+
+                        <!-- Failure TimeRange Column -->
+                        <ng-container matColumnDef="timeRange" [sticky]="isColumnSticky('timeRange')">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header
+                                [class.sticky-column]="isColumnSticky('timeRange')">
+                                <div class="header-content">
+                                    <span>Failure Time Range</span>
+                                    <button mat-icon-button class="pin-button" (click)="toggleColumnSticky('timeRange')"
+                                        [matTooltip]="getPinTooltip('timeRange')"
+                                        [class.pinned]="isColumnSticky('timeRange')">
+                                        <mat-icon class="pin-icon">{{ getPinIcon('timeRange') }}</mat-icon>
+                                    </button>
+                                </div>
+                            </th>
+                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('timeRange')">
+                                <div class="time-range-cell">
+                                    <mat-icon class="time-range-icon">timeline</mat-icon>
+                                    <div class="time-range-info">
+                                        <span class="start-time">{{ formatDate(element.startTime) }}</span>
+                                        <span class="to-text">to</span>
+                                        <span class="end-time">{{ formatDate(element.endTime) }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                        </ng-container>
+
                         <!-- Severity Column -->
                         <ng-container matColumnDef="severity" [sticky]="isColumnSticky('severity')">
                             <th mat-header-cell *matHeaderCellDef mat-sort-header
@@ -158,7 +208,7 @@
                             <th mat-header-cell *matHeaderCellDef mat-sort-header
                                 [class.sticky-column]="isColumnSticky('creationDate')">
                                 <div class="header-content">
-                                    <span>Creation Date</span>
+                                    <span>Prediction Time</span>
                                     <button mat-icon-button class="pin-button"
                                         (click)="toggleColumnSticky('creationDate')"
                                         [matTooltip]="getPinTooltip('creationDate')"
@@ -244,32 +294,7 @@
                             </td>
                         </ng-container>
 
-                        <!-- Confidence Column -->
-                        <ng-container matColumnDef="confidence" [sticky]="isColumnSticky('confidence')">
-                            <th mat-header-cell *matHeaderCellDef mat-sort-header
-                                [class.sticky-column]="isColumnSticky('confidence')">
-                                <div class="header-content">
-                                    <span>Confidence</span>
-                                    <button mat-icon-button class="pin-button"
-                                        (click)="toggleColumnSticky('confidence')"
-                                        [matTooltip]="getPinTooltip('confidence')"
-                                        [class.pinned]="isColumnSticky('confidence')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('confidence') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('confidence')">
-                                <div class="confidence-cell">
-                                    <span class="confidence-value" [ngClass]="getConfidenceClass(element.confidence)">
-                                        {{ element.confidence }}%
-                                    </span>
-                                    <mat-icon class="confidence-icon"
-                                        [matTooltip]="'Confidence: ' + element.confidence + '%'">
-                                        {{ getConfidenceIcon(element.confidence) }}
-                                    </mat-icon>
-                                </div>
-                            </td>
-                        </ng-container>
+                        
 
                         <!-- Actions Column -->
                         <ng-container matColumnDef="actions" [stickyEnd]="isColumnSticky('actions')">

@@ -14,45 +14,45 @@
 /// limitations under the License.
 ///
 
-import { Component, Inject, OnDestroy, OnInit, ViewChild } from "@angular/core";
+import { Component, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   FormControl,
   FormsModule,
   ReactiveFormsModule,
   Validators,
-} from "@angular/forms";
-import { MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
-import { AttributeService, DeviceService } from "@app/core/public-api";
-import { DevicesDataSource } from "@app/modules/home/models/datasource/device-datasource";
-import { DeviceInfo } from "@shared/models/device.models";
-import { PageLink } from "@shared/models/page/page-link";
-import { Observable, of, Subject } from "rxjs";
-import { map, startWith, takeUntil } from "rxjs/operators";
+} from '@angular/forms';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { AttributeService, DeviceService } from '@app/core/public-api';
+import { DevicesDataSource } from '@app/modules/home/models/datasource/device-datasource';
+import { DeviceInfo } from '@shared/models/device.models';
+import { PageLink } from '@shared/models/page/page-link';
+import { Observable, of, Subject } from 'rxjs';
+import { map, startWith, takeUntil } from 'rxjs/operators';
 
 // Import necessary Angular Material modules
-import { CommonModule } from "@angular/common";
-import { MatAutocompleteModule, MatAutocompleteTrigger } from "@angular/material/autocomplete";
-import { MatButtonModule } from "@angular/material/button";
-import { MatNativeDateModule } from "@angular/material/core";
-import { MatDatepickerModule } from "@angular/material/datepicker";
-import { MatDialogModule } from "@angular/material/dialog";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatIconModule } from "@angular/material/icon";
-import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
+import { CommonModule } from '@angular/common';
+import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material/autocomplete';
+import { MatButtonModule } from '@angular/material/button';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import {
   MatDatetimepickerModule,
   MatNativeDatetimeModule,
-} from "@mat-datetimepicker/core";
-import { FlexLayoutModule } from "@angular/flex-layout";
-import { Direction, EntityType } from "@app/shared/public-api";
-import { ForecastField } from "@app/modules/home/models/predictive-maintenance.models";
-import { ForecastCreate } from "@app/shared/models/forecast.models";
+} from '@mat-datetimepicker/core';
+import { FlexLayoutModule } from '@angular/flex-layout';
+import { Direction, EntityType } from '@app/shared/public-api';
+import { ForecastField } from '@app/modules/home/models/predictive-maintenance.models';
+import { Forecast, ForecastCreate } from '@app/shared/models/forecast.models';
 
 @Component({
-  selector: "app-add-model-dialog",
-  templateUrl: "./add-model-dialog.component.html",
-  styleUrls: ["./add-model-dialog.component.scss"],
+  selector: 'app-add-model-dialog',
+  templateUrl: './add-model-dialog.component.html',
+  styleUrls: ['./add-model-dialog.component.scss'],
   standalone: true,
   imports: [
     CommonModule,
@@ -76,66 +76,80 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   devicesDataSource: DevicesDataSource;
+
   selectedDevice: DeviceInfo | null = null;
+
   fields: ForecastField[] = []; // Array for field type, start, and end dates
+
   availableTelemetry: string[] = []; // Available telemetry keys as an observable
-  myControl = new FormControl<string | DeviceInfo>("", Validators.required); // Control for autocomplete
-  forecastNameControl = new FormControl("", Validators.required);
+
+  myControl = new FormControl<string | DeviceInfo>('', Validators.required); // Control for autocomplete
+
+  forecastNameControl = new FormControl('', Validators.required);
+
   filteredDevices: Observable<DeviceInfo[]>; // For filtered options in autocomplete
+
   devicesList: DeviceInfo[] = []; // To store the fetched devices
+
   noTelemetryMessage: string | null = null; // Message to show if no telemetry is available
-  isDevicesPrefetched: boolean = false; // Track if devices have been prefetched
+
+  isDevicesPrefetched = false; // Track if devices have been prefetched
 
   @ViewChild(MatAutocompleteTrigger, { static: false }) autocompleteTrigger: MatAutocompleteTrigger;
 
   // Add mode vs edit mode
-  isEditMode: boolean = false;
+  isEditMode = false;
+
   editingForecast: any = null;
 
   // Step navigation properties
-  currentStep: number = 1;
-  totalSteps: number = 2;
+  currentStep = 1;
+
+  totalSteps = 2;
 
   // Global date range properties (renamed for forecast)
   globalStartDate: Date | null = null;
+
   globalEndDate: Date | null = null;
 
   // Anomalies date range properties
   anomaliesStartDate: Date | null = null;
+
   anomaliesEndDate: Date | null = null;
 
   // Algorithm form controls
-  forecastAlgorithmControl = new FormControl("", Validators.required);
-  anomaliesAlgorithmControl = new FormControl("", Validators.required);
+  forecastAlgorithmControl = new FormControl('', Validators.required);
+
+  anomaliesAlgorithmControl = new FormControl('', Validators.required);
 
   // Algorithm options
   forecastAlgorithmOptions = [
     {
-      value: "arima",
-      label: "ARIMA (Auto Regressive Integrated Moving Average)",
+      value: 'arima',
+      label: 'ARIMA (Auto Regressive Integrated Moving Average)',
     },
-    { value: "lstm", label: "LSTM (Long Short-Term Memory)" },
-    { value: "linear_regression", label: "Linear Regression" },
-    { value: "polynomial_regression", label: "Polynomial Regression" },
-    { value: "exponential_smoothing", label: "Exponential Smoothing" },
-    { value: "prophet", label: "Prophet" },
-    { value: "sarima", label: "SARIMA (Seasonal ARIMA)" },
-    { value: "random_forest", label: "Random Forest" },
+    { value: 'lstm', label: 'LSTM (Long Short-Term Memory)' },
+    { value: 'linear_regression', label: 'Linear Regression' },
+    { value: 'polynomial_regression', label: 'Polynomial Regression' },
+    { value: 'exponential_smoothing', label: 'Exponential Smoothing' },
+    { value: 'prophet', label: 'Prophet' },
+    { value: 'sarima', label: 'SARIMA (Seasonal ARIMA)' },
+    { value: 'random_forest', label: 'Random Forest' },
   ];
 
   anomaliesAlgorithmOptions = [
-    { value: "isolation_forest", label: "Isolation Forest" },
-    { value: "one_class_svm", label: "One-Class SVM" },
-    { value: "local_outlier_factor", label: "Local Outlier Factor (LOF)" },
-    { value: "elliptic_envelope", label: "Elliptic Envelope" },
-    { value: "statistical_outlier", label: "Statistical Outlier Detection" },
-    { value: "dbscan", label: "DBSCAN Clustering" },
-    { value: "autoencoder", label: "Autoencoder Neural Network" },
-    { value: "seasonal_decompose", label: "Seasonal Decomposition" },
+    { value: 'isolation_forest', label: 'Isolation Forest' },
+    { value: 'one_class_svm', label: 'One-Class SVM' },
+    { value: 'local_outlier_factor', label: 'Local Outlier Factor (LOF)' },
+    { value: 'elliptic_envelope', label: 'Elliptic Envelope' },
+    { value: 'statistical_outlier', label: 'Statistical Outlier Detection' },
+    { value: 'dbscan', label: 'DBSCAN Clustering' },
+    { value: 'autoencoder', label: 'Autoencoder Neural Network' },
+    { value: 'seasonal_decompose', label: 'Seasonal Decomposition' },
   ];
 
   constructor(
-    public dialogRef: MatDialogRef<AddModelDialogComponent, ForecastCreate>,
+    public dialogRef: MatDialogRef<AddModelDialogComponent, ForecastCreate | Forecast>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private deviceService: DeviceService,
     private attributeService: AttributeService
@@ -150,10 +164,10 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
       // Add CSS class for edit mode styling
       setTimeout(() => {
         const dialogContainer = document.querySelector(
-          ".mat-mdc-dialog-container"
+          '.mat-mdc-dialog-container'
         );
         if (dialogContainer) {
-          dialogContainer.classList.add("edit-mode");
+          dialogContainer.classList.add('edit-mode');
         }
       }, 0);
     }
@@ -196,8 +210,8 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
     // Set up filtered devices observable based on user input
     this.filteredDevices = this.myControl.valueChanges.pipe(
-      startWith(""),
-      map((value) => (typeof value === "string" ? value : value?.name)),
+      startWith(''),
+      map((value) => (typeof value === 'string' ? value : value?.name)),
       map((name) =>
         name ? this._filterDevices(name) : this.devicesList.slice()
       )
@@ -208,7 +222,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
       if (!this.isEditMode) {
         this.fields = []; // Clear fields when a new device is selected
       }
-      this.selectedDevice = typeof device === "object" ? device : null;
+      this.selectedDevice = typeof device === 'object' ? device : null;
       this.noTelemetryMessage = null; // Reset the message
       if (this.selectedDevice && !this.isEditMode) {
         this.onDeviceSelected(this.selectedDevice);
@@ -264,7 +278,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     console.log('Autocomplete trigger available:', !!this.autocompleteTrigger);
 
     const firstPageLink = new PageLink(10, 0, null, {
-      property: "createdTime",
+      property: 'createdTime',
       direction: Direction.DESC,
     });
 
@@ -300,7 +314,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   private prefetchAllDevices(): void {
     // Load the first page with only one device to get the total count
     const firstPageLink = new PageLink(1, 0, null, {
-      property: "createdTime",
+      property: 'createdTime',
       direction: Direction.DESC,
     });
 
@@ -311,11 +325,11 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     this.devicesDataSource.totalElements$.pipe(
       takeUntil(this.destroy$)
     ).subscribe((totalElements) => {
-      console.log("Total number of devices:", totalElements);
+      console.log('Total number of devices:', totalElements);
 
       // Once we know the total number of devices, fetch all of them
       const fullPageLink = new PageLink(totalElements, 0, null, {
-        property: "createdTime",
+        property: 'createdTime',
         direction: Direction.DESC,
       });
 
@@ -350,7 +364,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
   // Display function for showing device name
   displayFn(device: DeviceInfo): string {
-    return device && device.name ? device.name : "";
+    return device && device.name ? device.name : '';
   }
 
   // When the user selects a device, fetch the telemetry for that device
@@ -366,7 +380,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
         (telemetryData) => {
           const telemetryKeys = Object.keys(telemetryData);
           console.log(
-            "Available telemetry (ts_kv) for the selected device:",
+            'Available telemetry (ts_kv) for the selected device:',
             telemetryKeys
           );
 
@@ -376,18 +390,19 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
           // If no telemetry available, show message
           if (telemetryKeys.length === 0) {
             this.noTelemetryMessage =
-              "No time-series keys (ts_kv) found for this device. Please ensure the device has telemetry data in the database.";
+              'No time-series keys (ts_kv) found for this device. Please ensure the device has telemetry data in the database.';
           } else {
             this.noTelemetryMessage = null; // Reset if telemetry is available
           }
         },
         (error) => {
-          console.error("Error fetching telemetry data:", error);
+          console.error('Error fetching telemetry data:', error);
           this.noTelemetryMessage =
-            "Error loading telemetry keys from database.";
+            'Error loading telemetry keys from database.';
         }
       );
   }
+
   //  && this.selectedDevice != null
   get canAddField(): boolean {
     if (!this.selectedDevice) {
@@ -420,7 +435,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
       this.fields.every(
         (field) =>
           field.key &&
-          field.key.trim() !== "" &&
+          field.key.trim() !== '' &&
           this.availableTelemetry.includes(field.key) // Ensure selected key is from database
       );
 
@@ -445,7 +460,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
           this.fields.every(
             (field) =>
               field.key &&
-              field.key.trim() !== "" &&
+              field.key.trim() !== '' &&
               this.availableTelemetry.includes(field.key) // Must be from database
           );
 
@@ -492,7 +507,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   // Add a new field with telemetry autocomplete
   addField(): void {
     if (this.canAddField) {
-      this.fields.push({ key: "", startDate: null, endDate: null });
+      this.fields.push({ key: '', startDate: null, endDate: null });
     }
   }
 
@@ -515,20 +530,26 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
   onConfirm(): void {
     if (!this.isFormValid) {
-      console.log("Form is invalid. Please complete all required fields.");
+      console.log('Form is invalid. Please complete all required fields.');
       return;
     }
     const deviceId = this.selectedDevice.id;
 
-    // Only include attribute keys without startDate and endDate
-    const attributes = this.fields
-      .filter((field) => field.key && field.key.trim() !== "")
-      .map((el) => ({ key: el.key }));
+    // If device telemetry keys are available, send all of them as attributes
+    // otherwise fall back to any user-selected fields
+    let attributes: { key: string }[] = [];
+    if (this.availableTelemetry && this.availableTelemetry.length > 0) {
+      attributes = this.availableTelemetry.map((k) => ({ key: k }));
+    } else {
+      attributes = this.fields
+        .filter((field) => field.key && field.key.trim() !== '')
+        .map((el) => ({ key: el.key }));
+    }
 
     const forecastData: ForecastCreate = {
       name: this.forecastNameControl.value,
-      deviceId: deviceId,
-      attributes: attributes,
+      deviceId,
+      attributes,
       forecastAlgorithm: this.forecastAlgorithmControl.value,
       anomalyAlgorithm: this.anomaliesAlgorithmControl.value,
       forecastStartDate: this.globalStartDate.getTime(),
@@ -539,8 +560,9 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
     // If in edit mode, include the ID and other necessary fields
     if (this.isEditMode) {
-      forecastData["id"] = this.editingForecast.trueId;
-      forecastData["trueId"] = this.editingForecast.trueId;
+      (forecastData as Forecast).id = this.editingForecast.trueId;
+      // @ts-ignore
+      (forecastData as Forecast).trueId = this.editingForecast.trueId;
     }
 
     this.dialogRef.close(forecastData);
@@ -553,21 +575,21 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     // Clean up edit-mode class if it was added
     if (this.isEditMode) {
       const dialogContainer = document.querySelector(
-        ".mat-mdc-dialog-container.edit-mode"
+        '.mat-mdc-dialog-container.edit-mode'
       );
       if (dialogContainer) {
-        dialogContainer.classList.remove("edit-mode");
+        dialogContainer.classList.remove('edit-mode');
       }
     }
   }
 
   private populateFormForEdit(): void {
-    if (!this.editingForecast) return;
+    if (!this.editingForecast) {return;}
 
-    console.log("Editing forecast data:", this.editingForecast);
+    console.log('Editing forecast data:', this.editingForecast);
 
     // Set forecast name
-    this.forecastNameControl.setValue(this.editingForecast.modelName || "");
+    this.forecastNameControl.setValue(this.editingForecast.modelName || '');
 
     // Find and set the device
     // Since we have device name in 'device' field, let's find by name first
@@ -583,7 +605,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     // If not found by name and we have a device ID, try by ID
     if (!selectedDevice && this.editingForecast.deviceId) {
       const deviceId =
-        typeof this.editingForecast.deviceId === "string"
+        typeof this.editingForecast.deviceId === 'string'
           ? this.editingForecast.deviceId
           : this.editingForecast.deviceId.id;
       selectedDevice = this.devicesList.find((d) => d.id.id === deviceId);
@@ -594,7 +616,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     if (!selectedDevice && this.editingForecast.trueId) {
       // This is likely not the right approach, but let's keep it as fallback
       console.warn(
-        "Could not find device by name or deviceId, forecast data:",
+        'Could not find device by name or deviceId, forecast data:',
         this.editingForecast
       );
     }
@@ -607,7 +629,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
       this.onDeviceSelected(selectedDevice);
     } else {
       console.warn(
-        "Device not found for editing forecast:",
+        'Device not found for editing forecast:',
         this.editingForecast
       );
     }
@@ -615,7 +637,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     // Set attributes/fields if they exist - parse from attributesText
     if (this.editingForecast.attributesText) {
       const attributeKeys = this.editingForecast.attributesText
-        .split(", ")
+        .split(', ')
         .filter((key) => key.trim());
       this.fields = attributeKeys.map((key) => ({
         key: key.trim(),
@@ -663,7 +685,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
     // Set algorithms if they exist (use setTimeout to ensure form controls are ready)
     setTimeout(() => {
-      console.log("Setting algorithms from edit data:", {
+      console.log('Setting algorithms from edit data:', {
         forecastAlgorithm: this.editingForecast.forecastAlgorithm,
         anomalyAlgorithm:
           this.editingForecast.anomalyAlgorithm ||
@@ -689,7 +711,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
         this.forecastAlgorithmControl.setValue(forecastAlg);
         console.log(
-          "Forecast algorithm control value after setting:",
+          'Forecast algorithm control value after setting:',
           this.forecastAlgorithmControl.value
         );
       }
@@ -709,13 +731,13 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
         this.anomaliesAlgorithmControl.setValue(anomalyAlg);
         console.log(
-          "Anomaly algorithm control value after setting:",
+          'Anomaly algorithm control value after setting:',
           this.anomaliesAlgorithmControl.value
         );
       }
     }, 100);
 
-    console.log("Form populated for edit mode:", {
+    console.log('Form populated for edit mode:', {
       forecastName: this.forecastNameControl.value,
       device: this.selectedDevice?.name,
       attributes: this.fields,

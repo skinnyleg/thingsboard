@@ -70,7 +70,8 @@ import java.util.concurrent.ExecutionException;
  * Loads predictive maintenance sample data from CSV files into the database.
  * Updates timestamps to make the data current (within the last year).
  * Uses ThingsBoard's DeviceService for proper device creation.
- * Stores telemetry as timeseries data, but errors/failures/maintenance as separate entities.
+ * Stores telemetry as timeseries data, but errors/failures/maintenance as
+ * separate entities.
  */
 @Slf4j
 @Component
@@ -127,6 +128,9 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     @Value("${predictive-maintenance.exit-on-failure:true}")
     private boolean exitOnFailure;
 
+    @Value("${predictive-maintenance.load-sample-data-update-to-current-time:true}")
+    private boolean updateDataToCurrentTime;
+
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     // Time adjustment: shift dates to be recent (within last year)
@@ -142,7 +146,8 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (!loadSampleData) {
-            log.info("Predictive maintenance sample data loading is disabled. Set 'predictive-maintenance.load-sample-data=true' to enable.");
+            log.info(
+                    "Predictive maintenance sample data loading is disabled. Set 'predictive-maintenance.load-sample-data=true' to enable.");
             synchronized (this) {
                 loadingComplete = true;
             }
@@ -256,23 +261,24 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
         // Validate that the number of machines doesn't exceed the maximum
         if (allowedMachineIds.size() > maxMachines) {
             String errorMsg = String.format(
-                "Number of configured machine IDs (%d) exceeds maximum allowed (%d). " +
-                "Please reduce the machine-ids list or increase max-machines setting.",
-                allowedMachineIds.size(), maxMachines
-            );
+                    "Number of configured machine IDs (%d) exceeds maximum allowed (%d). " +
+                            "Please reduce the machine-ids list or increase max-machines setting.",
+                    allowedMachineIds.size(), maxMachines);
             log.error(errorMsg);
             throw new IllegalArgumentException(errorMsg);
         }
 
         log.info("Machine filter configured: {} specific machines will be loaded (max allowed: {})",
-                 allowedMachineIds.size(), maxMachines);
+                allowedMachineIds.size(), maxMachines);
         log.debug("Allowed machine IDs: {}", allowedMachineIds);
     }
 
     /**
      * Check if a machine ID should be loaded based on the filter
-     * @param machineId the machine ID to check
-     * @param loadedCount current count of loaded machines (used for max-machines limit)
+     * 
+     * @param machineId   the machine ID to check
+     * @param loadedCount current count of loaded machines (used for max-machines
+     *                    limit)
      * @return true if machine should be loaded
      */
     private boolean shouldLoadMachine(Integer machineId, int loadedCount) {
@@ -304,7 +310,8 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     }
 
     /**
-     * Load all data (telemetry as timeseries, errors/failures/maintenance as entities)
+     * Load all data (telemetry as timeseries, errors/failures/maintenance as
+     * entities)
      * Uses concurrent saves for better performance
      */
     private void loadAllData(Map<Integer, UUID> machineToDeviceMap, TenantId tenantId)
@@ -332,14 +339,13 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
             List<TsKvEntry> telemetryEntries = entry.getValue();
             if (!telemetryEntries.isEmpty()) {
                 ListenableFuture<Integer> future = timeseriesService.save(
-                    tenantId,
-                    new DeviceId(deviceId),
-                    telemetryEntries,
-                    0L
-                );
+                        tenantId,
+                        new DeviceId(deviceId),
+                        telemetryEntries,
+                        0L);
                 saveFutures.add(future);
                 log.debug("Scheduled save of {} timeseries entries for device {}",
-                         telemetryEntries.size(), deviceId);
+                        telemetryEntries.size(), deviceId);
             }
         }
 
@@ -349,7 +355,8 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     }
 
     /**
-     * Load telemetry data from PdM_telemetry.csv using OpenCSV iterator for memory-efficient streaming
+     * Load telemetry data from PdM_telemetry.csv using OpenCSV iterator for
+     * memory-efficient streaming
      */
     private void loadTelemetryData(Map<Integer, UUID> machineToDeviceMap, Map<UUID, List<TsKvEntry>> deviceTelemetryMap)
             throws IOException, ParseException, CsvValidationException {
@@ -370,7 +377,8 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
             int totalRows = 0;
             int skippedRows = 0;
 
-            // Use iterator for memory-efficient streaming - OpenCSV processes one row at a time
+            // Use iterator for memory-efficient streaming - OpenCSV processes one row at a
+            // time
             Iterator<String[]> iterator = csvReader.iterator();
 
             while (iterator.hasNext()) {
@@ -379,6 +387,9 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
 
                 try {
                     Date originalDate = DATE_FORMAT.parse(row[0]);
+                    if (!updateDataToCurrentTime) {
+                        timeAdjustmentMillis = 0; // No adjustment if updating is disabled
+                    }
                     long timestamp = originalDate.getTime() + timeAdjustmentMillis;
                     Integer machineId = Integer.parseInt(row[1]);
                     UUID deviceId = machineToDeviceMap.get(machineId);
@@ -390,7 +401,8 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
                     }
 
                     // Build telemetry entries for this row
-                    List<TsKvEntry> telemetryEntries = deviceTelemetryMap.computeIfAbsent(deviceId, k -> new ArrayList<>());
+                    List<TsKvEntry> telemetryEntries = deviceTelemetryMap.computeIfAbsent(deviceId,
+                            k -> new ArrayList<>());
                     for (int j = 2; j < row.length && j < header.length; j++) {
                         String key = header[j];
                         String value = row[j];
@@ -403,7 +415,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
             }
 
             log.info("Loaded {} telemetry records for {} devices (skipped {} rows for filtered machines)",
-                     totalRows - skippedRows, deviceTelemetryMap.size(), skippedRows);
+                    totalRows - skippedRows, deviceTelemetryMap.size(), skippedRows);
         }
     }
 
@@ -420,6 +432,9 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
         for (int i = 1; i < rows.size(); i++) {
             String[] row = rows.get(i);
             Date originalDate = DATE_FORMAT.parse(row[0]);
+            if (!updateDataToCurrentTime) {
+                timeAdjustmentMillis = 0; // No adjustment if updating is disabled
+            }
             Timestamp timestamp = new Timestamp(originalDate.getTime() + timeAdjustmentMillis);
 
             Integer machineId = Integer.parseInt(row[1]);
@@ -461,6 +476,9 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
         for (int i = 1; i < rows.size(); i++) {
             String[] row = rows.get(i);
             Date originalDate = DATE_FORMAT.parse(row[0]);
+            if (!updateDataToCurrentTime) {
+                timeAdjustmentMillis = 0; // No adjustment if updating is disabled
+            }
             Timestamp timestamp = new Timestamp(originalDate.getTime() + timeAdjustmentMillis);
 
             Integer machineId = Integer.parseInt(row[1]);
@@ -502,6 +520,9 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
         for (int i = 1; i < rows.size(); i++) {
             String[] row = rows.get(i);
             Date originalDate = DATE_FORMAT.parse(row[0]);
+            if (!updateDataToCurrentTime) {
+                timeAdjustmentMillis = 0; // No adjustment if updating is disabled
+            }
             Timestamp timestamp = new Timestamp(originalDate.getTime() + timeAdjustmentMillis);
 
             Integer machineId = Integer.parseInt(row[1]);
@@ -538,6 +559,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
 
     /**
      * Calculate time adjustment to shift old dates to recent dates
+     * 
      * @param daysAgo number of days ago for the max date to be set
      */
     private void calculateTimeAdjustment(int daysAgo) throws IOException, CsvException, ParseException {
@@ -665,12 +687,15 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     /**
      * Store device attributes using AttributesService
      */
-    private void storeDeviceAttributes(TenantId tenantId, DeviceId deviceId, String model, Integer age, Integer machineId) {
+    private void storeDeviceAttributes(TenantId tenantId, DeviceId deviceId, String model, Integer age,
+            Integer machineId) {
         try {
             List<AttributeKvEntry> attributes = new ArrayList<>();
             attributes.add(new BaseAttributeKvEntry(new StringDataEntry("model", model), System.currentTimeMillis()));
-            attributes.add(new BaseAttributeKvEntry(new LongDataEntry("age", age.longValue()), System.currentTimeMillis()));
-            attributes.add(new BaseAttributeKvEntry(new LongDataEntry("machineId", machineId.longValue()), System.currentTimeMillis()));
+            attributes.add(
+                    new BaseAttributeKvEntry(new LongDataEntry("age", age.longValue()), System.currentTimeMillis()));
+            attributes.add(new BaseAttributeKvEntry(new LongDataEntry("machineId", machineId.longValue()),
+                    System.currentTimeMillis()));
 
             attributesService.save(tenantId, deviceId, AttributeScope.SERVER_SCOPE, attributes).get();
         } catch (Exception e) {
