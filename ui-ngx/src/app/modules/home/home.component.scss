@@ -30,6 +30,10 @@
     ::ng-deep mat-sidenav-content {
       margin-left: 64px !important;
       transition: margin-left 0.3s ease;
+
+      @media (max-width: 959px) {
+        margin-left: 0 !important;
+      }
     }
   }
 
@@ -37,6 +41,10 @@
     ::ng-deep mat-sidenav-content {
       margin-left: 250px !important;
       transition: margin-left 0.3s ease;
+
+      @media (max-width: 959px) {
+        margin-left: 0 !important;
+      }
     }
   }
   mat-sidenav.tb-site-sidenav {

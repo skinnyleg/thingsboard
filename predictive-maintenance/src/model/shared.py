@@ -6,10 +6,10 @@ from datetime import datetime
 import os
 import logging
 from pathlib import Path
-from typing import Dict
 from library import AnomalyPredictor, ForecastModel
 from library.core.data_registry import DataRegistry
 from src.settings import settings
+from library.models.anomaly_predictor import train_model, save_models
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,6 @@ def get_data_registry() -> DataRegistry:
     )
 
     # Get telemetry configuration from settings
-    from src.settings import settings
 
     return DataRegistry(
         database_url=database_url,
@@ -146,35 +145,31 @@ def train_and_save_model(
             )
 
         # print all dataframes
-        print("[TRAIN_AND_SAVE] telemetry_df:", flush=True)
-        print(telemetry_df.head(), flush=True)
-        print(telemetry_df.dtypes, flush=True)
-        print("[TRAIN_AND_SAVE] failures_df:", flush=True)
-        print(failures_df.head(), flush=True)
-        print(failures_df.dtypes, flush=True)
-        print("[TRAIN_AND_SAVE] maintenance_df:", flush=True)
-        print(maintenance_df.head(), flush=True)
-        print(maintenance_df.dtypes, flush=True)
-        print("[TRAIN_AND_SAVE] machines_df:", flush=True)
-        print(machines_df.head(), flush=True)
-        print(machines_df.dtypes, flush=True)
-        print("[TRAIN_AND_SAVE] errors_df:", flush=True)
-        print(errors_df.head(), flush=True)
-        print(errors_df.dtypes, flush=True)
+        # print("[TRAIN_AND_SAVE] telemetry_df:", flush=True)
+        # print(telemetry_df.head(), flush=True)
+        # print(telemetry_df.dtypes, flush=True)
+        # print("[TRAIN_AND_SAVE] failures_df:", flush=True)
+        # print(failures_df.head(), flush=True)
+        # print(failures_df.dtypes, flush=True)
+        # print("[TRAIN_AND_SAVE] maintenance_df:", flush=True)
+        # print(maintenance_df.head(), flush=True)
+        # print(maintenance_df.dtypes, flush=True)
+        # print("[TRAIN_AND_SAVE] machines_df:", flush=True)
+        # print(machines_df.head(), flush=True)
+        # print(machines_df.dtypes, flush=True)
+        # print("[TRAIN_AND_SAVE] errors_df:", flush=True)
+        # print(errors_df.head(), flush=True)
+        # print(errors_df.dtypes, flush=True)
 
-        # print distinct values of comp of maintenance_df
-        print("[TRAIN_AND_SAVE] maintenance_df distinct comp values:", flush=True)
-        print(maintenance_df["comp"].unique(), flush=True)
+        # # print distinct values of comp of maintenance_df
+        # print("[TRAIN_AND_SAVE] maintenance_df distinct comp values:", flush=True)
+        # print(maintenance_df["comp"].unique(), flush=True)
 
-        # print distinct values of failure of failures_df
-        print("[TRAIN_AND_SAVE] failures_df distinct failure values:", flush=True)
-        print(failures_df["failure"].unique(), flush=True)
+        # # print distinct values of failure of failures_df
+        # print("[TRAIN_AND_SAVE] failures_df distinct failure values:", flush=True)
+        # print(failures_df["failure"].unique(), flush=True)
 
-        from .Failure_prediction_Random_Forest import (
-            train_model,
-            predict_failure,
-            save_models
-        )
+
 
         hourly_models, feature_cols, labeled_features_clean = train_model(
             telemetry_df,
@@ -182,6 +177,7 @@ def train_and_save_model(
             maintenance_df,
             failures_df,
             machines_df,
+            algorithm=algorithm,
         )
 
         # save models

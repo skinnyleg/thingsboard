@@ -246,10 +246,15 @@ def split_data(labeled_features_clean: pd.DataFrame, feature_cols: list):
 
 key_hours = [1, 4, 8, 12, 16, 20, 24]
 
+from xgboost import XGBClassifier
 
-def create_and_train_hourly_models(train, val, test, X_train, X_val, X_test, feature_cols):
+def create_and_train_hourly_models(train, val, test, X_train, X_val, X_test, feature_cols, algorithm="random_forest"):
     hourly_models = {}
     hourly_results = {}
+
+    if algorithm not in ["random_forest", "xgboost"]:
+        algorithm = "random_forest"
+        print(f"Warning: Unsupported algorithm specified. Defaulting to 'random_forest'.", flush=True)
 
     for hour in key_hours:
         print(f"\nTraining models for Hour {hour}...")
@@ -266,26 +271,64 @@ def create_and_train_hourly_models(train, val, test, X_train, X_val, X_test, fea
         y_test_bin = test[binary_target]
 
         if len(y_train_mc.value_counts()) > 1:
-            rf_multiclass = RandomForestClassifier(
-                n_estimators=100, max_depth=12, min_samples_split=8,
-                min_samples_leaf=4, class_weight="balanced", random_state=42, n_jobs=-1,
-            )
-            rf_multiclass.fit(X_train, y_train_mc)
+            if algorithm == "random_forest":
+                rf_multiclass = RandomForestClassifier(
+                    n_estimators=100, max_depth=12, min_samples_split=8,
+                    min_samples_leaf=4, class_weight="balanced", random_state=42, n_jobs=-1,
+                )
+            elif algorithm == "xgboost":
+                # encode string labels to integers for XGBoost
+                le_mc = LabelEncoder()
+                y_train_mc_enc = le_mc.fit_transform(y_train_mc.astype(str))
+                # prepare encoded val/test if available
+                y_val_mc_enc = le_mc.transform(y_val_mc.astype(str)) if len(y_val_mc) > 0 else y_val_mc
+                y_test_mc_enc = le_mc.transform(y_test_mc.astype(str)) if len(y_test_mc) > 0 else y_test_mc
+
+                rf_multiclass = XGBClassifier(
+                    n_estimators=100, max_depth=6, learning_rate=0.1,
+                    objective="multi:softprob", num_class=len(le_mc.classes_),
+                    use_label_encoder=False, eval_metric="mlogloss", random_state=42, n_jobs=-1,
+                )
+            else:
+                raise ValueError(f"Unsupported algorithm: {algorithm}")
+
+            # fit model (use encoded labels for xgboost, raw labels for RF)
+            if algorithm == "xgboost":
+                rf_multiclass.fit(X_train, y_train_mc_enc)
+                # attach encoder for decoding at predict time
+                rf_multiclass._label_encoder = le_mc
+            else:
+                rf_multiclass.fit(X_train, y_train_mc)
             hourly_models[f"hour_{hour}_multiclass"] = rf_multiclass
 
-            y_val_pred_mc = rf_multiclass.predict(X_val)
-            y_test_pred_mc = rf_multiclass.predict(X_test)
-
-            val_acc_mc = accuracy_score(y_val_mc, y_val_pred_mc)
-            test_acc_mc = accuracy_score(y_test_mc, y_test_pred_mc)
+            # predictions and accuracy (compare encoded labels when using xgboost)
+            if algorithm == "xgboost":
+                y_val_pred_mc_enc = rf_multiclass.predict(X_val)
+                y_test_pred_mc_enc = rf_multiclass.predict(X_test)
+                val_acc_mc = accuracy_score(y_val_mc_enc, y_val_pred_mc_enc)
+                test_acc_mc = accuracy_score(y_test_mc_enc, y_test_pred_mc_enc)
+            else:
+                y_val_pred_mc = rf_multiclass.predict(X_val)
+                y_test_pred_mc = rf_multiclass.predict(X_test)
+                val_acc_mc = accuracy_score(y_val_mc, y_val_pred_mc)
+                test_acc_mc = accuracy_score(y_test_mc, y_test_pred_mc)
 
             print(f"  Multi-class - Val Acc: {val_acc_mc:.4f}, Test Acc: {test_acc_mc:.4f}")
 
         if len(y_train_bin.value_counts()) > 1:
-            rf_binary = RandomForestClassifier(
-                n_estimators=100, max_depth=12, min_samples_split=8,
-                min_samples_leaf=4, class_weight="balanced", random_state=42, n_jobs=-1,
-            )
+            if algorithm == "random_forest":
+                rf_binary = RandomForestClassifier(
+                    n_estimators=100, max_depth=12, min_samples_split=8,
+                    min_samples_leaf=4, class_weight="balanced", random_state=42, n_jobs=-1,
+                )
+            elif algorithm == "xgboost":
+                rf_binary = XGBClassifier(
+                    n_estimators=100, max_depth=6, learning_rate=0.1,
+                    objective="binary:logistic", use_label_encoder=False,
+                    eval_metric="logloss", random_state=42, n_jobs=-1,
+                )
+            else:
+                raise ValueError(f"Unsupported algorithm: {algorithm}")
             rf_binary.fit(X_train, y_train_bin)
             hourly_models[f"hour_{hour}_binary"] = rf_binary
 
@@ -373,10 +416,20 @@ def predict_24h_hourly_failures(
                 multiclass_model = hourly_models[multiclass_model_key]
                 try:
                     component_probs = multiclass_model.predict_proba(X_current)[0]
-                    predicted_component = multiclass_model.predict(X_current)[0]
+
+                    # if model was trained with XGBoost, it may have an attached LabelEncoder
+                    if hasattr(multiclass_model, "_label_encoder"):
+                        le = multiclass_model._label_encoder
+                        predicted_component_enc = multiclass_model.predict(X_current)[0]
+                        predicted_component = le.inverse_transform([predicted_component_enc])[0]
+                        class_names = list(le.classes_)
+                    else:
+                        predicted_component = multiclass_model.predict(X_current)[0]
+                        # fallback to model.classes_ for class names
+                        class_names = list(getattr(multiclass_model, "classes_", []))
 
                     component_prob_dict = {}
-                    for i, class_name in enumerate(multiclass_model.classes_):
+                    for i, class_name in enumerate(class_names):
                         component_prob_dict[str(class_name)] = round(float(component_probs[i]), 4)
 
                     hour_prediction["predicted_failing_component"] = str(predicted_component)
@@ -445,12 +498,12 @@ def preprocess_data(telemetry, errors, maint, failures, machines):
     return labeled_features_clean, feature_cols
 
 
-def train_model(telemetry, errors, maint, failures, machines):
+def train_model(telemetry, errors, maint, failures, machines, algorithm="random_forest"):
     labeled_features_clean, feature_cols = preprocess_data(telemetry, errors, maint, failures, machines)
     print(f"Labeled features cleaned: {labeled_features_clean.shape}", flush=True)
     
     train, val, test, X_train, X_val, X_test = split_data(labeled_features_clean, feature_cols)
-    hourly_models = create_and_train_hourly_models(train, val, test, X_train, X_val, X_test, feature_cols)
+    hourly_models = create_and_train_hourly_models(train, val, test, X_train, X_val, X_test, feature_cols, algorithm=algorithm)
     return hourly_models, feature_cols, labeled_features_clean
 
 
@@ -491,7 +544,8 @@ if __name__ == "__main__":
 
     
     # Train the model
-    hourly_models, feature_cols, labeled_features_clean = train_model(telemetry, errors, maint, failures, machines)
+    hourly_models, feature_cols, labeled_features_clean = train_model(
+        telemetry, errors, maint, failures, machines, algorithm="xgboost")
 
     print("\nlabeled_features_clean info:", flush=True)
     print(f"Shape: {labeled_features_clean.shape}", flush=True)

@@ -1,13 +1,23 @@
 // Notifier dot for unread logs
 .unread-dot {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 8px;
-  height: 8px;
-  background: #e53935;
+  /* Place the dot in the top-left corner of the icon, taking into account icon padding */
+  top: -30%;
+  left: 90%;
+  width: 6px;
+  height: 6px;
+  background: #ff9800;
   border-radius: 50%;
   z-index: 2;
+  opacity: 0.9;
+  animation: pulse 2s 1.5;
+  animation-fill-mode: forwards;
+}
+
+.icon-with-badge {
+  position: relative;
+  display: inline-block;
+  line-height: 0; // prevent extra height from mat-icon
 }
 .tb-default {
   :host {
@@ -55,6 +65,10 @@
               align-items: center;
               justify-content: center;
             }
+
+            .algorithm-label {
+              opacity: 0.7;
+            }
           }
 
           .section-logs-button {
@@ -79,11 +93,17 @@
           color: #ff9800;
         }
 
-        .section-title .section-icon {
-          color: #ff9800;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        .section-title {
+          .section-icon {
+            color: #ff9800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .algorithm-label {
+            opacity: 0.4;
+          }
         }
 
         .section-logs-button {
@@ -207,8 +227,7 @@
 }
 
 :host {
-  padding: 0 1rem;
-  margin: 1rem;
+  padding-block: 1rem;
 
   display: flex;
   flex-direction: column;
@@ -216,6 +235,8 @@
   overflow: hidden;
 
   height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 
   .model-select {
     width: 100%;
@@ -232,6 +253,7 @@
     font-size: 0.9rem;
     opacity: 0.6;
     margin-right: 0.5rem;
+    padding-inline: 1rem;
   }
 
   .device-label {
@@ -251,10 +273,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    // padding: 0rem 0rem;
+    padding-inline: 1rem;
     padding-bottom: 1em;
     margin-bottom: 1rem;
-    // margin-top: 1rem;
     border-bottom: 1px solid rgba(51, 51, 51, 0.1);
 
     .forecast-name {
@@ -729,11 +750,13 @@
   .model-dashboard {
     // border: 1px solid #5d5d5d91 !important;
     // border-radius: 4px;
-    height: 100%;
+    flex: 1;
     display: flex;
-    overflow: scroll;
     flex-direction: column;
     position: relative; // Add positioning context for absolute positioned children
+    padding-inline: 1rem;
+    overflow-y: auto;
+    min-height: 0; // Allow flex shrinking
 
     // Chart Section (Forecast Chart) styling
     .chart-section {
@@ -741,6 +764,7 @@
 
       display: flex;
       flex-direction: column;
+      min-height: 500px;
       // margin: 1rem;
       border-radius: 10px;
       border: 1px solid var(--tb-dark-mat-800);
@@ -748,6 +772,8 @@
       transition: all 0.3s ease;
 
       &.collapsed {
+        min-height: auto;
+
         .chart-content {
           display: none;
         }
@@ -816,6 +842,13 @@
             justify-content: center;
             line-height: 1;
           }
+
+          .algorithm-label {
+            font-size: 12px;
+            font-weight: 400;
+            opacity: 0.7;
+            margin-left: 8px;
+          }
         }
 
         .section-logs-button {
@@ -863,6 +896,7 @@
       background: var(--tb-dark-app-bar);
       margin-top: 1rem;
       flex: 1;
+      min-height: 500px;
       overflow: auto;
       display: flex;
       flex-direction: column;
@@ -872,6 +906,7 @@
 
       &.collapsed {
         flex: 0 0 auto;
+        min-height: auto;
 
         .chart-content {
           display: none;
@@ -941,6 +976,13 @@
             align-items: center;
             justify-content: center;
             line-height: 1;
+          }
+
+          .algorithm-label {
+            font-size: 12px;
+            font-weight: 400;
+            opacity: 0.7;
+            margin-left: 8px;
           }
         }
 
@@ -1022,7 +1064,9 @@
       flex-direction: column;
       gap: 16px;
       pointer-events: all; // Re-enable clicks on content
-      transform: translateX(-50%); // Center the tooltip horizontally around the arrow position
+      transform: translateX(
+        -50%
+      ); // Center the tooltip horizontally around the arrow position
       animation: slideDown 0.3s ease;
 
       .tooltip-header {
@@ -1291,11 +1335,11 @@
 @keyframes pulse {
   0%,
   100% {
-    opacity: 1;
+    opacity: 0.9;
     transform: scale(1);
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.4;
     transform: scale(1.2);
   }
 }

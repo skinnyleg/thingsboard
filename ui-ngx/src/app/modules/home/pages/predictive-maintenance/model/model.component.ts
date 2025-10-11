@@ -1,4 +1,4 @@
-import { ViewChild, ElementRef } from '@angular/core';
+import { ViewChild, ElementRef, ChangeDetectorRef, NgZone } from '@angular/core';
 // ...existing code...
 /* eslint-disable @angular-eslint/use-lifecycle-interface */
 import { Component } from '@angular/core';
@@ -33,7 +33,11 @@ import {
 } from '../../../components/predictive-maintenance/components/model/add-model-dialog/add-model-dialog.component';
 import { ModelSelectionDialogComponent } from './model-selection-dialog/model-selection-dialog.component';
 import { ModelLogsDialogComponent } from './model-logs-dialog/model-logs-dialog.component';
-import { AnomaliesComponent, AnomalyReport } from '../../../components/predictive-maintenance/components/anomalies/anomalies.component';
+import {
+  AnomaliesComponent,
+  AnomalyPrediction,
+  AnomalyReport
+} from '../../../components/predictive-maintenance/components/anomalies/anomalies.component';
 import { CommonModule } from '@angular/common';
 import { ForecastChartComponent } from '../../../components/predictive-maintenance/components/forecast-chart/forecast-chart.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -53,6 +57,9 @@ import {
   animate,
 } from '@angular/animations';
 import { ModelWebSocketService } from '@app/core/http/model-websocket.service';
+import { ModelLogsNotifierService } from './model-logs-notifier.service';
+import { flatMap } from 'lodash';
+import { mergeMap, Observable } from 'rxjs';
 
 @Component({
   selector: 'tb-forecast',
@@ -123,6 +130,10 @@ export class ModelComponent extends PageComponent implements Order {
 
   status = 'inactive';
 
+  forecastAlgorithm: string;
+
+  anomalyAlgorithm: string;
+
   // Collapse/expand states for charts
   forecastChartCollapsed = false;
 
@@ -142,14 +153,20 @@ export class ModelComponent extends PageComponent implements Order {
     },
   ];
 
-  selectedViews: ForecastViewType[] = [
-    ForecastViewType.FORECAST,
-    ForecastViewType.ANOMALIES,
-  ];
+  selectedViews: ForecastViewType[] = [];
 
   showViewSelector = false;
 
   unreadLogs = false;
+
+  // Initialize unread logs state from the notifier service on component creation
+  private initializeUnreadLogsState(): void {
+    if (this.trueId) {
+      const hasUnread = this.logsNotifier.hasUnreadLogs(this.trueId);
+      console.log('Initializing unreadLogs from notifier for', this.trueId, ':', hasUnread);
+      this.unreadLogs = hasUnread;
+    }
+  }
 
   // Logs tooltip properties
   showLogsTooltip = false; // Only true after calculations are complete
@@ -159,6 +176,21 @@ export class ModelComponent extends PageComponent implements Order {
   logsTooltipPosition = { top: -1000000, left: -1000000, zIndex: -1000 };
 
   private readonly LOGS_TOOLTIP_PREFERENCE_KEY = 'model-logs-tooltip-dont-show';
+
+  // Log tracking properties
+  private lastReadLogTimestamp = 0;
+
+  private logsObservable: Observable<{
+    timestamp: string;
+    level: string;
+    message: string | {
+        result?: AnomalyPrediction[];
+    };
+    }> = null;
+
+  private notifierSubscription: any = null;
+
+  private readonly LAST_READ_LOG_KEY_PREFIX = 'model-last-read-log-';
 
   constructor(
     protected store: Store<AppState>,
@@ -170,16 +202,30 @@ export class ModelComponent extends PageComponent implements Order {
     private translate: TranslateService,
     private modelWebSocketService: ModelWebSocketService,
     private dialogService: DialogService,
+    private logsNotifier: ModelLogsNotifierService,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone,
   ) {
     super(store);
   }
 
   ngOnDestroy(): void {
+    // Unsubscribe from log updates
+    if (this.logsObservable) {
+      // this.logsObservable.unsubscribe();
+      this.logsObservable = null;
+    }
+
     // Unsubscribe from job status updates
     if (this.trueId) {
       this.modelWebSocketService.unsubscribeFromJobStatus(this.trueId, 'anomaly');
+      this.modelWebSocketService.unsubscribeFromLogs(this.trueId);
     }
     this.modelWebSocketService.disconnect();
+    if (this.notifierSubscription) {
+      this.notifierSubscription.unsubscribe();
+      this.notifierSubscription = null;
+    }
   }
 
   changeModel(value: any) {
@@ -188,6 +234,8 @@ export class ModelComponent extends PageComponent implements Order {
     this.deviceId = '';
     this.Attributes = [];
     this.trueId = value;
+    this.forecastAlgorithm = '';
+    this.anomalyAlgorithm = '';
     this.fetchPredictiveModelConfig(value);
   }
 
@@ -218,8 +266,7 @@ export class ModelComponent extends PageComponent implements Order {
       console.error('No forecast data passed.');
     }
 
-    // Load collapsed states from localStorage
-    this.loadCollapsedStates();
+
 
     // Add document click listener for view selector dropdown
     this.addDocumentClickListener();
@@ -247,7 +294,7 @@ export class ModelComponent extends PageComponent implements Order {
 
   ngAfterViewInit(): void {
     // Position the tooltip after view is initialized
-    this.displayLogsTooltip();
+    // this.displayLogsTooltip();
 
     // set 3 random anomalies for testing
         // const testAnomalies: AnomalyReport[] = [
@@ -302,7 +349,7 @@ export class ModelComponent extends PageComponent implements Order {
 
         // Calculate tooltip position so the arrow points right after the icon (not the button container)
         this.logsTooltipPosition = {
-          top: rect.bottom + 2, // 2px below the icon itself
+          top: rect.bottom + 14, // 2px below the icon itself
           left: rect.left + (rect.width / 2), // Align arrow with center of icon
           zIndex: 1000 // Ensure tooltip is above other elements
         };
@@ -317,6 +364,7 @@ export class ModelComponent extends PageComponent implements Order {
     this.route.params.subscribe((params) => {
       // console.log('Route params:', params);
       if (params.id) {
+        this.trueId = params.id;
         this.id = params.id;
         this.fetchPredictiveModelConfig(params.id);
         this.models = this.forecastData;
@@ -324,6 +372,9 @@ export class ModelComponent extends PageComponent implements Order {
         if (this.models === undefined || this.models.length === 0) {
           return this.router.navigateByUrl('/predictiveMaintenance');
         }
+
+        // Load collapsed states from localStorage
+        this.loadCollapsedStates();
 
         // Initialize filtered models
         this.updateFilteredModels();
@@ -349,11 +400,51 @@ export class ModelComponent extends PageComponent implements Order {
 
         this.modelWebSocketService.cleanUp();
 
-        // Subscribe to job logs
-        this.modelWebSocketService.requestJobLogs(this.trueId).subscribe((msg) => {
-            // console.log('Log message received:', msg);
-            msg.data.logs.forEach(log => {
+        // Load last read log timestamp from localStorage
+        this.loadLastReadLogTimestamp();
+        console.log('Initial lastReadLogTimestamp for model', this.trueId, ':', this.lastReadLogTimestamp);
+
+        // Initialize unread logs state from notifier service
+        this.initializeUnreadLogsState();
+        console.log('Initial unreadLogs after initialization:', this.unreadLogs);
+
+        // map job logs to each log entry
+        this.logsObservable = this.modelWebSocketService.requestJobLogs(this.trueId)
+        .pipe(
+          mergeMap((msg) => flatMap(msg.data.logs))
+        );
+
+        this.logsObservable.subscribe(log => {
               console.log('Log entry:', log);
+
+              // Check if this log is new (after last read timestamp)
+              const logTimestamp = log.timestamp ? new Date(log.timestamp).getTime() : Date.now();
+              console.log(
+                'Log timestamp:',
+                logTimestamp,
+                'Last read:',
+                this.lastReadLogTimestamp,
+                'Is new?',
+                logTimestamp > this.lastReadLogTimestamp
+              );
+              if (logTimestamp > this.lastReadLogTimestamp) {
+                console.log('Setting unreadLogs to true');
+                // Run inside Angular zone to ensure change detection
+                this.ngZone.run(() => {
+                  this.unreadLogs = true;
+                  console.log('Inside zone, unreadLogs set to:', this.unreadLogs);
+                });
+                console.log('After zone.run, unreadLogs:', this.unreadLogs);
+                // update global notifier
+                try {
+                  if (this.trueId) {
+                    this.logsNotifier.setUnread(this.trueId, true);
+                  }
+                } catch (e) {
+                  // ignore notifier errors
+                }
+              }
+
               if (log.level.toLowerCase() === 'prediction') {
                 console.log('Job prediction:', log.message);
                 // Try to parse prediction log as JSON
@@ -408,20 +499,8 @@ export class ModelComponent extends PageComponent implements Order {
                 // console.log4('Job log:', log.message);
               }
             });
-            // msg?..forEach((log: AnomalyLogs) => {
-            // if (log.type === 'prediction') {
-            //   console.log('Job prediction:', log.message);
-            // } else {
-            //   console.log('Job log:', log.message);
-            // }
-          // });
-        }, (err) => {
-          console.error('Error receiving job logs:', err);
-          this.anomaliesComponent?.setStreamStatus(false, 'Error receiving job logs');
-        });
-
         // Subscribe to real-time job status updates
-  this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
+          this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
           // if (msg.type === 'prediction') {
           //   console.log('Job prediction:', msg.data.logs);
           // } else {
@@ -454,6 +533,16 @@ export class ModelComponent extends PageComponent implements Order {
         // this.getModelStatus();
       }
     });
+
+        // Subscribe to notifier changes so the UI updates if other parts mark read
+        this.notifierSubscription = this.logsNotifier.changes().subscribe(change => {
+          if (change.modelId === this.trueId) {
+            this.ngZone.run(() => {
+              this.unreadLogs = change.unread;
+              console.log('Notifier changed unreadLogs to:', this.unreadLogs, 'for model:', this.trueId);
+            });
+          }
+        });
   }
 
   private fetchModelNames() {
@@ -512,6 +601,8 @@ export class ModelComponent extends PageComponent implements Order {
         this.Attributes = data.attributes.map((attr) => attr.key);
         this.trueId = data.id.id;
         this.forecastName = data.name || data.id.id.split('-')[0]; // Use name if available, fallback to ID
+        this.forecastAlgorithm = data.forecastAlgorithm;
+        this.anomalyAlgorithm = data.anomalyAlgorithm;
 
         // Fetch device name
         this.deviceService.getDevice(data.deviceId.id).subscribe(
@@ -546,6 +637,17 @@ export class ModelComponent extends PageComponent implements Order {
     if (!this.trueId) {
       console.error('No model ID available for viewing logs');
       return;
+    }
+
+    // Mark logs as read when opening the dialog
+    this.unreadLogs = false;
+    this.saveLastReadLogTimestamp();
+    try {
+      if (this.trueId) {
+        this.logsNotifier.markAsRead(this.trueId);
+      }
+    } catch (e) {
+      // ignore
     }
 
     const dialogRef = this.dialog.open(ModelLogsDialogComponent, {
@@ -627,7 +729,8 @@ export class ModelComponent extends PageComponent implements Order {
         const dialogData = {
           isEdit: true,
           forecastData: {
-            trueId: forecastData.id.id,
+            id: forecastData.id, // Include the full ForecastId object
+            trueId: forecastData.id,
             modelName: forecastData.name || forecastData.id.id.split('-')[0],
             device: this.device,
             deviceId: forecastData.deviceId,
@@ -653,7 +756,34 @@ export class ModelComponent extends PageComponent implements Order {
 
         dialogRef.afterClosed().subscribe((result) => {
           if (result) {
-            this.updateForecast(result);
+            // Check if result contains needsRebuild flag (edit mode format)
+            if (result.forecastData !== undefined && result.needsRebuild !== undefined) {
+              if (result.needsRebuild) {
+                // Show confirmation dialog for rebuild
+                this.dialogService.confirm(
+                  this.translate.instant('forecast.rebuild-model-title'),
+                  this.translate.instant('forecast.rebuild-model-text'),
+                  this.translate.instant('action.cancel'),
+                  this.translate.instant('forecast.rebuild'),
+                  true
+                ).subscribe((confirmed) => {
+                  if (confirmed) {
+                    // User confirmed rebuild
+                    this.updateForecast(result.forecastData, true);
+                  } else {
+                    // User cancelled, just close without updating
+                    console.log('Model rebuild cancelled by user');
+                  }
+                });
+              } else {
+                // No significant changes, just update without rebuild
+                this.updateForecast(result.forecastData, false);
+              }
+            } else {
+              // Shouldn't happen in edit mode, but handle it gracefully
+              console.warn('Unexpected result format from edit dialog:', result);
+              this.updateForecast(result, false);
+            }
           }
         });
       },
@@ -663,12 +793,29 @@ export class ModelComponent extends PageComponent implements Order {
     );
   }
 
-  updateForecast(forecastData: any): void {
+  updateForecast(forecastData: any, shouldRebuild: boolean): void {
     this.predictiveModelsService.updatePredictiveModel(forecastData).subscribe(
       (response) => {
-        // console.log('Forecast updated successfully:', response);
-        // Refresh the current model to reflect changes
-        this.refreshModel();
+        console.log('Forecast updated successfully:', response);
+
+        // Update algorithm labels immediately from the saved data
+        this.forecastAlgorithm = forecastData.forecastAlgorithm;
+        this.anomalyAlgorithm = forecastData.anomalyAlgorithm;
+
+        // If rebuild was requested, trigger activate command
+        if (shouldRebuild) {
+          console.log('Triggering model rebuild (activate)...');
+          // Update status to pending immediately to show rebuild is in progress
+          this.status = 'pending';
+          this.progressMessage = {
+            step: 'Starting rebuild',
+            progress: 0
+          };
+          this.activateModel();
+        } else {
+          // Just refresh the current model to reflect changes
+          this.refreshModel();
+        }
       },
       (error) => {
         console.error('Error updating forecast:', error);
@@ -710,9 +857,35 @@ export class ModelComponent extends PageComponent implements Order {
     // Call the service to add a forecast
     this.predictiveModelsService.addPredictiveModelConfig(forecast).subscribe(
       (response) => {
-        // console.log('Forecast created successfully:', response);
-        // Navigate back to the forecast list to see the new model
-        this.router.navigateByUrl('/PM');
+        console.log('Forecast created successfully:', response);
+        // Get the new model ID from the response (handle both ForecastId object and string)
+        const newModelId: string = typeof response.id === 'string' ? response.id : response.id?.id;
+
+        if (newModelId) {
+          // Add the new model to the models list
+          const newModel: Order = {
+            id: response.name || newModelId.substring(0, 8),
+            trueId: newModelId,
+            device: '', // Will be populated when navigating to the page
+            date: new Date().toISOString()
+          };
+
+          // Update the models list if it exists
+          if (this.models) {
+            this.models.push(newModel);
+            this.updateFilteredModels();
+            this.fetchModelNames(); // Fetch the name for the new model
+          }
+
+          // Navigate to the new model page
+          this.router.navigate(['/predictiveMaintenance/model', newModelId], {
+            state: { forecastData: this.models || [newModel] }
+          });
+        } else {
+          // Fallback: navigate to PM list if ID is not available
+          console.warn('Model ID not found in response, navigating to PM list');
+          this.router.navigateByUrl('/PM');
+        }
       },
       (error) => {
         console.error('Error adding forecast:', error);
@@ -773,10 +946,18 @@ export class ModelComponent extends PageComponent implements Order {
     this.activationComplete = false;
     this.predictions = null;
     this.logs = [];
-    this.progressMessage = null;
+    // Only reset progressMessage if it's not already set (to preserve rebuild message)
+    if (!this.progressMessage) {
+      this.progressMessage = null;
+    }
+    // Set status to pending if not already set
+    if (this.status !== 'pending') {
+      this.status = 'pending';
+    }
     this.modelWebSocketService.sendActivateCommand(this.trueId).subscribe((msg) => {
         this.handleWebSocketMessage(msg);
     });
+    this.displayLogsTooltip();
   }
 
   private shouldShowLogsTooltip(): boolean {
@@ -864,9 +1045,11 @@ export class ModelComponent extends PageComponent implements Order {
   // Methods to persist collapsed states
   private loadCollapsedStates(): void {
     try {
+      console.log('Loading collapsed states for model:', this.trueId || 'default');
       const savedStates = localStorage.getItem(
-        'forecast-dashboard-collapsed-states'
+        'forecast-dashboard-collapsed-states-' + (this.trueId || 'default')
       );
+      console.log(savedStates);
       if (savedStates) {
         const states = JSON.parse(savedStates);
         this.forecastChartCollapsed = states.forecastChartCollapsed || false;
@@ -887,7 +1070,7 @@ export class ModelComponent extends PageComponent implements Order {
         anomaliesCollapsed: this.anomaliesCollapsed,
       };
       localStorage.setItem(
-        'forecast-dashboard-collapsed-states',
+        'forecast-dashboard-collapsed-states-' + (this.trueId || 'default'),
         JSON.stringify(states)
       );
     } catch (error) {
@@ -1081,5 +1264,33 @@ export class ModelComponent extends PageComponent implements Order {
 
   isForecastActive(): boolean {
     return isForecastActive({ status: this.status });
+  }
+
+  /**
+   * Load the last read log timestamp from localStorage
+   */
+  private loadLastReadLogTimestamp(): void {
+    if (!this.trueId) {
+      return;
+    }
+    const key = this.LAST_READ_LOG_KEY_PREFIX + this.trueId;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      this.lastReadLogTimestamp = parseInt(stored, 10);
+    } else {
+      this.lastReadLogTimestamp = 0;
+    }
+  }
+
+  /**
+   * Save the last read log timestamp to localStorage
+   */
+  private saveLastReadLogTimestamp(): void {
+    if (!this.trueId) {
+      return;
+    }
+    const key = this.LAST_READ_LOG_KEY_PREFIX + this.trueId;
+    localStorage.setItem(key, Date.now().toString());
+    this.lastReadLogTimestamp = Date.now();
   }
 }

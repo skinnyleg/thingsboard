@@ -41,6 +41,8 @@
         </mat-select>
       </mat-form-field>
     </div>
+    <span class="device-label">Device:</span>
+    <span class="device-name">{{ device }}</span>
     <!-- Status icons for all forecast statuses -->
     <mat-icon
       class="status-icon-option active"
@@ -86,8 +88,6 @@
       matTooltip="Failed"
       >error</mat-icon
     >
-    <span class="device-label">Device:</span>
-    <span class="device-name">{{ device }}</span>
   </div>
   <div class="forecast-actions">
     <div class="left-actions">
@@ -109,20 +109,13 @@
           class="logs-button"
           #logsButton
         >
-          <span style="position: relative; display: inline-block">
+          <span class="icon-with-badge" aria-hidden="false">
             <mat-icon>description</mat-icon>
             <span
               *ngIf="unreadLogs"
               class="unread-dot"
-              style="
-                position: absolute;
-                top: 2px;
-                right: 2px;
-                width: 8px;
-                height: 8px;
-                background: #e53935;
-                border-radius: 50%;
-              "
+              aria-hidden="true"
+              title="Unread logs indicator"
             ></span>
           </span>
         </button>
@@ -201,6 +194,9 @@
       <h3 class="section-title">
         <mat-icon class="section-icon">trending_up</mat-icon>
         Forecast
+        <span class="algorithm-label" *ngIf="forecastAlgorithm">{{
+          forecastAlgorithm
+        }}</span>
       </h3>
       <button
         mat-icon-button
@@ -258,6 +254,9 @@
       <h3 class="section-title">
         <mat-icon class="section-icon">bug_report</mat-icon>
         Anomalies
+        <span class="algorithm-label" *ngIf="anomalyAlgorithm">{{
+          anomalyAlgorithm
+        }}</span>
       </h3>
       <button
         mat-icon-button

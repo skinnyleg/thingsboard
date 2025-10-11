@@ -11,6 +11,9 @@
         "delete-model-text": "Are you sure you want to delete the model '{{modelName}}'?",
         "create-model": "Create Model",
         "refresh-models": "Refresh Model",
+        "rebuild-model-title": "Rebuild Model",
+        "rebuild-model-text": "You have changed the telemetry data or algorithm selection. Do you want to rebuild the model with the new configuration? This will retrain the model with the updated settings.",
+        "rebuild": "Rebuild",
         "status": {
             "inactive": "Inactive",
             "active": "Active",

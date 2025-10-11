@@ -23,17 +23,22 @@
     <div class="progress-steps">
       <div class="step" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
         <div class="step-number" [class.edit-mode]="isEditMode">{{ isEditMode ? '✎' : '1' }}</div>
-        <div class="step-label">{{ isEditMode ? 'Edit Setup' : 'Model Setup' }}</div>
+        <div class="step-label">{{ isEditMode ? 'Edit Model' : 'Basic Info' }}</div>
       </div>
       <div class="progress-line" [class.active]="currentStep > 1"></div>
       <div class="step" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
-        <div class="step-number" [class.edit-mode]="isEditMode">{{ isEditMode ? '⚙' : '2' }}</div>
-        <div class="step-label">{{ isEditMode ? 'Update Settings' : 'Algorithm & Dates' }}</div>
+        <div class="step-number" [class.edit-mode]="isEditMode">{{ isEditMode ? '📊' : '2' }}</div>
+        <div class="step-label">{{ isEditMode ? 'Update Data' : 'Telemetry & Attributes' }}</div>
+      </div>
+      <div class="progress-line" [class.active]="currentStep > 2"></div>
+      <div class="step" [class.active]="currentStep === 3" [class.completed]="currentStep > 3">
+        <div class="step-number" [class.edit-mode]="isEditMode">{{ isEditMode ? '⚙' : '3' }}</div>
+        <div class="step-label">{{ isEditMode ? 'Update Settings' : 'Algorithms & Dates' }}</div>
       </div>
     </div>
   </div>
 
-  <!-- Step 1: Model Setup -->
+  <!-- Step 1: Basic Info -->
   <div *ngIf="currentStep === 1" class="step-content">
 
     <!-- Edit mode indicator -->
@@ -71,11 +76,14 @@
     </mat-form-field>
 
     <!-- Message if no telemetry available -->
-    <div *ngIf="noTelemetryMessage" class="no-telemetry-message small-text">
+    <div *ngIf="selectedDevice && noTelemetryMessage" class="no-telemetry-message small-text">
       <mat-icon class="info-icon">warning</mat-icon>
       {{ noTelemetryMessage }}
     </div>
+  </div>
 
+  <!-- Step 2: Telemetry & Attributes -->
+  <div *ngIf="currentStep === 2" class="step-content">
     <!-- Fields with telemetry attributes -->
     <div class="fields-container">
       <mat-label *ngIf="selectedDevice && availableTelemetry.length > 0">Time-Series Keys (Optional):</mat-label>
@@ -114,17 +122,6 @@
         <mat-icon>add_circle</mat-icon> Add Telemetry Key
       </button>
 
-      <!-- add margin -->
-
-      <!-- <div style="margin-top: 16px;"></div> -->
-
-      <!-- Button to add a new field -->
-      <!-- <button *ngIf="canAddField" mat-raised-button color="primary" (click)="addField()"
-        [disabled]="!selectedDevice || availableTelemetry.length === 0" [attr.aria-label]="'Add new time-series key'"> -->
-        <!-- TODO: fetch data from all entity attributes scopes (client/server/shared) -->
-        <!-- <mat-icon>add_circle</mat-icon> Add Attribute Key -->
-      <!-- </button> -->
-
       <!-- Helper text when no telemetry available -->
       <p *ngIf="selectedDevice && availableTelemetry.length === 0" class="no-keys-message">
         <mat-icon class="warning-icon">info_outline</mat-icon>
@@ -134,8 +131,8 @@
     </div>
   </div>
 
-  <!-- Step 2: Algorithm & Dates -->
-  <div *ngIf="currentStep === 2" class="step-content">
+  <!-- Step 3: Algorithms & Dates -->
+  <div *ngIf="currentStep === 3" class="step-content">
 
     <!-- Forecast Date Range Section -->
     <div class="global-date-section">

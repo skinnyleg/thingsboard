@@ -17,11 +17,12 @@ from src.model.job import (
     get_model_logs,
     subscribe_to_logs,
     unsubscribe_from_logs,
-    active_jobs,
-    job_lock,
 )
 from src.settings import settings
 from pathlib import Path
+import traceback
+import asyncio
+import traceback
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -472,7 +473,6 @@ async def handle_activate(
         print(f"[ACTIVATE] Sent initializing progress message")
 
         # Run synchronous data registry creation in thread pool to avoid blocking event loop
-        import asyncio
 
         data_registry = await asyncio.to_thread(get_data_registry)
         print(f"[ACTIVATE] Data registry initialized")
@@ -500,7 +500,6 @@ async def handle_activate(
             print(f"[ACTIVATE] Device ID from config: {device_id}")
         except Exception as e:
             print(f"[ACTIVATE ERROR] Failed to fetch configuration: {str(e)}")
-            import traceback
 
             traceback.print_exc()
             await websocket.send_json(
@@ -526,6 +525,8 @@ async def handle_activate(
         )
 
         try:
+            print(f"[ACTIVATE] Model config: {model_config}", flush=True)
+            algorithm = model_config.get("anomaly_algorithm", None)
             print(f"[ACTIVATE] Starting anomaly predictor training...", flush=True)
             anomaly_result = await asyncio.to_thread(
                 train_and_save_model,
@@ -533,6 +534,7 @@ async def handle_activate(
                 model_type="AnomalyPredictor",
                 device_id=device_id,
                 data_registry=data_registry,
+                algorithm=algorithm,
                 days_back=90,
             )
             print(
@@ -552,7 +554,6 @@ async def handle_activate(
                 }
             )
         except Exception as e:
-            import traceback
 
             error_trace = traceback.format_exc()
             print(f"[ACTIVATE ERROR] Training failed: {str(e)}", flush=True)

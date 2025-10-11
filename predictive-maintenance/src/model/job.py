@@ -13,6 +13,9 @@ from typing import Dict, Callable, Set, Union
 from library import AnomalyPredictor, ForecastModel
 from src.settings import settings
 import numpy as np
+from library.models.anomaly_predictor import predict_failure, feature_cols, load_models
+from .shared import get_data_registry
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +103,6 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
 
             add_model_log(model_id, "info", f"Loading model from {model_dir}...")
             # model.load(model_dir)
-            from .Failure_prediction_Random_Forest import (
-                load_models
-            )
 
             hourly_models = load_models(model_dir)
 
@@ -156,13 +156,6 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                     add_model_log(
                         model_id, "info", f"Fetching latest data for device {device_id}"
                     )
-
-                    from .Failure_prediction_Random_Forest import (
-                        predict_failure,
-                        key_hours,
-                        feature_cols,
-                    )
-                    from .shared import get_data_registry
 
                     anomalyModel = AnomalyPredictor(data_registry=get_data_registry())
 
@@ -277,7 +270,6 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                         active_jobs[model_id]["iterations"] = iteration
 
             except Exception as e:
-                import traceback
                 error_details = traceback.format_exc()
                 print(f"[PREDICTION JOB] {model_id} - Prediction failed: {str(e)}", flush=True)
                 print(f"[PREDICTION JOB] {model_id} - Traceback:\n{error_details}", flush=True)
@@ -289,7 +281,6 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
             threading.Event().wait(interval)
 
     except Exception as e:
-        import traceback
         error_details = traceback.format_exc()
         print(f"[PREDICTION JOB] {model_id} - Job worker crashed: {str(e)}", flush=True)
         print(f"[PREDICTION JOB] {model_id} - Crash traceback:\n{error_details}", flush=True)

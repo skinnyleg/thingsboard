@@ -102,10 +102,15 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
   editingForecast: any = null;
 
+  // Track original values for change detection in edit mode
+  originalAttributes: string[] = [];
+  originalForecastAlgorithm: string = '';
+  originalAnomalyAlgorithm: string = '';
+
   // Step navigation properties
   currentStep = 1;
 
-  totalSteps = 2;
+  totalSteps = 3;
 
   // Global date range properties (renamed for forecast)
   globalStartDate: Date | null = null;
@@ -138,6 +143,8 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   ];
 
   anomaliesAlgorithmOptions = [
+    { value: 'random_forest', label: 'Random Forest' },
+    { value: 'xgboost', label: 'XGBoost' },
     { value: 'isolation_forest', label: 'Isolation Forest' },
     { value: 'one_class_svm', label: 'One-Class SVM' },
     { value: 'local_outlier_factor', label: 'Local Outlier Factor (LOF)' },
@@ -149,7 +156,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   ];
 
   constructor(
-    public dialogRef: MatDialogRef<AddModelDialogComponent, ForecastCreate | Forecast>,
+    public dialogRef: MatDialogRef<AddModelDialogComponent, any>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private deviceService: DeviceService,
     private attributeService: AttributeService
@@ -233,7 +240,8 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   // Prefetch first page of devices when input is focused
   onDeviceInputFocus(): void {
     console.log('Device input focused, prefetched:', this.isDevicesPrefetched);
-    if (!this.isDevicesPrefetched) {
+    // Don't auto-open in edit mode
+    if (!this.isDevicesPrefetched && !this.isEditMode) {
       this.prefetchFirstPage();
     }
   }
@@ -241,6 +249,11 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   // Handle click event to ensure autocomplete opens
   onDeviceInputClick(event: Event): void {
     console.log('Device input clicked');
+    // In edit mode, don't auto-open - let user manually trigger it
+    if (this.isEditMode) {
+      return;
+    }
+
     if (!this.isDevicesPrefetched) {
       this.prefetchFirstPage();
     } else {
@@ -284,6 +297,12 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
     this.devicesDataSource.loadDevices(firstPageLink);
     this.isDevicesPrefetched = true;
+
+    // Don't auto-open the panel in edit mode
+    if (this.isEditMode) {
+      console.log('Edit mode: skipping auto-open of autocomplete panel');
+      return;
+    }
 
     // Wait for devices to load, then open panel
     const subscription = this.devicesDataSource.devices$.subscribe((devices) => {
@@ -454,7 +473,13 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   isCurrentStepValid(): boolean {
     switch (this.currentStep) {
       case 1:
-        // Validate telemetry attributes - must be from database if present
+        // Step 1: Model name and device selection
+        return (
+          this.forecastNameControl.valid &&
+          this.selectedDevice != null
+        );
+      case 2:
+        // Step 2: Telemetry attributes - must be from database if present
         const areAttributesValid =
           this.fields.length === 0 ||
           this.fields.every(
@@ -464,12 +489,9 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
               this.availableTelemetry.includes(field.key) // Must be from database
           );
 
-        return (
-          this.forecastNameControl.valid &&
-          this.selectedDevice != null &&
-          areAttributesValid // Attributes are optional but must be valid database keys if present
-        );
-      case 2:
+        return areAttributesValid; // Attributes are optional but must be valid database keys if present
+      case 3:
+        // Step 3: Algorithm and date ranges
         const isForecastDateRangeValid =
           this.globalStartDate != null &&
           this.globalEndDate != null &&
@@ -528,6 +550,47 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     this.dialogRef.close();
   }
 
+  /**
+   * Check if telemetry attributes or algorithms have changed in edit mode
+   */
+  private hasSignificantChanges(): boolean {
+    if (!this.isEditMode) {
+      return false;
+    }
+
+    // Get current attributes
+    let currentAttributes: string[] = [];
+    if (this.availableTelemetry && this.availableTelemetry.length > 0) {
+      currentAttributes = this.availableTelemetry.sort();
+    } else {
+      currentAttributes = this.fields
+        .filter((field) => field.key && field.key.trim() !== '')
+        .map((el) => el.key)
+        .sort();
+    }
+
+    // Compare attributes
+    const attributesChanged = JSON.stringify(this.originalAttributes.sort()) !== JSON.stringify(currentAttributes);
+
+    // Compare algorithms
+    const forecastAlgorithmChanged = this.originalForecastAlgorithm !== this.forecastAlgorithmControl.value;
+    const anomalyAlgorithmChanged = this.originalAnomalyAlgorithm !== this.anomaliesAlgorithmControl.value;
+
+    console.log('Change detection:', {
+      attributesChanged,
+      forecastAlgorithmChanged,
+      anomalyAlgorithmChanged,
+      originalAttributes: this.originalAttributes,
+      currentAttributes,
+      originalForecastAlgorithm: this.originalForecastAlgorithm,
+      currentForecastAlgorithm: this.forecastAlgorithmControl.value,
+      originalAnomalyAlgorithm: this.originalAnomalyAlgorithm,
+      currentAnomalyAlgorithm: this.anomaliesAlgorithmControl.value,
+    });
+
+    return attributesChanged || forecastAlgorithmChanged || anomalyAlgorithmChanged;
+  }
+
   onConfirm(): void {
     if (!this.isFormValid) {
       console.log('Form is invalid. Please complete all required fields.');
@@ -560,12 +623,24 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
     // If in edit mode, include the ID and other necessary fields
     if (this.isEditMode) {
-      (forecastData as Forecast).id = this.editingForecast.trueId;
+      // Use the full ForecastId object instead of plain string UUID
+      (forecastData as Forecast).id = this.editingForecast.id;
       // @ts-ignore
       (forecastData as Forecast).trueId = this.editingForecast.trueId;
     }
 
-    this.dialogRef.close(forecastData);
+    // In edit mode, check if there are significant changes that require rebuild
+    if (this.isEditMode) {
+      const needsRebuild = this.hasSignificantChanges();
+      // Return both the forecast data and rebuild flag for edit mode
+      this.dialogRef.close({
+        forecastData,
+        needsRebuild
+      });
+    } else {
+      // In add mode, just return the forecast data directly
+      this.dialogRef.close(forecastData);
+    }
   }
 
   ngOnDestroy(): void {
@@ -644,6 +719,8 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
         startDate: null,
         endDate: null,
       }));
+      // Store original attributes for change detection
+      this.originalAttributes = attributeKeys.map((key) => key.trim());
     } else if (
       this.editingForecast.attributes &&
       Array.isArray(this.editingForecast.attributes)
@@ -653,6 +730,8 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
         startDate: null,
         endDate: null,
       }));
+      // Store original attributes for change detection
+      this.originalAttributes = this.editingForecast.attributes.map((attr: any) => attr.key || attr);
     }
 
     // Set forecast dates if they exist
@@ -710,6 +789,8 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
         );
 
         this.forecastAlgorithmControl.setValue(forecastAlg);
+        // Store original value for change detection
+        this.originalForecastAlgorithm = forecastAlg;
         console.log(
           'Forecast algorithm control value after setting:',
           this.forecastAlgorithmControl.value
@@ -730,6 +811,8 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
         );
 
         this.anomaliesAlgorithmControl.setValue(anomalyAlg);
+        // Store original value for change detection
+        this.originalAnomalyAlgorithm = anomalyAlg;
         console.log(
           'Anomaly algorithm control value after setting:',
           this.anomaliesAlgorithmControl.value

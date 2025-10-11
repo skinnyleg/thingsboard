@@ -1,0 +1,101 @@
+<div class="logs-dialog">
+  <div class="dialog-header">
+    <div class="header-content">
+      <mat-icon class="header-icon">description</mat-icon>
+      <h2 mat-dialog-title>Model Logs</h2>
+    </div>
+    <button mat-icon-button (click)="onClose()" matTooltip="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    <!-- Filter Chips -->
+    <div class="filter-section">
+      <mat-chip-listbox
+        [value]="selectedLevel"
+        (change)="onLevelChange($event)"
+      >
+        <mat-chip-option value="all" [selected]="selectedLevel === 'all'">
+          <mat-icon>filter_list</mat-icon>
+          All ({{ getLogCount("all") }})
+        </mat-chip-option>
+        <mat-chip-option value="info" [selected]="selectedLevel === 'info'">
+          <mat-icon class="level-icon info">info</mat-icon>
+          Info ({{ getLogCount("INFO") }})
+        </mat-chip-option>
+        <mat-chip-option value="warn" [selected]="selectedLevel === 'warn'">
+          <mat-icon class="level-icon warn">warning</mat-icon>
+          Warn ({{ getLogCount("WARN") }})
+        </mat-chip-option>
+        <mat-chip-option value="error" [selected]="selectedLevel === 'error'">
+          <mat-icon class="level-icon error">error</mat-icon>
+          Error ({{ getLogCount("ERROR") }})
+        </mat-chip-option>
+      </mat-chip-listbox>
+
+      <div class="actions">
+        <button
+          mat-icon-button
+          (click)="toggleAutoScroll()"
+          [matTooltip]="
+            autoScroll ? 'Disable Auto-scroll' : 'Enable Auto-scroll'
+          "
+        >
+          <mat-icon [class.active]="autoScroll">{{
+            autoScroll ? "lock" : "lock_open"
+          }}</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          (click)="refreshLogs()"
+          matTooltip="Refresh Logs"
+        >
+          <mat-icon [class.spinning]="isRefreshing">refresh</mat-icon>
+        </button>
+        <button mat-icon-button (click)="clearLogs()" matTooltip="Clear Logs">
+          <mat-icon>delete_sweep</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-container" *ngIf="isLoading">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading logs...</p>
+    </div>
+
+    <!-- Terminal-style Logs Container -->
+    <div class="logs-terminal" #logsContainer *ngIf="!isLoading">
+      <div *ngIf="filteredLogs.length === 0" class="no-logs">
+        <mat-icon>inbox</mat-icon>
+        <p>No logs available</p>
+        <small>Logs will appear here once the model is activated</small>
+      </div>
+
+      <div class="log-row" *ngFor="let log of filteredLogs">
+        <div class="log-labels">
+          <span class="log-time">{{ formatTimestamp(log.timestamp) }}</span>
+          <span class="log-level" [ngClass]="log.level.toLowerCase()">{{
+            log.level
+          }}</span>
+          <span class="log-source" *ngIf="log.source">{{ log.source }}</span>
+        </div>
+        <div class="log-message">{{ log.message }}</div>
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="dialog-actions">
+    <div class="status-info">
+      <mat-icon class="status-icon" [class.connected]="isConnected">
+        {{ isConnected ? "cloud_done" : "cloud_off" }}
+      </mat-icon>
+      <span class="status-text">
+        {{ isConnected ? "Connected" : "Disconnected" }}
+      </span>
+      <span class="log-count">• {{ filteredLogs.length }} logs</span>
+    </div>
+    <button mat-raised-button color="primary" (click)="onClose()">Close</button>
+  </mat-dialog-actions>
+</div>
