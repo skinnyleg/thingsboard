@@ -1,4 +1,4 @@
-import { ViewChild } from '@angular/core';
+import { ViewChild, ElementRef } from '@angular/core';
 // ...existing code...
 /* eslint-disable @angular-eslint/use-lifecycle-interface */
 import { Component } from '@angular/core';
@@ -94,6 +94,9 @@ export class ModelComponent extends PageComponent implements Order {
   // Reference to the anomalies table component
   @ViewChild(AnomaliesComponent) anomaliesComponent?: AnomaliesComponent;
 
+  // Reference to the logs button element
+  @ViewChild('logsButton', { read: ElementRef }) logsButton?: ElementRef;
+
   deviceId: string; // To pass to the chart
 
   Attributes: string[]; // To store the temperature data
@@ -147,6 +150,15 @@ export class ModelComponent extends PageComponent implements Order {
   showViewSelector = false;
 
   unreadLogs = false;
+
+  // Logs tooltip properties
+  showLogsTooltip = false; // Only true after calculations are complete
+
+  dontShowLogsTooltipAgain = false;
+
+  logsTooltipPosition = { top: -1000000, left: -1000000, zIndex: -1000 };
+
+  private readonly LOGS_TOOLTIP_PREFERENCE_KEY = 'model-logs-tooltip-dont-show';
 
   constructor(
     protected store: Store<AppState>,
@@ -234,6 +246,9 @@ export class ModelComponent extends PageComponent implements Order {
   }
 
   ngAfterViewInit(): void {
+    // Position the tooltip after view is initialized
+    this.displayLogsTooltip();
+
     // set 3 random anomalies for testing
         // const testAnomalies: AnomalyReport[] = [
         //   {
@@ -274,6 +289,28 @@ export class ModelComponent extends PageComponent implements Order {
         //   if (this.anomaliesComponent) {
         //   }
         // });
+  }
+
+  private positionLogsTooltip(): void {
+    // setTimeout(() => {
+      if (this.logsButton) {
+        const buttonElement = this.logsButton.nativeElement;
+        const iconElement = buttonElement.querySelector('mat-icon');
+
+        // Use the icon element's bounding box if available, otherwise fall back to button
+        const rect = iconElement ? iconElement.getBoundingClientRect() : buttonElement.getBoundingClientRect();
+
+        // Calculate tooltip position so the arrow points right after the icon (not the button container)
+        this.logsTooltipPosition = {
+          top: rect.bottom + 2, // 2px below the icon itself
+          left: rect.left + (rect.width / 2), // Align arrow with center of icon
+          zIndex: 1000 // Ensure tooltip is above other elements
+        };
+
+        // Only show tooltip after calculations are complete (for testing purposes)
+        // this.showLogsTooltip = true;
+      }
+    // }, 200); // Increased timeout to ensure UI is stable
   }
 
   private init() {
@@ -742,6 +779,44 @@ export class ModelComponent extends PageComponent implements Order {
     });
   }
 
+  private shouldShowLogsTooltip(): boolean {
+    // Always show for testing purposes
+    return true;
+
+    // Uncomment below for production behavior
+    // try {
+    //   const dontShow = localStorage.getItem(this.LOGS_TOOLTIP_PREFERENCE_KEY);
+    //   return dontShow !== 'true';
+    // } catch (error) {
+    //   console.warn('Error checking logs tooltip preference:', error);
+    //   return true;
+    // }
+  }
+
+  private displayLogsTooltip(): void {
+    if (!this.shouldShowLogsTooltip() || !this.logsButton) {
+      return;
+    }
+
+    this.positionLogsTooltip();
+    this.showLogsTooltip = true;
+  }
+
+  closeLogsTooltip(): void {
+    this.showLogsTooltip = false;
+  }
+
+  confirmLogsTooltip(): void {
+    if (this.dontShowLogsTooltipAgain) {
+      try {
+        localStorage.setItem(this.LOGS_TOOLTIP_PREFERENCE_KEY, 'true');
+      } catch (error) {
+        console.warn('Error saving logs tooltip preference:', error);
+      }
+    }
+    this.showLogsTooltip = false;
+  }
+
   private handleWebSocketMessage(msg: any): void {
     if (!msg) {
       return;
@@ -763,6 +838,8 @@ export class ModelComponent extends PageComponent implements Order {
         this.activationComplete = true;
         this.status = 'active';
         this.anomaliesComponent.setStreamStatus(true, null);
+        // Show the logs tooltip after activation
+        // this.displayLogsTooltip();
         // this.getModelStatus();
         break;
       case 'error':

@@ -987,6 +987,115 @@
     }
   }
 
+  // Logs Tooltip Menu
+  .logs-tooltip-menu {
+    position: fixed;
+    // z-index: 2000;
+    z-index: -10000;
+    top: -10000;
+    left: -10000;
+    pointer-events: none; // Allow clicks to pass through the container
+
+    .logs-tooltip-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: transparent;
+      z-index: 1999;
+      cursor: default;
+      pointer-events: all; // Re-enable clicks on overlay
+    }
+
+    .logs-tooltip-content {
+      position: relative;
+      z-index: 2001;
+      background: var(--tb-dark-app-bar, #fff); // Match sidenav background
+      border: 1px solid rgba(0, 0, 0, 0.1); // Light mode border
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      padding: 16px 20px;
+      min-width: 300px;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      pointer-events: all; // Re-enable clicks on content
+      transform: translateX(-50%); // Center the tooltip horizontally around the arrow position
+      animation: slideDown 0.3s ease;
+
+      .tooltip-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .tooltip-icon {
+          font-size: 24px;
+          width: 24px;
+          height: 24px;
+          color: #2196f3;
+          flex-shrink: 0;
+        }
+
+        .tooltip-message {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.5;
+          color: rgba(0, 0, 0, 0.87);
+          flex: 1;
+        }
+      }
+
+      .tooltip-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+
+        .dont-show-checkbox {
+          font-size: 13px;
+          flex: 1;
+        }
+
+        .ok-button {
+          min-width: 60px;
+          height: 32px;
+          font-size: 13px;
+          flex-shrink: 0;
+        }
+      }
+
+      // Arrow pointing up - border layer
+      &::before {
+        content: "";
+        position: absolute;
+        top: -9px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 9px solid transparent;
+        border-right: 9px solid transparent;
+        border-bottom: 9px solid rgba(0, 0, 0, 0.1);
+      }
+
+      // Arrow pointing up - fill layer
+      &::after {
+        content: "";
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 8px solid var(--tb-dark-app-bar, #fff);
+      }
+    }
+  }
+
   // Floating View Selector Menu
   .view-selector-floating-menu {
     position: fixed;
@@ -1092,9 +1201,41 @@
   }
 }
 
-// Dark mode styles for floating menu
+// Dark mode styles for logs tooltip and floating menu
 .tb-dark {
   :host {
+    .logs-tooltip-menu {
+      .logs-tooltip-content {
+        border: 1px solid var(--tb-dark-mat-800, #404040);
+
+        .tooltip-header {
+          .tooltip-icon {
+            color: #64b5f6;
+          }
+
+          .tooltip-message {
+            color: rgba(255, 255, 255, 0.9);
+          }
+        }
+
+        .tooltip-actions {
+          .dont-show-checkbox {
+            color: rgba(255, 255, 255, 0.9);
+          }
+        }
+
+        // Arrow pointing up - border layer for dark mode
+        &::before {
+          border-bottom-color: var(--tb-dark-mat-800, #404040);
+        }
+
+        // Arrow pointing up - fill layer for dark mode
+        &::after {
+          border-bottom-color: var(--tb-dark-app-bar, #2d3748);
+        }
+      }
+    }
+
     .view-selector-floating-menu {
       .view-selector-overlay {
         background: rgba(0, 0, 0, 0.7);
@@ -1156,5 +1297,17 @@
   50% {
     opacity: 0.5;
     transform: scale(1.2);
+  }
+}
+
+// Slide down animation for tooltip
+@keyframes slideDown {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 }
