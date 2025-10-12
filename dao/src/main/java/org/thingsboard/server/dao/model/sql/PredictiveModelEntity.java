@@ -78,6 +78,11 @@ public final class PredictiveModelEntity extends BaseSqlEntity<PredictiveModel> 
     @Column(name = "view_preferences", columnDefinition = "jsonb")
     private JsonNode viewPreferences;
 
+    @Convert(converter = JsonConverter.class)
+    @JdbcType(PostgreSQLJsonPGObjectJsonbType.class)
+    @Column(name = "additional_data", columnDefinition = "jsonb")
+    private JsonNode additionalData;
+
     public PredictiveModelEntity() {
         super();
     }
@@ -112,6 +117,16 @@ public final class PredictiveModelEntity extends BaseSqlEntity<PredictiveModel> 
         } else {
             this.viewPreferences = JacksonUtil.toJsonNode("{\"selectedViews\": [\"forecast\", \"anomalies\"]}");
         }
+        // Handle additional data - optional JSON string
+        if (predictiveModel.getAdditionalData() != null) {
+            try {
+                this.additionalData = JacksonUtil.toJsonNode(predictiveModel.getAdditionalData());
+            } catch (Exception e) {
+                this.additionalData = JacksonUtil.toJsonNode("{}");
+            }
+        } else {
+            this.additionalData = null;
+        }
     }
 
     @Override
@@ -137,6 +152,12 @@ public final class PredictiveModelEntity extends BaseSqlEntity<PredictiveModel> 
             predictiveModel.setViewPreferences(viewPreferences.toString());
         } else {
             predictiveModel.setViewPreferences("{\"selectedViews\": [\"forecast\", \"anomalies\"]}");
+        }
+        // Convert additionalData JsonNode back to JSON string
+        if (additionalData != null) {
+            predictiveModel.setAdditionalData(additionalData.toString());
+        } else {
+            predictiveModel.setAdditionalData(null);
         }
         return predictiveModel;
     }

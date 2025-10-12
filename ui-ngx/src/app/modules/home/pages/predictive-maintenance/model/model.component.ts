@@ -134,6 +134,8 @@ export class ModelComponent extends PageComponent implements Order {
 
   anomalyAlgorithm: string;
 
+  forecastGrouping = 'hourly';
+
   // Collapse/expand states for charts
   forecastChartCollapsed = false;
 
@@ -236,6 +238,7 @@ export class ModelComponent extends PageComponent implements Order {
     this.trueId = value;
     this.forecastAlgorithm = '';
     this.anomalyAlgorithm = '';
+    this.forecastGrouping = 'hourly';
     this.fetchPredictiveModelConfig(value);
   }
 
@@ -603,6 +606,7 @@ export class ModelComponent extends PageComponent implements Order {
         this.forecastName = data.name || data.id.id.split('-')[0]; // Use name if available, fallback to ID
         this.forecastAlgorithm = data.forecastAlgorithm;
         this.anomalyAlgorithm = data.anomalyAlgorithm;
+        this.forecastGrouping = JSON.parse(data.additionalData || '{}').forecastGrouping || 'hourly';
 
         // Fetch device name
         this.deviceService.getDevice(data.deviceId.id).subscribe(
@@ -787,6 +791,8 @@ export class ModelComponent extends PageComponent implements Order {
       (forecastData) => {
         // console.log('Raw forecast data from service:', forecastData);
 
+        const forecastGrouping = JSON.parse(forecastData.additionalData || '{}').forecastGrouping || 'hourly';
+
         // Prepare the data structure that the dialog expects
         const dialogData = {
           isEdit: true,
@@ -802,6 +808,7 @@ export class ModelComponent extends PageComponent implements Order {
               : '',
             forecastAlgorithm: forecastData.forecastAlgorithm,
             anomalyAlgorithm: forecastData.anomalyAlgorithm,
+            forecastGrouping,
             forecastStartDate: forecastData.forecastStartDate,
             forecastEndDate: forecastData.forecastEndDate,
             anomaliesStartDate: forecastData.anomalyStartDate,

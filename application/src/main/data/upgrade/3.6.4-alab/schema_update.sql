@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS predictive_maintenance_config (
     view_preferences jsonb DEFAULT '{"selectedViews": ["forecast", "anomalies"]}'::jsonb
 );
 
+ALTER TABLE predictive_maintenance_config
+ADD COLUMN IF NOT EXISTS additional_data jsonb DEFAULT '{}'::jsonb;
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_pm_config_tenant_id ON predictive_maintenance_config (tenant_id);
 

@@ -56,6 +56,7 @@ export interface Forecast extends BaseData<ForecastId> {
   anomalyEndDate?: number;
   attributes?: ForecastAttribute[];
   viewPreferences?: string;
+  additionalData?: string;
 }
 
 export interface ForecastCreate {
@@ -64,12 +65,13 @@ export interface ForecastCreate {
   attributes: ForecastAttribute[];
   forecastAlgorithm: string;
   // Optional grouping/scheduling for timeseries when creating forecast
-  forecastGrouping?: string;
+  // forecastGrouping?: string;
   anomalyAlgorithm: string;
   forecastStartDate: number;
   forecastEndDate: number;
   anomalyStartDate: number;
   anomalyEndDate: number;
+  additionalData?: string;
 }
 
 export function getForecastStatusFromString(

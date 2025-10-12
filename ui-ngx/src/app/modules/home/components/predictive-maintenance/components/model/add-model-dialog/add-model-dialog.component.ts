@@ -628,7 +628,9 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
       deviceId,
       attributes,
       forecastAlgorithm: this.forecastAlgorithmControl.value,
-      forecastGrouping: this.forecastGroupingControl.value,
+      additionalData: JSON.stringify({
+        forecastGrouping: this.forecastGroupingControl.value
+      }),
       anomalyAlgorithm: this.anomaliesAlgorithmControl.value,
       forecastStartDate: this.globalStartDate.getTime(),
       forecastEndDate: this.globalEndDate.getTime(),

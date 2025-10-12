@@ -91,4 +91,7 @@ public class PredictiveModel extends BaseData<PredictiveModelId> implements HasT
 
     @Schema(description = "JSON object with view preferences", defaultValue = "{\"selectedViews\": [\"forecast\", \"anomalies\"]}")
     private String viewPreferences;
+
+    @Schema(description = "Additional JSON data for predictive model (forecastGrouping and other properties)")
+    private String additionalData;
 }
