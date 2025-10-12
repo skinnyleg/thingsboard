@@ -208,6 +208,16 @@
       >
         <mat-icon>description</mat-icon>
       </button>
+      <button
+        mat-icon-button
+        (click)="$event.stopPropagation(); openForecastStatsDialog()"
+        [disabled]="!trueId"
+        class="section-stats-button"
+        matTooltip="View forecast training stats"
+        matTooltipPosition="left"
+      >
+        <mat-icon>info_outline</mat-icon>
+      </button>
     </div>
     <div
       class="chart-content"
@@ -267,6 +277,16 @@
         matTooltipPosition="left"
       >
         <mat-icon>description</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        (click)="$event.stopPropagation(); openAnomalyStatsDialog()"
+        [disabled]="!trueId"
+        class="section-stats-button"
+        matTooltip="View anomaly training stats"
+        matTooltipPosition="left"
+      >
+        <mat-icon>info_outline</mat-icon>
       </button>
     </div>
     <div

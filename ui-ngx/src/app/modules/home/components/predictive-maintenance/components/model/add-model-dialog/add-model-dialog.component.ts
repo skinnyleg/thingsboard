@@ -104,8 +104,10 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
   // Track original values for change detection in edit mode
   originalAttributes: string[] = [];
-  originalForecastAlgorithm: string = '';
-  originalAnomalyAlgorithm: string = '';
+
+  originalForecastAlgorithm = '';
+
+  originalAnomalyAlgorithm = '';
 
   // Step navigation properties
   currentStep = 1;
@@ -125,6 +127,9 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   // Algorithm form controls
   forecastAlgorithmControl = new FormControl('', Validators.required);
 
+  // Grouping/scheduling control for timeseries aggregation (hourly/daily/etc.)
+  forecastGroupingControl = new FormControl('hourly');
+
   anomaliesAlgorithmControl = new FormControl('', Validators.required);
 
   // Algorithm options
@@ -140,6 +145,15 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     { value: 'prophet', label: 'Prophet' },
     { value: 'sarima', label: 'SARIMA (Seasonal ARIMA)' },
     { value: 'random_forest', label: 'Random Forest' },
+  ];
+
+  // Grouping options for scheduling/aggregation
+  forecastGroupingOptions = [
+    { value: 'minute', label: 'Minute' },
+    { value: 'hourly', label: 'Hourly' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' },
   ];
 
   anomaliesAlgorithmOptions = [
@@ -614,6 +628,7 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
       deviceId,
       attributes,
       forecastAlgorithm: this.forecastAlgorithmControl.value,
+      forecastGrouping: this.forecastGroupingControl.value,
       anomalyAlgorithm: this.anomaliesAlgorithmControl.value,
       forecastStartDate: this.globalStartDate.getTime(),
       forecastEndDate: this.globalEndDate.getTime(),
@@ -795,6 +810,12 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
           'Forecast algorithm control value after setting:',
           this.forecastAlgorithmControl.value
         );
+      }
+
+      // Populate grouping if present in edit data
+      const groupingVal = this.editingForecast.forecastGrouping || this.editingForecast.grouping;
+      if (groupingVal) {
+        this.forecastGroupingControl.setValue(groupingVal);
       }
 
       const anomalyAlg =

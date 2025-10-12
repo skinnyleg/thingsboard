@@ -714,6 +714,68 @@ export class ModelComponent extends PageComponent implements Order {
     });
   }
 
+  openForecastStatsDialog(): void {
+    if (!this.trueId) {
+      console.error('No model ID available for viewing forecast stats');
+      return;
+    }
+
+    // TODO: Create ModelStatsDialogComponent
+    // For now, show a placeholder dialog with model info
+    this.dialogService.alert(
+      'Forecast Training Stats',
+      `<div style="text-align: left;">
+        <p><strong>Model ID:</strong> ${this.trueId}</p>
+        <p><strong>Model Name:</strong> ${this.forecastName || 'N/A'}</p>
+        <p><strong>Algorithm:</strong> ${this.forecastAlgorithm || 'N/A'}</p>
+        <p><strong>Device:</strong> ${this.device || 'N/A'}</p>
+        <p><strong>Status:</strong> ${this.status || 'N/A'}</p>
+        <hr>
+        <p><em>Training stats dialog will show:</em></p>
+        <ul>
+          <li>Algorithm used</li>
+          <li>Training period</li>
+          <li>Model performance metrics</li>
+          <li>Training duration</li>
+          <li>Hyperparameters</li>
+        </ul>
+      </div>`,
+      'Close',
+      true
+    );
+  }
+
+  openAnomalyStatsDialog(): void {
+    if (!this.trueId) {
+      console.error('No model ID available for viewing anomaly stats');
+      return;
+    }
+
+    // TODO: Create ModelStatsDialogComponent
+    // For now, show a placeholder dialog with model info
+    this.dialogService.alert(
+      'Anomaly Training Stats',
+      `<div style="text-align: left;">
+        <p><strong>Model ID:</strong> ${this.trueId}</p>
+        <p><strong>Model Name:</strong> ${this.forecastName || 'N/A'}</p>
+        <p><strong>Algorithm:</strong> ${this.anomalyAlgorithm || 'N/A'}</p>
+        <p><strong>Device:</strong> ${this.device || 'N/A'}</p>
+        <p><strong>Status:</strong> ${this.status || 'N/A'}</p>
+        <hr>
+        <p><em>Training stats dialog will show:</em></p>
+        <ul>
+          <li>Algorithm used</li>
+          <li>Training period</li>
+          <li>Model performance metrics</li>
+          <li>Training duration</li>
+          <li>Hyperparameters</li>
+        </ul>
+      </div>`,
+      'Close',
+      true
+    );
+  }
+
   openEditModelDialog(): void {
     if (!this.trueId) {
       console.error('No model ID available for editing');

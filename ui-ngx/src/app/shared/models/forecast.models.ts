@@ -14,27 +14,27 @@
 /// limitations under the License.
 ///
 
-import { BaseData } from "@shared/models/base-data";
-import { TenantId } from "@shared/models/id/tenant-id";
-import { DeviceId } from "@shared/models/id/device-id";
-import { ForecastId } from "@shared/models/id/forecast-id";
+import { BaseData } from '@shared/models/base-data';
+import { TenantId } from '@shared/models/id/tenant-id';
+import { DeviceId } from '@shared/models/id/device-id';
+import { ForecastId } from '@shared/models/id/forecast-id';
 import {
   ForecastViewPreferences,
   parseForecastViewPreferences,
-} from "./forecast-view-preferences.models";
+} from './forecast-view-preferences.models';
 
 export enum ForecastStatus {
-  INACTIVE = "inactive",
-  ACTIVE = "active",
-  PENDING = "pending",
-  FAILED = "failed",
+  INACTIVE = 'inactive',
+  ACTIVE = 'active',
+  PENDING = 'pending',
+  FAILED = 'failed',
 }
 
 export const ForecastStatusTranslationMap = new Map<ForecastStatus, string>([
-  [ForecastStatus.INACTIVE, "forecast.status.inactive"],
-  [ForecastStatus.ACTIVE, "forecast.status.active"],
-  [ForecastStatus.PENDING, "forecast.status.pending"],
-  [ForecastStatus.FAILED, "forecast.status.failed"],
+  [ForecastStatus.INACTIVE, 'forecast.status.inactive'],
+  [ForecastStatus.ACTIVE, 'forecast.status.active'],
+  [ForecastStatus.PENDING, 'forecast.status.pending'],
+  [ForecastStatus.FAILED, 'forecast.status.failed'],
 ]);
 
 export interface ForecastAttribute {
@@ -47,6 +47,8 @@ export interface Forecast extends BaseData<ForecastId> {
   name: string;
   status: string;
   forecastAlgorithm?: string;
+  // Grouping/scheduling option for timeseries aggregation (e.g. hourly, daily)
+  forecastGrouping?: string;
   forecastStartDate?: number;
   forecastEndDate?: number;
   anomalyAlgorithm?: string;
@@ -61,6 +63,8 @@ export interface ForecastCreate {
   deviceId: DeviceId;
   attributes: ForecastAttribute[];
   forecastAlgorithm: string;
+  // Optional grouping/scheduling for timeseries when creating forecast
+  forecastGrouping?: string;
   anomalyAlgorithm: string;
   forecastStartDate: number;
   forecastEndDate: number;
@@ -71,21 +75,21 @@ export interface ForecastCreate {
 export function getForecastStatusFromString(
   status: string | boolean
 ): ForecastStatus {
-  if (typeof status === "boolean") {
+  if (typeof status === 'boolean') {
     // Handle legacy boolean active field
     return status ? ForecastStatus.ACTIVE : ForecastStatus.INACTIVE;
   }
 
-  if (typeof status === "string") {
+  if (typeof status === 'string') {
     const lowerStatus = status.toLowerCase();
     switch (lowerStatus) {
-      case "active":
+      case 'active':
         return ForecastStatus.ACTIVE;
-      case "pending":
+      case 'pending':
         return ForecastStatus.PENDING;
-      case "failed":
+      case 'failed':
         return ForecastStatus.FAILED;
-      case "inactive":
+      case 'inactive':
       default:
         return ForecastStatus.INACTIVE;
     }
@@ -98,7 +102,7 @@ export function getForecastStatusDisplayText(status: string | boolean): string {
   const forecastStatus = getForecastStatusFromString(status);
   return (
     ForecastStatusTranslationMap.get(forecastStatus) ||
-    "forecast.status.inactive"
+    'forecast.status.inactive'
   );
 }
 
@@ -148,7 +152,7 @@ export function isForecastFailed(forecast: any): boolean {
 export function getForecastViewPreferences(
   forecast: Forecast
 ): ForecastViewPreferences {
-  return parseForecastViewPreferences(forecast.viewPreferences || "");
+  return parseForecastViewPreferences(forecast.viewPreferences || '');
 }
 
 export function setForecastViewPreferences(
