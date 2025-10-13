@@ -119,14 +119,12 @@ def train_and_save_model(
         algorithm_name=algorithm,
         algorithm_hyperparams=hyperparams,
         data_registry=data_registry,
+        device_id=device_id,
+        **kwargs,
     )
 
-    # Fetch training data using model's fetch method
-    train_data = model.fetch(device_id=device_id, **kwargs)
-    logger.info(f"Fetched {len(train_data)} samples for training")
-
     # Train model
-    if model_type == "AnomalyPredictor":
+    # if model_type == "AnomalyPredictor":
         # results = model.train(train_data)
         # training_results = {
         #     "average_accuracy": results["overall"]["average_accuracy"],
@@ -139,10 +137,10 @@ def train_and_save_model(
         # )
 
         # fetch raw data and train using existing function
-        telemetry_df, failures_df, maintenance_df, machines_df, errors_df = model.fetch_raw_data(
-                device_id=device_id,
-                start_date=datetime(2014, 1, 1)
-            )
+        # telemetry_df, failures_df, maintenance_df, machines_df, errors_df = model.fetch(
+        #         device_id=device_id,
+        #         start_date=datetime(2014, 1, 1)
+        #     )
 
         # print all dataframes
         # print("[TRAIN_AND_SAVE] telemetry_df:", flush=True)
@@ -171,47 +169,58 @@ def train_and_save_model(
 
 
 
-        hourly_models, feature_cols, labeled_features_clean = train_model(
-            telemetry_df,
-            errors_df,
-            maintenance_df,
-            failures_df,
-            machines_df,
-            algorithm=algorithm,
-        )
+        # hourly_models, feature_cols, labeled_features_clean = train_model(
+        #     telemetry_df,
+        #     errors_df,
+        #     maintenance_df,
+        #     failures_df,
+        #     machines_df,
+        #     algorithm=algorithm,
+        # )
 
-        # save models
-        save_models(hourly_models, model_dir)
+        # # save models
+        # save_models(hourly_models, model_dir)
 
-    elif model_type == "ForecastModel":
-        sensor_name = kwargs.get("sensor_name", f"sensor_{device_id}")
-        time_column = kwargs.get("time_column", "timestamp")
-        value_column = kwargs.get("value_column", "value")
+    # elif model_type == "ForecastModel":
 
-        results = model.train(
-            train_data,
-            sensor_name=sensor_name,
-            time_column=time_column,
-            value_column=value_column,
-        )
-        training_results = {
-            "sensor_name": results["sensor_name"],
-            "mae": results["mae"],
-            "rmse": results["rmse"],
-            "r2_score": results["r2_score"],
-            "training_time": results["training_time"],
-        }
+        # Fetch training data using model's fetch method
 
-    # Save model
-    print(f"[TRAIN_AND_SAVE] About to save model to {model_dir}", flush=True)
+
+    model.train()
+
     print(
-        f"[TRAIN_AND_SAVE] Model algorithms: {list(model.algorithms.keys())}",
+        f"[TRAIN_AND_SAVE] ForecastModel training results: {model.models}",
         flush=True,
     )
-    print(f"[TRAIN_AND_SAVE] Model is_trained: {model.is_trained}", flush=True)
+
+    print(f"[TRAIN_AND_SAVE] About to save model to {model_dir}", flush=True)
+
     model.save(model_dir)
-    logger.info(f"Model saved to {model_dir}")
+
     print(f"[TRAIN_AND_SAVE] Model save completed", flush=True)
+        # logger.info(f"Fetched {len(train_data)} samples for training")
+
+        # results = model.train(exists
+        #     train_data,
+        # )
+        # training_results = {
+        #     "sensor_name": results["sensor_name"],
+        #     "mae": results["mae"],
+        #     "rmse": results["rmse"],
+        #     "r2_score": results["r2_score"],
+        #     "training_time": results["training_time"],
+        # }
+
+        # Save model
+        # print(f"[TRAIN_AND_SAVE] About to save model to {model_dir}", flush=True)
+        # print(
+        #     f"[TRAIN_AND_SAVE] Model algorithms: {list(model.algorithms.keys())}",
+        #     flush=True,
+        # )
+        # print(f"[TRAIN_AND_SAVE] Model is_trained: {model.is_trained}", flush=True)
+        # model.save(model_dir)
+    # logger.info(f"Model saved to {model_dir}")
+    # print(f"[TRAIN_AND_SAVE] Model save completed", flush=True)
 
     # return {
     #     "status": "success",

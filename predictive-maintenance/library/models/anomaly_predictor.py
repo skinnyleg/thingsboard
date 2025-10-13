@@ -93,76 +93,76 @@ class AnomalyPredictor(BaseModel):
 
         return features
 
-    def fetch(self, device_id: str, **kwargs) -> pd.DataFrame:
-        """
-        Fetch training data for anomaly detection from database.
+    # def fetch(self, device_id: str, **kwargs) -> pd.DataFrame:
+    #     """
+    #     Fetch training data for anomaly detection from database.
 
-        Args:
-            device_id: Device or model identifier
-            **kwargs: Additional parameters (days_back, etc.)
+    #     Args:
+    #         device_id: Device or model identifier
+    #         **kwargs: Additional parameters (days_back, etc.)
 
-        Returns:
-            DataFrame with engineered features and failure labels
-        """
+    #     Returns:
+    #         DataFrame with engineered features and failure labels
+    #     """
 
-        logger = logging.getLogger(__name__)
-        # TODO: Allow configuring days_back later
-        # days_back = kwargs.get("days_back", 5000)
-        days_back = 240
+    #     logger = logging.getLogger(__name__)
+    #     # TODO: Allow configuring days_back later
+    #     # days_back = kwargs.get("days_back", 5000)
+    #     days_back = 240
 
-        # Use registry if available
-        if not self.data_registry:
-            logger.error("No data registry available, using synthetic data")
-            return self._generate_sample_data(n_samples=1000)
-        try:
-            logger.info(f"Fetching training data via registry for device {device_id}")
+    #     # Use registry if available
+    #     if not self.data_registry:
+    #         logger.error("No data registry available, using synthetic data")
+    #         return self._generate_sample_data(n_samples=1000)
+    #     try:
+    #         logger.info(f"Fetching training data via registry for device {device_id}")
 
-            # features_df, labels = self.data_registry.fetch_anomaly_training_data(
-            #     device_id=device_id, days_back=days_back, include_failures=True, start_date=None
-            # )
-            features_df, labels = self.data_registry.fetch_anomaly_training_data(
-                device_id=device_id,
-                days_back=days_back,
-                include_failures=True,
-                start_date=datetime(2015, 1, 1, 6, 0, 0),
-            )
+    #         # features_df, labels = self.data_registry.fetch_anomaly_training_data(
+    #         #     device_id=device_id, days_back=days_back, include_failures=True, start_date=None
+    #         # )
+    #         features_df, labels = self.data_registry.fetch_anomaly_training_data(
+    #             device_id=device_id,
+    #             days_back=days_back,
+    #             include_failures=True,
+    #             start_date=datetime(2015, 1, 1, 6, 0, 0),
+    #         )
 
-            if features_df.empty:
-                raise ValueError(
-                    f"No training data available for device {device_id}. "
-                    "Ensure the device has telemetry data (pressure, voltage, rotation, vibration) "
-                    "for at least 24 hours."
-                )
+    #         if features_df.empty:
+    #             raise ValueError(
+    #                 f"No training data available for device {device_id}. "
+    #                 "Ensure the device has telemetry data (pressure, voltage, rotation, vibration) "
+    #                 "for at least 24 hours."
+    #             )
 
-            # Combine features and labels
-            if labels is None or len(labels) == 0:
-                raise ValueError(
-                    f"No failure history found for device {device_id}. "
-                    "Cannot train model without labeled failure data. "
-                    "Please add failure records to the device_failures table with root_cause values."
-                )
+    #         # Combine features and labels
+    #         if labels is None or len(labels) == 0:
+    #             raise ValueError(
+    #                 f"No failure history found for device {device_id}. "
+    #                 "Cannot train model without labeled failure data. "
+    #                 "Please add failure records to the device_failures table with root_cause values."
+    #             )
 
-            training_data = features_df.copy()
-            training_data["failure_component"] = labels
+    #         training_data = features_df.copy()
+    #         training_data["failure_component"] = labels
 
-            # Use all data for training, including 'none' (no failure) samples
-            print(
-                f"[FETCH] Training data: {len(training_data)} samples (including 'none')",
-                flush=True,
-            )
-            print(
-                f"[FETCH] Component distribution: {training_data['failure_component'].value_counts().to_dict()}",
-                flush=True,
-            )
+    #         # Use all data for training, including 'none' (no failure) samples
+    #         print(
+    #             f"[FETCH] Training data: {len(training_data)} samples (including 'none')",
+    #             flush=True,
+    #         )
+    #         print(
+    #             f"[FETCH] Component distribution: {training_data['failure_component'].value_counts().to_dict()}",
+    #             flush=True,
+    #         )
 
-            return training_data
+    #         return training_data
 
-        except ValueError as ve:
-            # Re-raise ValueError to be caught by caller
-            raise ve
-        except Exception as e:
-            logger.error(f"Error fetching training data: {e}")
-            raise RuntimeError(f"Failed to fetch training data: {str(e)}")
+    #     except ValueError as ve:
+    #         # Re-raise ValueError to be caught by caller
+    #         raise ve
+    #     except Exception as e:
+    #         logger.error(f"Error fetching training data: {e}")
+    #         raise RuntimeError(f"Failed to fetch training data: {str(e)}")
 
     """
         returns: fetches data and returns dataframes of same
@@ -174,7 +174,7 @@ class AnomalyPredictor(BaseModel):
         4. errors_df: datetime, machineID, errorID
     """
 
-    def fetch_raw_data(self, device_id, **kwargs):
+    def fetch(self, device_id, **kwargs):
         if not self.data_registry:
             raise ValueError("No data registry available")
 

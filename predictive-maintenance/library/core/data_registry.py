@@ -1052,7 +1052,14 @@ class DataRegistry:
             return pd.DataFrame(), None
 
     def fetch_forecast_training_data(
-        self, device_id: str, sensor_key: str = "sensor_00", days_back: int = 90
+        self,
+        device_id: str,
+        sensor_key: str = "sensor_00",
+        days_back: int = 90,
+        end_date: Optional[datetime] = None,
+        start_date: Optional[datetime] = None,
+        limit: int = 10000,
+        desc: bool = False,
     ) -> pd.DataFrame:
         """
         Fetch training data for time series forecasting.
@@ -1061,6 +1068,8 @@ class DataRegistry:
             device_id: ThingsBoard device UUID
             sensor_key: Sensor name/key to forecast
             days_back: Number of days of historical data to fetch
+            end_date: Optional end date (defaults to now)
+            start_date: Optional start date (overrides days_back if provided)
 
         Returns:
             DataFrame with 'ds' (timestamp) and 'y' (value) columns (Prophet format)
@@ -1071,17 +1080,17 @@ class DataRegistry:
 
         try:
             # Calculate time range
-            end_time = datetime.now()
-            start_time = end_time - timedelta(days=days_back)
-            start_ts = int(start_time.timestamp() * 1000)
-            end_ts = int(end_time.timestamp() * 1000)
+            end_time = end_date or datetime.now()
+            start_time = start_date or (end_time - timedelta(days=days_back))
 
             # Fetch time series data
             forecast_df = self._fetch_time_series_data(
                 device_id=device_id,
-                sensor_key=sensor_key,
-                start_ts=start_ts,
-                end_ts=end_ts,
+                sensor_key=sensor_key,                
+                limit=limit,
+                desc=desc,
+                start_date=start_time,
+                end_date=end_time,
             )
 
             if forecast_df.empty:
@@ -1090,7 +1099,7 @@ class DataRegistry:
                 )
                 return forecast_df
 
-            logger.info(f"Fetched {len(forecast_df)} time series points")
+            logger.info(f"Fetched {len(forecast_df)} time series points of {sensor_key}")
             return forecast_df
 
         except Exception as e:
@@ -1164,62 +1173,55 @@ class DataRegistry:
 
     # ==================== Private Helper Methods ====================
 
-    def _fetch_sensor_telemetry(
-        self, device_id: str, start_ts: int, end_ts: int
+    def fetch_sensor_data(
+        self,
+        sensor_key: str,
+        device_id: Optional[str] = None,
+        limit: int = 1000,
+        start_date: Optional[datetime] = None,
     ) -> pd.DataFrame:
         """
-        Fetch sensor telemetry data for anomaly detection.
+        Fetch all time series data for a given sensor key across all devices.
 
-        Returns DataFrame with sensor columns.
+        Args:
+            sensor_key: Sensor name/key to fetch
+        Returns:
+            DataFrame with columns: datetime, value
         """
-        query = text(
+        logger.info(f"Fetching all data for sensor key '{sensor_key}'")
+
+        try:
+            sensor_key_id = self._get_key_id(sensor_key)
+            if not sensor_key_id:
+                logger.error(f"Sensor key '{sensor_key}' not found in key_dictionary")
+                return pd.DataFrame(columns=["datetime", "value"])
+            query = text(
+                """
+                SELECT
+                    ts as datetime,
+                    COALESCE(dbl_v, long_v, str_v::float) as value
+                FROM ts_kv
+                WHERE key = :sensor_key_id
+                ORDER BY ts DESC
+                LIMIT :limit
             """
-            SELECT 
-                ts,
-                key,
-                COALESCE(dbl_v, long_v, str_v::float) as value
-            FROM ts_kv
-            WHERE entity_id = :device_id
-                AND ts BETWEEN :start_ts AND :end_ts
-                AND key LIKE 'sensor_%'
-            ORDER BY ts, key
-        """
-        )
-
-        with self.engine.connect() as conn:
-            result = conn.execute(
-                query, {"device_id": device_id, "start_ts": start_ts, "end_ts": end_ts}
             )
+            params = {"sensor_key_id": sensor_key_id, "limit": limit}
+            with self.engine.connect() as conn:
+                result = conn.execute(query, params)
+                df = pd.DataFrame(result.fetchall(), columns=result.keys())
+                df["datetime"] = pd.to_datetime(df["datetime"], unit="ms")
+                df.rename(columns={"value": sensor_key}, inplace=True)
+                df = df.sort_values("datetime").reset_index(drop=True)
+                return df
+        
 
-            data = []
-            for row in result:
-                data.append(
-                    {
-                        "timestamp": pd.to_datetime(row[0], unit="ms"),
-                        "sensor": row[1],
-                        "value": row[2],
-                    }
-                )
+            return pd.DataFrame(columns=["datetime", sensor_key])
 
-        if not data:
-            return pd.DataFrame()
+        except Exception as e:
+            logger.error(f"Error fetching sensor data: {e}")
+            return pd.DataFrame(columns=["datetime", "value"])
 
-        # Pivot to wide format (one column per sensor)
-        df = pd.DataFrame(data)
-        df_pivot = df.pivot_table(
-            index="timestamp", columns="sensor", values="value", aggfunc="mean"
-        )
-
-        # Fill missing sensors with zeros
-        expected_sensors = [f"sensor_{i:02d}" for i in range(48)]
-        for sensor in expected_sensors:
-            if sensor not in df_pivot.columns:
-                df_pivot[sensor] = 0.0
-
-        # Ensure correct order
-        df_pivot = df_pivot[expected_sensors]
-
-        return df_pivot.reset_index(drop=True)
 
     def _fetch_failure_labels(
         self, device_id: str, start_ts: int, end_ts: int, index: pd.Index
@@ -1277,7 +1279,14 @@ class DataRegistry:
         return failure_series
 
     def _fetch_time_series_data(
-        self, device_id: str, sensor_key: str, start_ts: int, end_ts: int
+        self,
+        device_id: str,
+        sensor_key: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        limit: int = None,
+        desc: bool = False,
+        group_by: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Fetch time series data for forecasting.
@@ -1291,46 +1300,52 @@ class DataRegistry:
             logger.error(f"Sensor key '{sensor_key}' not found in key_dictionary")
             return pd.DataFrame(columns=["ds", "y"])
 
+        if start_date is None:
+            start_date = datetime(1970, 1, 1)
+
+        if end_date is None:
+            end_date = datetime.now()
+
+        order_clause = "DESC" if desc else "ASC"
+        limit_clause = " LIMIT :limit" if limit is not None else ""
+
         query = text(
-            """
+            f"""
             SELECT
-                ts,
+                ts as datetime,
                 COALESCE(dbl_v, long_v, str_v::float) as value
             FROM ts_kv
             WHERE entity_id = :device_id
                 AND ts BETWEEN :start_ts AND :end_ts
                 AND key = :sensor_key_id
-            ORDER BY ts
-        """
+            ORDER BY ts {order_clause}
+            {limit_clause}
+            """
         )
+        # Build parameters dictionary, only including limit if it's not None
+        params = {
+            "device_id": device_id,
+            "start_ts": int(start_date.timestamp() * 1000),
+            "end_ts": int(end_date.timestamp() * 1000),
+            "sensor_key_id": sensor_key_id,
+        }
+        if limit is not None:
+            params["limit"] = limit
 
         with self.engine.connect() as conn:
-            result = conn.execute(
-                query,
-                {
-                    "device_id": device_id,
-                    "start_ts": start_ts,
-                    "end_ts": end_ts,
-                    "sensor_key_id": sensor_key_id,
-                },
-            )
+            result = conn.execute(query, params)
 
-            data = []
-            for row in result:
-                data.append({"ds": pd.to_datetime(row[0], unit="ms"), "y": row[1]})
+            # convert result to dataframe with datetime to pd.datetime
+            df = pd.DataFrame(result.fetchall(), columns=result.keys())
+            df["datetime"] = pd.to_datetime(df["datetime"], unit="ms")
+            df.rename(columns={"value": sensor_key}, inplace=True)
 
-        if not data:
-            return pd.DataFrame(columns=["ds", "y"])
+            df = df.drop_duplicates(subset=["datetime"], keep="last")
+            df = df.sort_values("datetime").reset_index(drop=True)
 
-        df = pd.DataFrame(data)
+            return df
 
-        # Remove duplicates, keeping last value
-        df = df.drop_duplicates(subset=["ds"], keep="last")
-
-        # Sort by timestamp
-        df = df.sort_values("ds").reset_index(drop=True)
-
-        return df
+        return pd.DataFrame(columns=["datetime", sensor_key])
 
     def test_connection(self) -> bool:
         """

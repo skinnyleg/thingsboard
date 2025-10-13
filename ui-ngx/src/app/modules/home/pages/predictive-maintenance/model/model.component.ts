@@ -521,7 +521,8 @@ export class ModelComponent extends PageComponent implements Order {
               //   this.status = 'inactive';
               // }
               if (msg.data.model_exists) {
-                this.status = 'active';
+                // this.status = 'active';
+                this.status = 'inactive';
                 this.anomaliesComponent.setStreamStatus(true, null);
               } else {
                 this.status = 'inactive';
@@ -1086,7 +1087,8 @@ export class ModelComponent extends PageComponent implements Order {
         // Clear progress and refresh status
         this.progressMessage = null;
         this.activationComplete = true;
-        this.status = 'active';
+        // this.status = 'active';
+        this.status = 'inactive';
         this.anomaliesComponent.setStreamStatus(true, null);
         // Show the logs tooltip after activation
         // this.displayLogsTooltip();

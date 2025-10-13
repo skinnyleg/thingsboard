@@ -16,5 +16,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 EXPOSE 8000
 
 # CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "debug"]
-CMD ["fastapi", "run"]
+# CMD ["fastapi", "run"]
 # CMD ["tail", "-f"]
+
+
+# run fastapi in debug mode - watch file changes
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]

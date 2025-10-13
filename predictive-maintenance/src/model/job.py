@@ -116,9 +116,31 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                 print(f"[PREDICTION JOB] {model_id} - Hour {hour} model: {mdl}", flush=True)
 
         elif model_type == "ForecastModel":
-            model = ForecastModel(name=model_id, algorithm_name="prophet")
+            # Fetch model config to get sensors
+            data_registry = get_data_registry()
+
+            # Extract forecast_id from model_id (format: forecast_id/forecast_model)
+            forecast_id = model_id.rsplit("/", 1)[0]
+            model_config = data_registry.fetch_predictive_model_config(forecast_id)
+
+            # Extract sensors from config
+            sensors = model_config.get("attributes", [])
+            sensors = [sensor["key"] for sensor in sensors if "key" in sensor]
+            device_id = device_id or model_config.get("device_id")
+
+            print(f"[PREDICTION JOB] {model_id} - Using sensors: {sensors}, device_id: {device_id}", flush=True)
+
+            # Initialize model
+            model = ForecastModel(
+                sensors=sensors,
+                name=model_id,
+                algorithm_name="prophet",
+                lookback=720,
+                device_id=device_id,
+                data_registry=data_registry,
+            )
             model.load(model_dir)
-            interval = 3600  # 1 hour
+            interval = 20  # 20 seconds for testing
         else:
             add_model_log(model_id, "error", f"Unknown model type: {model_type}")
             return
@@ -254,11 +276,24 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
 
                 elif model_type == "ForecastModel":
                     # Generate forecast for next 24 hours
-                    result = model.forecast(periods=24, freq="H")
+
+
+                    # get latest
+                    # save last data point timestamp
+                    # predict
+                    # sleep until next interval
+                    result = model.forecast(predict_for=24)
+
+                    print(f"[PREDICTION JOB] {model_id} - Forecast result: {result}", flush=True)
+
                     add_model_log(
                         model_id,
-                        "info",
-                        f"Forecast generated: {len(result.get('timestamps', []))} points",
+                        "prediction",
+                        {
+                            "iteration": iteration,
+                            "device_id": device_id,
+                            "result": result,
+                        }
                     )
 
                 # Update last run time

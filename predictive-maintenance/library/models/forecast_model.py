@@ -5,14 +5,25 @@ This model forecasts future sensor values using time series algorithms.
 It does NOT predict failures - that's the job of AnomalyPredictor.
 """
 
+from pyexpat import model
 from typing import Dict, List, Any, Optional
 import pandas as pd
 import numpy as np
 from datetime import datetime
 
+from sklearn import logger
+
 from ..core.model_interface import BaseModel
 from ..core.types import TimeSeriesConfig, TaskType, AlgorithmType
 from ..algorithms.factory import AlgorithmRegistry
+from ..models.sensor_forecasting_lstm import (
+    prepare_sensor_data,
+    scale_and_split_data,
+    create_rnn_dataset,
+    build_lstm_model,
+    train_lstm_model,
+    forecast_future,
+)
 
 
 class ForecastModel(BaseModel):
@@ -23,12 +34,20 @@ class ForecastModel(BaseModel):
     Use AnomalyPredictor for failure prediction.
     """
 
+    models: Dict[str, Any] = {}
+
     def __init__(
         self,
+        sensors: List[str],
         name: str = "forecast_model",
         algorithm_name: str = "prophet",
         algorithm_hyperparams: Optional[Dict[str, Any]] = None,
         data_registry=None,
+        lookback: int = 720,
+        train_size: int = 8041,
+        train_start_date: Optional[datetime] = None,
+        train_end_date: Optional[datetime] = None,
+        device_id: str = None,
     ):
         """
         Initialize the forecast model.
@@ -44,6 +63,13 @@ class ForecastModel(BaseModel):
         self.algorithm_hyperparams = algorithm_hyperparams or {}
         self.sensor_name: Optional[str] = None
 
+        self.lookback = lookback
+        self.train_size = train_size
+        self.device_id = device_id
+        self.sensors = sensors
+        self.train_start_date = train_start_date
+        self.train_end_date = train_end_date
+
         # Create time series algorithm
         config = TimeSeriesConfig(
             name=algorithm_name,
@@ -57,7 +83,7 @@ class ForecastModel(BaseModel):
         algorithm = AlgorithmRegistry.create(config)
         self.add_algorithm("forecast", algorithm)
 
-    def fetch(self, device_id: str, **kwargs) -> pd.DataFrame:
+    def fetch(self, **kwargs) -> dict[str, pd.DataFrame]:
         """
         Fetch training data for forecasting from database.
 
@@ -71,69 +97,88 @@ class ForecastModel(BaseModel):
         from datetime import datetime, timedelta
         import logging
 
+        device_id = self.device_id or kwargs.get("device_id")
+        if device_id is None:
+            raise ValueError("device_id must be provided either in init or fetch()")
         logger = logging.getLogger(__name__)
-        sensor_key = kwargs.get("sensor_key", "sensor_00")
+        sensor_keys = kwargs.get("sensor_keys", ["sensor_00"])
         days_back = kwargs.get("days_back", 90)
+        start_date = kwargs.get("start_date", None)
+        end_date = kwargs.get("end_date", None)
+        desc = kwargs.get("desc", False)
 
-        # Use registry if available
-        if self.data_registry:
-            try:
+        limit = kwargs.get("limit", None)
+
+        forecast_dict = dict()
+
+        try:
+            for sensor_key in sensor_keys:
                 logger.info(
                     f"Fetching forecast data via registry for device {device_id}, sensor {sensor_key}"
                 )
 
                 forecast_data = self.data_registry.fetch_forecast_training_data(
-                    device_id=device_id, sensor_key=sensor_key, days_back=days_back
+                    device_id=device_id,
+                    sensor_key=sensor_key,
+                    days_back=days_back,
+                    start_date=start_date,
+                    end_date=end_date,
+                    limit=limit,
+                    desc=desc,
                 )
+
+                # TODO: group by time interval (hourly, daily) if needed
 
                 if forecast_data.empty:
                     logger.warning(
                         f"No forecast data available, using synthetic data as fallback"
                     )
-                    return self._generate_sample_data(n_days=90)
+                    forecast_dict[sensor_key] = self._generate_sample_data(sensor_key=sensor_key, n_days=90)
 
-                return forecast_data
+                else:
+                    forecast_dict[sensor_key] = forecast_data
 
-            except Exception as e:
-                logger.error(f"Error fetching forecast data: {e}")
-                logger.warning("Falling back to synthetic data")
-                return self._generate_sample_data(n_days=90)
-        else:
-            # Fallback to old method if no registry
-            logger.warning("No data registry provided, using legacy fetch method")
-            from src.db_connector import create_training_dataset_for_forecast
+            return forecast_dict
 
-            try:
-                logger.info(
-                    f"Fetching forecast data for device {device_id}, sensor {sensor_key}"
-                )
+        except Exception as e:
+            logger.error(f"Error fetching forecast data: {e}")
+            logger.warning("Falling back to synthetic data")
+            # Return a dictionary with synthetic data for each sensor
+            forecast_dict = {}
+            for sensor_key in sensor_keys:
+                forecast_dict[sensor_key] = self._generate_sample_data(sensor_key=sensor_key, n_days=90)
+            return forecast_dict
 
-                # Fetch forecast dataset from ThingsBoard (READ-ONLY)
-                forecast_data = create_training_dataset_for_forecast(
-                    device_id=device_id, sensor_key=sensor_key, days_back=days_back
-                )
+    def fetch_latest(self, **kwargs):
+        limit = kwargs.get("limit", self.lookback)
+        data = self.fetch(
+            sensor_keys=self.sensors,
+            limit=limit,
+            desc=True,
+            # TODO: add groupby param
+        )
 
-                if forecast_data.empty:
-                    logger.warning(
-                        f"No forecast data available, using synthetic data as fallback"
-                    )
-                    return self._generate_sample_data(n_days=90)
+        for sensor, df in data.items():
+            self.models[sensor]["data"] = df
+        # read the latest timestamp from data
+        # merge self.data with new data
 
-                return forecast_data
 
-            except Exception as e:
-                logger.error(f"Error fetching forecast data: {e}")
-                logger.warning("Falling back to synthetic data")
-                return self._generate_sample_data(n_days=90)
-
-    def _generate_sample_data(self, n_days=90) -> pd.DataFrame:
+    def _generate_sample_data(self, sensor_key: str = None, n_days=90) -> pd.DataFrame:
         """
         FALLBACK: Generate synthetic time series when real data is unavailable.
+
+        Args:
+            sensor_key: Name of the sensor (used as column name)
+            n_days: Number of days of synthetic data to generate
+
+        Returns:
+            DataFrame with columns ["datetime", sensor_key] matching real data format
         """
         from datetime import datetime, timedelta
 
         start_date = datetime.now() - timedelta(days=n_days)
-        timestamps = pd.date_range(start=start_date, periods=n_days * 24, freq="H")
+        timestamps = pd.date_range(start=start_date, periods=n_days * 24, freq="h")
 
         t = np.arange(len(timestamps))
         trend = 0.01 * t
@@ -142,16 +187,11 @@ class ForecastModel(BaseModel):
         noise = np.random.normal(0, 2, len(timestamps))
         values = 50 + trend + daily_season + weekly_season + noise
 
-        return pd.DataFrame({"ds": timestamps, "y": values})
+        # Return in the same format as real data from database
+        column_name = sensor_key if sensor_key else "y"
+        return pd.DataFrame({"datetime": timestamps, column_name: values})
 
-    def train(
-        self,
-        data: pd.DataFrame,
-        sensor_name: str,
-        time_column: str = "timestamp",
-        value_column: str = "value",
-        **kwargs,
-    ) -> Dict[str, Any]:
+    def train(self):
         """
         Train the forecast model on historical sensor data.
 
@@ -165,29 +205,108 @@ class ForecastModel(BaseModel):
         Returns:
             Dictionary with training results
         """
-        if time_column not in data.columns or value_column not in data.columns:
-            raise ValueError(
-                f"Data must contain '{time_column}' and '{value_column}' columns"
-            )
+        # if time_column not in data.columns or value_column not in data.columns:
+        #     raise ValueError(
+        #         f"Data must contain '{time_column}' and '{value_column}' columns"
+        #     )
 
-        self.sensor_name = sensor_name
+        data = self.fetch(
+            sensor_keys=self.sensors,
+            start_date=self.train_start_date,
+            end_date=self.train_end_date,
+        )
+
+        print(f"Fetched data for training: {[ (k, type(v)) for k,v in data.items() ]}", flush=True)
+
+        # self.sensor_name = sensor_name
         training_start = datetime.now()
 
-        # Get algorithm
-        algorithm = self.get_algorithm("forecast")
+        # # Get algorithm
+        # algorithm = self.get_algorithm("forecast")
 
-        # Update config with actual column names
-        algorithm.config.time_column = time_column
-        algorithm.config.value_column = value_column
+        # # Update config with actual column names
+        # algorithm.config.time_column = time_column
+        # algorithm.config.value_column = value_column
 
         # Train algorithm
-        metrics = algorithm.train(data)
+        # metrics = algorithm.train(data)
+
+        USE_GPU = True  # Set to True if GPU is available
+        TRAIN_SIZE = 8041
+        LOOKBACK = 720
+        LSTM_UNITS = 256
+        EPOCHS = 1
+        BATCH_SIZE = 128
+
+        models = dict()
+
+        for sensor_key, df in data.items():
+            print(f"\n [Preparing data for {sensor_key}] - type of df: {type(df)}", flush=True)
+            print(f"Data preview: - and columns: {df.columns.tolist()}", flush=True)
+            print(df.head(), flush=True)
+            print("Preparing sensor data...", flush=True)
+            sensor = prepare_sensor_data(df, sensor=sensor_key)
+            print(f"Total sensor samples: {len(sensor)}", flush=True)
+
+            print(f"Sensor data preview:", flush=True)
+            print(sensor.head(), flush=True)
+            print(sensor.dtypes, flush=True)
+            # print type of pandas object
+            print(f"Type of sensor data: {type(sensor)}", flush=True)
+
+            # Scale and split data
+            print("\nScaling and splitting data...", flush=True)
+            # scale_and_split_data expects (sensor_df, sensor_name, train_size, lookback)
+            # pass the sensor key/name so train_size and lookback are used correctly
+            train_data, test_data, scaler = scale_and_split_data(
+                sensor, sensor_key, TRAIN_SIZE, LOOKBACK
+            )
+
+            # Create RNN datasets
+            print("\n[Create RNN datasets] Creating RNN datasets...", flush=True)
+            train_x, train_y = create_rnn_dataset(train_data, LOOKBACK)
+            train_x = np.reshape(train_x, (train_x.shape[0], 1, train_x.shape[1]))
+
+            print(f"[Create RNN datasets] Shape of train X before reshape: {train_x.shape}")
+            # print first 5 rows of train_x
+            print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x[:5]}")
+            print(f"[Create RNN datasets] Shape of train Y: {train_y[:5]}")
+            # print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x.head()}")
+            # print(f"[Create RNN datasets] Columns of train X before reshape:\n{train_x.columns.tolist()}")
+
+            test_x, test_y = create_rnn_dataset(test_data, LOOKBACK)
+            test_x = np.reshape(test_x, (test_x.shape[0], 1, test_x.shape[1]))
+
+            # Build and train model
+            print("\nBuilding LSTM model...", flush=True)
+            model = build_lstm_model(LOOKBACK, LSTM_UNITS, use_gpu=USE_GPU)
+
+            print("\nTraining model...", flush=True)
+            model = train_lstm_model(model, train_x, train_y, EPOCHS, BATCH_SIZE)
+
+            models[sensor_key] = {
+                "model": model,
+                "scaler": scaler,
+            }
+
+        self.models = models
+
+        # placeholder for training metrics
+        metrics = type(
+            "Metrics",
+            (object,),
+            {
+                "mae": 5.0,
+                "rmse": 7.5,
+                "r2_score": 0.85,
+                "training_time": (datetime.now() - training_start).total_seconds(),
+            },
+        )()
 
         self.is_trained = True
         self.last_updated = datetime.now()
 
         return {
-            "sensor_name": sensor_name,
             "algorithm": self.algorithm_name,
             "mae": metrics.mae,
             "rmse": metrics.rmse,
@@ -197,43 +316,118 @@ class ForecastModel(BaseModel):
             "n_samples": len(data),
         }
 
+    def save(self, path):
+        # loop over self.models and save in path
+        import os
+        import joblib
+        from pathlib import Path
+        path = Path(path)
+        if not path.exists():
+            os.makedirs(path)
+        for sensor_key, model_dict in self.models.items():
+            print(f"Saving model for sensor {sensor_key}...", flush=True)
+            model = model_dict["model"]
+            scaler = model_dict["scaler"]
+            print(f"Model: {model}", flush=True)
+            # save keras model
+            model.save(path / f"lstm_model_{sensor_key}.h5")
+            print(f"Scaler: {scaler}", flush=True)
+            # save scaler
+            joblib.dump(scaler, path / f"scaler_{sensor_key}.pkl")
+            print(f"Model and scaler saved for sensor {sensor_key}", flush=True)
+
+    def load(self, path):
+        import os
+        import joblib
+        from pathlib import Path
+        from tensorflow.keras.models import load_model
+
+        path = Path(path)
+        if not path.exists():
+            raise ValueError(f"Model path {path} does not exist")
+
+        models = dict()
+        for file in os.listdir(path):
+            if file.startswith("lstm_model_") and file.endswith(".h5"):
+                sensor_key = file[len("lstm_model_") : -len(".h5")]
+                print(f"Loading model for sensor {sensor_key}...", flush=True)
+                model = load_model(path / file)
+                scaler_file = f"scaler_{sensor_key}.pkl"
+                if (path / scaler_file).exists():
+                    scaler = joblib.load(path / scaler_file)
+                    models[sensor_key] = {
+                        "model": model,
+                        "scaler": scaler,
+                    }
+                    print(f"Model and scaler loaded for sensor {sensor_key}", flush=True)
+                else:
+                    print(f"Scaler file {scaler_file} not found, skipping sensor {sensor_key}", flush=True)
+
+        self.models = models
+        self.is_trained = len(models) > 0
+        self.last_updated = datetime.now() if self.is_trained else None
+
     def predict(
-        self, data: pd.DataFrame, time_column: str = "timestamp", **kwargs
+        self,
+        data: dict[str, pd.DataFrame],
+        predict_for: int = 24,
     ) -> Dict[str, Any]:
         """
         Make predictions on specific timestamps.
 
         Args:
-            data: DataFrame with timestamps to predict
-            time_column: Name of timestamp column
+            data: Dictionary of DataFrames with sensor data (one per sensor)
+            predict_for: Number of time steps to forecast into the future
             **kwargs: Additional parameters
 
         Returns:
-            Dictionary with forecasted values
+            Dictionary with forecasted values for each sensor
         """
-        if not self.is_trained:
-            raise ValueError("Model must be trained before making predictions")
+        results = dict()
 
-        if time_column not in data.columns:
-            raise ValueError(f"Data must contain '{time_column}' column")
+        for sensor_key, model_dict in self.models.items():
+            # Get model and scaler
+            model = model_dict["model"]
+            scaler = model_dict["scaler"]
 
-        # Get algorithm
-        algorithm = self.get_algorithm("forecast")
-        algorithm.config.time_column = time_column
+            # Get the raw data for this sensor
+            sensor_df = data.get(sensor_key)
+            if sensor_df is None or sensor_df.empty:
+                print(f"[PREDICT] No data for sensor {sensor_key}, skipping", flush=True)
+                continue
 
-        # Make predictions
-        output = algorithm.predict(data)
+            # Prepare the data: extract sensor column and process
+            sensor_data = prepare_sensor_data(sensor_df, sensor_key)
 
-        return {
-            "sensor_name": self.sensor_name,
-            "timestamps": data[time_column].tolist(),
-            "forecasted_values": output.predictions.tolist(),
-            "algorithm": self.algorithm_name,
-            "n_samples": len(data),
-            "prediction_time": output.prediction_time.isoformat(),
-        }
+            # Scale the data
+            sensor_values = sensor_data[sensor_key].values.reshape(-1, 1)
+            scaled_data = scaler.transform(sensor_values)
 
-    def forecast(self, periods: int, freq: str = "H", **kwargs) -> Dict[str, Any]:
+            # Create RNN dataset from the latest data
+            # We need at least lookback + 1 points to create a single input
+            if len(scaled_data) < self.lookback + 1:
+                print(f"[PREDICT] Insufficient data for sensor {sensor_key} (need {self.lookback + 1}, got {len(scaled_data)})", flush=True)
+                continue
+
+            # Create RNN input array
+            test_x, _ = create_rnn_dataset(scaled_data, self.lookback)
+            test_x = np.reshape(test_x, (test_x.shape[0], 1, test_x.shape[1]))
+
+            # Forecast future values
+            result = forecast_future(
+                model,
+                test_x,
+                scaler,
+                self.lookback,
+                predict_for=predict_for,
+            )
+
+            results[sensor_key] = result
+
+        return results
+
+
+    def forecast(self, predict_for: int = 24) -> Dict[str, Any]:
         """
         Forecast future sensor values.
 
@@ -245,36 +439,18 @@ class ForecastModel(BaseModel):
         Returns:
             Dictionary with forecast results
         """
-        if not self.is_trained:
-            raise ValueError("Model must be trained before forecasting")
 
-        # Get algorithm
-        algorithm = self.get_algorithm("forecast")
-
-        # Make forecast
-        forecast_output = algorithm.forecast(periods, freq, **kwargs)
-
-        result = {
-            "sensor_name": self.sensor_name,
-            "timestamps": [
-                ts.isoformat() if isinstance(ts, datetime) else str(ts)
-                for ts in forecast_output.timestamps
-            ],
-            "forecasted_values": forecast_output.forecasted_values.tolist(),
-            "algorithm": self.algorithm_name,
-            "freq": freq,
-            "periods": periods,
-            "forecast_time": forecast_output.forecast_time.isoformat(),
-        }
-
-        # Add confidence intervals if available
-        if forecast_output.lower_bound is not None:
-            result["lower_bound"] = forecast_output.lower_bound.tolist()
-        if forecast_output.upper_bound is not None:
-            result["upper_bound"] = forecast_output.upper_bound.tolist()
-            result["confidence_level"] = forecast_output.confidence_level
-
-        return result
+        # TODO: prediction might return
+        # the same results if data is not updated
+        # TODO: forcast data should have timestamps
+        # starting from the last timestamp in self.data
+        self.fetch_latest()
+        results = self.predict(
+            # pass dict of dataframes for each sensor
+            data={sensor: model_dict["data"] for sensor, model_dict in self.models.items()},
+            predict_for=predict_for,
+        )
+        return results
 
     def forecast_multiple_horizons(
         self, horizons: List[int], freq: str = "H", **kwargs

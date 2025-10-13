@@ -235,61 +235,81 @@ def load_telemetry_data(filepath: str) -> pd.DataFrame:
     return telemetry
 
 
-def filter_machine_vibration(telemetry: pd.DataFrame, machine_id: int = 1) -> pd.DataFrame:
+def filter_machine(telemetry: pd.DataFrame, machine_id: int = 1) -> pd.DataFrame:
     """
-    Filter telemetry data for a specific machine and extract vibration data.
+    Filter telemetry data for a specific machine.
 
     Args:
         telemetry: Full telemetry DataFrame
         machine_id: Machine ID to filter (default: 1)
 
     Returns:
-        DataFrame with datetime and vibration columns
+        DataFrame with datetime
     """
-    df = telemetry[telemetry["machineID"] == machine_id][["datetime", "vibration"]]
+    df = telemetry[telemetry["machineID"] == machine_id]
     return df
 
 
-def prepare_sensor_data(df: pd.DataFrame, sensor = 'vibration') -> pd.DataFrame:
+def prepare_sensor_data(df: pd.DataFrame, sensor: str) -> pd.DataFrame:
     """
-    Prepare sensor data by forward filling and converting to integers.
+    Prepare sensor data by forward filling and converting to numeric values.
 
     Args:
         df: DataFrame with sensor data
+        sensor: Name of the sensor column to extract
 
     Returns:
         Processed DataFrame with sensor column
     """
+    # Extract the sensor column
+    if sensor not in df.columns:
+        raise ValueError(f"Sensor column '{sensor}' not found in DataFrame. Available columns: {df.columns.tolist()}")
+
     sensor_data = pd.DataFrame(data=df, columns=[sensor])
+
+    # Forward fill missing values
     sensor_data.ffill(inplace=True)
-    sensor_data[sensor] = sensor_data[sensor].astype(float).astype(int)
+
+    # Convert to float and handle any remaining NaN values
+    sensor_data[sensor] = sensor_data[sensor].astype(float)
+
+    # If there are still NaN values (e.g., at the beginning), backward fill or fill with 0
+    if sensor_data[sensor].isna().any():
+        sensor_data[sensor].bfill(inplace=True)
+        # If still NaN (empty column), fill with 0
+        sensor_data[sensor].fillna(0, inplace=True)
+
+    # Convert to int only if all values are finite (no NaN or inf)
+    if sensor_data[sensor].notna().all() and np.isfinite(sensor_data[sensor]).all():
+        sensor_data[sensor] = sensor_data[sensor].astype(int)
+
     return sensor_data
 
 
-def plot_sensor_timescales(vibration: pd.DataFrame, save_path: str = None) -> None:
+def plot_sensor_timescales(sensor: pd.Series, save_path: str = None) -> None:
     """
-    Plot vibration data at different time scales (daily, weekly, monthly, yearly).
+    Plot sensor data at different time scales (daily, weekly, monthly, yearly).
 
     Args:
-        vibration: DataFrame with vibration data
+        sensor: Series with sensor data
         save_path: Optional path to save the plots
     """
     fig, axes = plt.subplots(4, 1, figsize=(20, 20))
 
     # Daily (24 hours)
-    axes[0].plot(vibration.head(24))
+    axes[0].plot(sensor.head(24))
     axes[0].set_title("Daily", fontsize=20)
 
     # Weekly (7 days = 168 hours)
-    axes[1].plot(vibration.head(168))
+    axes[1].plot(sensor.head(168))
     axes[1].set_title("Weekly", fontsize=20)
 
     # Monthly (30 days = 720 hours)
-    axes[2].plot(vibration.head(720))
+    axes[2].plot(sensor.head(720))
     axes[2].set_title("Monthly", fontsize=20)
 
     # Yearly (365 days = 8760 hours)
-    axes[3].plot(vibration.head(8760))
+    axes[3].plot(sensor.head(8760))
     axes[3].set_title("Yearly", fontsize=20)
 
     plt.tight_layout()
@@ -301,15 +321,16 @@ def plot_sensor_timescales(vibration: pd.DataFrame, save_path: str = None) -> No
 
 
 def scale_and_split_data(
-    vibration: pd.DataFrame,
+    sensor: pd.DataFrame,
+    sensor_name: str,
     train_size: int = 8041,
     lookback: int = 720
 ) -> Tuple[np.ndarray, np.ndarray, StandardScaler]:
     """
-    Scale vibration data and split into train/test sets.
+    Scale sensor data and split into train/test sets.
 
     Args:
-        vibration: DataFrame with vibration data
+        sensor: DataFrame with sensor data
         train_size: Number of samples for training
         lookback: Number of lookback steps for test data
 
@@ -317,17 +338,18 @@ def scale_and_split_data(
         Tuple of (train_data, test_data, scaler)
     """
     scaler = StandardScaler()
-    scaled_vibration = scaler.fit_transform(vibration)
+    scaled_sensor = scaler.fit_transform(sensor)
+    # scaled_sensor = scaler.fit_transform(sensor.to_numpy().reshape(-1, 1))
 
-    print(f"Vibration Range before scaling: {vibration.vibration.min()}, {vibration.vibration.max()}")
-    print(f"Vibration Range after scaling: {scaled_vibration.min()}, {scaled_vibration.max()}")
+    # print(f"Sensor Range before scaling: {sensor[sensor_name].min()}, {sensor[sensor_name].max()}")
+    print(f"Vibration Range after scaling: {scaled_sensor.min()}, {scaled_sensor.max()}")
 
-    train_vibration = scaled_vibration[0:train_size, :]
-    test_vibration = scaled_vibration[train_size-lookback:, :]
+    train_sensor = scaled_sensor[0:train_size, :]
+    test_sensor = scaled_sensor[train_size-lookback:, :]
 
-    print(f"\nShapes of train and test: {train_vibration.shape}, {test_vibration.shape}")
+    print(f"\nShapes of train and test: {train_sensor.shape}, {test_sensor.shape}")
 
-    return train_vibration, test_vibration, scaler
+    return train_sensor, test_sensor, scaler
 
 
 def create_rnn_dataset(data: np.ndarray, lookback: int = 1) -> Tuple[np.ndarray, np.ndarray]:
@@ -428,8 +450,8 @@ def train_lstm_model(
     model: Sequential,
     train_x: np.ndarray,
     train_y: np.ndarray,
-    epochs: int = 20,
-    batch_size: int = 64,
+    epochs: int = 1,
+    batch_size: int = 128,
     use_optimized_pipeline: bool = True,
     validation_split: float = 0.2
 ) -> Sequential:
@@ -548,9 +570,21 @@ def evaluate_and_predict(
 
     return predict_on_train, predict_on_test
 
+def predict(
+    model: Sequential,
+    data: np.ndarray,
+    scaler: StandardScaler
+):
+    # Make predictions
+    predictions = model.predict(data)
+
+    # Inverse transform to original scale
+    predictions = scaler.inverse_transform(predictions)
+
+    return predictions
 
 def plot_predictions(
-    vibration: pd.DataFrame,
+    sensor: pd.Series,
     predict_train: np.ndarray,
     predict_test: np.ndarray,
     lookback: int = 720,
@@ -560,7 +594,7 @@ def plot_predictions(
     Plot original data with train and test predictions.
 
     Args:
-        vibration: Original vibration DataFrame
+        sensor: Original sensor DataFrame
         predict_train: Training predictions
         predict_test: Test predictions
         lookback: Lookback window size
@@ -569,7 +603,7 @@ def plot_predictions(
     total_size = len(predict_train) + len(predict_test)
 
     # Prepare original data
-    orig_data = vibration.vibration.to_numpy().reshape(-1, 1)
+    orig_data = sensor.to_numpy().reshape(-1, 1)
     orig_plot = np.empty((total_size, 1))
     orig_plot[:, :] = np.nan
     orig_plot[0:total_size, :] = orig_data[lookback:-2, ]
@@ -606,7 +640,7 @@ def forecast_future(
     predict_for: int = 720
 ) -> np.ndarray:
     """
-    Forecast future vibration values.
+    Forecast future sensor values.
 
     Args:
         model: Trained LSTM model
@@ -731,7 +765,7 @@ def plot_forecast_with_dates(
 
     fig, ax = plt.subplots(figsize=(20, 5))
     ax.plot(y_values, color=color)
-    ax.set(xlabel="Date and Time", ylabel="vibration", title=title)
+    ax.set(xlabel="Date and Time", ylabel="sensor", title=title)
 
     tick_positions = list(range(0, hours, tick_interval))
     plt.xticks(tick_positions, [dates[i] for i in tick_positions], rotation='vertical')
@@ -771,13 +805,15 @@ if __name__ == "__main__":
     verify_gpu_usage()
 
     # Configuration
-    DATA_PATH = 'PdM_telemetry.csv'
+    # DATA_PATH = 'PdM_telemetry.csv'
+    DATA_PATH = '../../data/PdM_telemetry.csv'  # Adjust path as needed
     MACHINE_ID = 1
     TRAIN_SIZE = 8041
     LOOKBACK = 720
     LSTM_UNITS = 256
-    EPOCHS = 20
-    BATCH_SIZE = 1
+    # EPOCHS = 20
+    EPOCHS = 1
+    BATCH_SIZE = 128
     PREDICT_HOURS = 24 * 30  # 30 days
 
     # Note: If REQUIRE_GPU=True and no GPU found, script already exited
@@ -789,23 +825,35 @@ if __name__ == "__main__":
     telemetry = load_telemetry_data(DATA_PATH)
 
     print(f"Filtering data for machine {MACHINE_ID}...")
-    df = filter_machine_vibration(telemetry, MACHINE_ID)
+    df = filter_machine(telemetry, MACHINE_ID)
 
-    print("Preparing vibration data...")
-    vibration = prepare_sensor_data(df, sensor='pressure')
-    print(f"Total vibration samples: {len(vibration)}")
+    print(f"Print first 5 rows of data:\n{df.head()} - columns: {df.columns.tolist()}", flush=True)
+
+    # =============================================
+
+    SENSOR = 'pressure'
+
+    print("Preparing sensor data...")
+    sensor = prepare_sensor_data(df, sensor=SENSOR)
+    print(f"Total sensor samples: {len(sensor)}")
 
     # Scale and split data
     print("\nScaling and splitting data...")
     train_data, test_data, scaler = scale_and_split_data(
-        vibration, TRAIN_SIZE, LOOKBACK
+        sensor, SENSOR, TRAIN_SIZE, LOOKBACK
     )
 
     # Create RNN datasets
-    print("\nCreating RNN datasets...")
+    print("\n[Create RNN datasets] Creating RNN datasets...")
     train_x, train_y = create_rnn_dataset(train_data, LOOKBACK)
+    print(f"[Create RNN datasets] Shape of train X before reshape: {train_x.shape}")
+    # print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x.head()}")
+    # print(f"[Create RNN datasets] Columns of train X before reshape:\n{train_x.columns.tolist()}")
+    # print first 5 rows of train_x
+    print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x[:5]}")
+    print(f"[Create RNN datasets] Shape of train Y: {train_y[:5]}")
     train_x = np.reshape(train_x, (train_x.shape[0], 1, train_x.shape[1]))
-    print(f"Shapes of X and Y: {train_x.shape}, {train_y.shape}")
+    print(f"[Create RNN datasets] Shapes of X and Y: {train_x.shape}, {train_y.shape}")
 
     test_x, test_y = create_rnn_dataset(test_data, LOOKBACK)
     test_x = np.reshape(test_x, (test_x.shape[0], 1, test_x.shape[1]))
@@ -817,22 +865,38 @@ if __name__ == "__main__":
     print("\nTraining model...")
     model = train_lstm_model(model, train_x, train_y, EPOCHS, BATCH_SIZE)
 
-    # Evaluate and predict
-    print("\nEvaluating and making predictions...")
-    predict_train, predict_test = evaluate_and_predict(
-        model, train_x, test_x, test_y, scaler
-    )
+    # =============================================
 
-    # Plot predictions
-    print("\nPlotting predictions...")
-    plot_predictions(vibration, predict_train, predict_test, LOOKBACK)
+    # # Evaluate and predict
+    # print("\nEvaluating and making predictions...")
+    # predict_train, predict_test = evaluate_and_predict(
+    #     model, train_x, test_x, test_y, scaler
+    # )
 
-    # Forecast future
-    print(f"\nForecasting next {PREDICT_HOURS} hours...")
+    latest = sensor.iloc[-LOOKBACK:].to_numpy().reshape(1, 1, LOOKBACK)
+
+    # scale latest
+
+    latest_scaled = scaler.transform(latest.reshape(-1, 1)).reshape(1, 1, LOOKBACK)
+
+    predict_train = predict(model, train_x, scaler)
+
     predict_future = forecast_future(
-        model, test_x, scaler, LOOKBACK, PREDICT_HOURS
+        model, test_x, scaler, LOOKBACK, 20
     )
-    print(f"First 5 future predictions:\n{predict_future[:5]}")
+
+    print(f"First 5 training predictions:\n{predict_train}")
+
+    # # Plot predictions
+    # print("\nPlotting predictions...")
+    # plot_predictions(sensor, predict_train, predict_test, LOOKBACK)
+
+    # # Forecast future
+    # print(f"\nForecasting next {PREDICT_HOURS} hours...")
+    # predict_future = forecast_future(
+    #     model, test_x, scaler, LOOKBACK, PREDICT_HOURS
+    # )
+    # print(f"First 5 future predictions:\n{predict_future[:5]}")
 
     # # Plot forecast
     # print("\nPlotting forecast...")
@@ -862,23 +926,23 @@ if __name__ == "__main__":
     #     color='green', tick_interval=24
     # )
 
-    print("\nForecasting complete!")
-    print("\n" + "="*60)
-    print("EXECUTION SUMMARY")
-    print("="*60)
-    device_info = get_device_info()
-    print(f"Executed on: {'GPU' if device_info['gpu_available'] else 'CPU'}")
-    if device_info['gpu_available']:
-        print(f"GPU Device(s): {', '.join(device_info['gpu_names'])}")
-    print(f"\nOptimizations enabled:")
-    print(f"  - Mixed Precision: {device_info['gpu_available']}")
-    print(f"  - XLA Compilation: True")
-    print(f"  - Batch Size: {BATCH_SIZE}")
-    print(f"  - tf.data Pipeline: Caching + Prefetching")
-    print(f"  - CuDNN LSTM: {device_info['gpu_available']}")
-    print(f"\nData Summary:")
-    print(f"  - Total samples processed: {len(vibration)}")
-    print(f"  - Training samples: {len(train_x)}")
-    print(f"  - Test samples: {len(test_x)}")
-    print(f"  - Future predictions: {PREDICT_HOURS} hours")
-    print("="*60 + "\n")
+    # print("\nForecasting complete!")
+    # print("\n" + "="*60)
+    # print("EXECUTION SUMMARY")
+    # print("="*60)
+    # device_info = get_device_info()
+    # print(f"Executed on: {'GPU' if device_info['gpu_available'] else 'CPU'}")
+    # if device_info['gpu_available']:
+    #     print(f"GPU Device(s): {', '.join(device_info['gpu_names'])}")
+    # print(f"\nOptimizations enabled:")
+    # print(f"  - Mixed Precision: {device_info['gpu_available']}")
+    # print(f"  - XLA Compilation: True")
+    # print(f"  - Batch Size: {BATCH_SIZE}")
+    # print(f"  - tf.data Pipeline: Caching + Prefetching")
+    # print(f"  - CuDNN LSTM: {device_info['gpu_available']}")
+    # print(f"\nData Summary:")
+    # print(f"  - Total samples processed: {len(vibration)}")
+    # print(f"  - Training samples: {len(train_x)}")
+    # print(f"  - Test samples: {len(test_x)}")
+    # print(f"  - Future predictions: {PREDICT_HOURS} hours")
+    # print("="*60 + "\n")
