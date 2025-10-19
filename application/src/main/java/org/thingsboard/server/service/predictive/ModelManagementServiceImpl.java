@@ -285,16 +285,15 @@ public class ModelManagementServiceImpl implements ModelManagementService {
     }
 
     @Override
-    public JsonNode getModelLogs(String modelId, String level, int limit) {
+    public JsonNode getModelLogs(String modelId, String level, int limit, String type) {
         try {
-            ObjectNode request = mapper.createObjectNode();
-            request.put("action", "get_logs");
-            request.put("model_id", modelId);
-            request.put("level", level != null ? level : "all");
-            request.put("limit", limit);
 
-            JsonNode response = sendSocketRequest(request);
-            return response;
+            // get model logs from database
+
+            String modelIdEntity = modelId + "/" + type;
+
+            String sql = "SELECT id, model_id, tenant_id, device_id, timestamp, log_level, message, source, metadata " +
+                    "FROM model_logs WHERE model_id = ? AND log_level = ? limit ? order by created_at desc";
 
         } catch (Exception e) {
             log.error("Failed to get model logs", e);

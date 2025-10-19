@@ -19,6 +19,11 @@
   display: inline-block;
   line-height: 0; // prevent extra height from mat-icon
 }
+
+.chart-section {
+  padding-bottom: 1rem;
+}
+
 .tb-default {
   :host {
     .model-select {

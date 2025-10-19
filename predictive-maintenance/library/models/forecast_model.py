@@ -48,6 +48,8 @@ class ForecastModel(BaseModel):
         train_start_date: Optional[datetime] = None,
         train_end_date: Optional[datetime] = None,
         device_id: str = None,
+        group_by_ms: int = 3600000,
+        last_fetched_date: Optional[datetime] = None,
     ):
         """
         Initialize the forecast model.
@@ -69,6 +71,8 @@ class ForecastModel(BaseModel):
         self.sensors = sensors
         self.train_start_date = train_start_date
         self.train_end_date = train_end_date
+        self.group_by_ms = group_by_ms
+        self.last_fetched_date = last_fetched_date
 
         # Create time series algorithm
         config = TimeSeriesConfig(
@@ -127,6 +131,9 @@ class ForecastModel(BaseModel):
                     desc=desc,
                 )
 
+                print(f"Fetched {len(forecast_data)} rows for sensor {sensor_key}", flush=True)
+                print(forecast_data.head(), flush=True)
+
                 # TODO: group by time interval (hourly, daily) if needed
 
                 if forecast_data.empty:
@@ -151,12 +158,18 @@ class ForecastModel(BaseModel):
 
     def fetch_latest(self, **kwargs):
         limit = kwargs.get("limit", self.lookback)
+        ts = datetime.now()
         data = self.fetch(
             sensor_keys=self.sensors,
+            start_date=self.last_fetched_date,
             limit=limit,
             desc=True,
             # TODO: add groupby param
         )
+        # NOTE: this is for testing only
+        # we fetch max timestamp and set it as last_fetched_date
+        for sensor, df in data.items():
+            self.last_fetched_date = max(df["timestamp"]) if "timestamp" in df else self.last_fetched_date
 
         for sensor, df in data.items():
             self.models[sensor]["data"] = df
@@ -369,7 +382,6 @@ class ForecastModel(BaseModel):
 
     def predict(
         self,
-        data: dict[str, pd.DataFrame],
         predict_for: int = 24,
     ) -> Dict[str, Any]:
         """
@@ -384,14 +396,18 @@ class ForecastModel(BaseModel):
             Dictionary with forecasted values for each sensor
         """
         results = dict()
+        results["forecast_max_steps"] = predict_for
 
         for sensor_key, model_dict in self.models.items():
             # Get model and scaler
-            model = model_dict["model"]
-            scaler = model_dict["scaler"]
+            model = model_dict.get("model", None)
+            scaler = model_dict.get("scaler", None)
+            sensor_df = model_dict.get("data", None)
+            if model is None or scaler is None or sensor_df is None:
+                print(f"[PREDICT] Model, scaler, or data missing for sensor {sensor_key}, skipping", flush=True)
+                continue
 
             # Get the raw data for this sensor
-            sensor_df = data.get(sensor_key)
             if sensor_df is None or sensor_df.empty:
                 print(f"[PREDICT] No data for sensor {sensor_key}, skipping", flush=True)
                 continue
@@ -422,7 +438,25 @@ class ForecastModel(BaseModel):
                 predict_for=predict_for,
             )
 
-            results[sensor_key] = result
+            max_timestamp = sensor_df["datetime"].max()
+
+            results[sensor_key] = {}
+            # Convert forecast numpy array to list of floats
+            if isinstance(result, np.ndarray):
+                # Flatten the array and convert to list of floats
+                results[sensor_key]["forecast"] = result.flatten().tolist()
+            else:
+                results[sensor_key]["forecast"] = result
+
+            # create a list of future timestamps from max_timestamp steps of self.group_by_ms
+            future_timestamps = [
+                max_timestamp + pd.Timedelta(milliseconds=self.group_by_ms * (i + 1))
+                for i in range(predict_for)
+            ]
+            # Convert timestamps to milliseconds (Unix timestamp in ms)
+            results[sensor_key]["timestamp"] = [
+                int(ts.timestamp() * 1000) for ts in future_timestamps
+            ]
 
         return results
 
@@ -447,7 +481,6 @@ class ForecastModel(BaseModel):
         self.fetch_latest()
         results = self.predict(
             # pass dict of dataframes for each sensor
-            data={sensor: model_dict["data"] for sensor, model_dict in self.models.items()},
             predict_for=predict_for,
         )
         return results

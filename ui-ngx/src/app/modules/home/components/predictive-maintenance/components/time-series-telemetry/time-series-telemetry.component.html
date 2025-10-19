@@ -1,0 +1,59 @@
+<!--
+    Copyright © 2016-2024 The Thingsboard Authors
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+<div class="time-series-telemetry-container">
+  <div class="timewindow-panel">
+    <div class="timewindow-controls">
+      <div class="timewindow-selector">
+        <tb-timewindow
+          [aggregation]="false"
+          [quickIntervalOnly]="false"
+          [historyOnly]="false"
+          [alwaysDisplayTypePrefix]="true"
+          [timezone]="true"
+          [noMargin]="true"
+          [noPadding]="true"
+          [isEdit]="false"
+          [(ngModel)]="timewindow"
+          (ngModelChange)="onTimewindowChanged($event)">
+        </tb-timewindow>
+      </div>
+      <div class="sensor-selector" *ngIf="availableSensors.length > 0">
+        <button
+          mat-button
+          class="sensor-selector-button"
+          [matTooltip]="'Select sensor: ' + (selectedSensor | titlecase)"
+          matTooltipPosition="above"
+          [matMenuTriggerFor]="sensorMenu">
+          <mat-icon>sensors</mat-icon>
+          <span class="sensor-name-text">{{ selectedSensor | titlecase }}</span>
+        </button>
+        <mat-menu #sensorMenu="matMenu">
+          <button
+            mat-menu-item
+            *ngFor="let sensor of availableSensors"
+            (click)="selectSensor(sensor)"
+            [class.selected]="selectedSensor === sensor">
+            <mat-icon *ngIf="selectedSensor === sensor">check</mat-icon>
+            <span [style.margin-left]="selectedSensor === sensor ? '0' : '24px'">
+              {{ sensor | titlecase }}
+            </span>
+          </button>
+        </mat-menu>
+      </div>
+    </div>
+  </div>
+  <div #chart class="telemetry-chart"></div>
+</div>

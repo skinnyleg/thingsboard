@@ -1,32 +1,37 @@
-import { CommonModule } from "@angular/common";
+import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectorRef,
   Component,
+  ElementRef,
+  EventEmitter,
   Input,
   NgZone,
   OnChanges,
   OnDestroy,
   OnInit,
+  Output,
+  Renderer2,
   SimpleChanges,
-} from "@angular/core";
-import { AttributeService } from "@core/http/attribute.service";
-import { TelemetryWebsocketService } from "@core/ws/telemetry-websocket.service";
-import { AttributeDatasource } from "@home/models/datasource/attribute-datasource";
-import { TranslateService, TranslateModule } from "@ngx-translate/core";
-import { EntityId } from "@shared/models/id/entity-id";
-import { TelemetryType } from "@shared/models/telemetry/telemetry.models";
-import { Subject } from "rxjs";
-import { webSocket, WebSocketSubject } from "rxjs/webSocket";
-import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatMenuModule } from "@angular/material/menu";
-import { MatDividerModule } from "@angular/material/divider";
-import { FormsModule } from "@angular/forms";
-import ApexCharts from "apexcharts";
-import { MatButtonToggleModule } from "@angular/material/button-toggle";
-import * as echarts from "echarts/core";
+  ViewChild,
+} from '@angular/core';
+import { AttributeService } from '@core/http/attribute.service';
+import { TelemetryWebsocketService } from '@core/ws/telemetry-websocket.service';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { PredictiveModelsService } from '@core/http/forecast.service';
+import { ModelWebSocketService } from '@core/http/model-websocket.service';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
+import { FormsModule } from '@angular/forms';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import * as echarts from 'echarts/core';
 import {
   TitleComponent,
   ToolboxComponent,
@@ -35,166 +40,35 @@ import {
   DataZoomComponent,
   LegendComponent,
   MarkAreaComponent,
-} from "echarts/components";
-import { LineChart, ScatterChart } from "echarts/charts";
-import { UniversalTransition } from "echarts/features";
-import { MatButtonModule } from "@angular/material/button";
-import { CanvasRenderer } from "echarts/renderers";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { MatDatepickerModule } from "@angular/material/datepicker";
-import { FormControl } from "@angular/forms";
-import { FormGroup } from "@material-ui/core";
-import { environment } from "@env/environment";
+} from 'echarts/components';
+import { LineChart, ScatterChart } from 'echarts/charts';
+import { UniversalTransition } from 'echarts/features';
+import { CanvasRenderer } from 'echarts/renderers';
+import { Subscription } from 'rxjs';
+import { ECharts, echartsModule } from '../../../widget/lib/chart/echarts-widget.models';
+import { TelemetrySubscriber, SubscriptionUpdate, LatestTelemetry } from '@shared/models/telemetry/telemetry.models';
+import { EntityId } from '@shared/models/id/entity-id';
+import { EntityType } from '@shared/models/entity-type.models';
 
-const Hours = Array.from(Array(24), (_, i) =>
-  i < 10 ? "0" + i : i.toString()
-);
-const Minutes = Array.from(Array(60), (_, i) =>
-  i < 10 ? "0" + i : i.toString()
-);
-const Seconds = Array.from(Minutes);
-
-const getAlarmSubscriptionCmd = (token, device_id) => ({
-  authCmd: {
-    cmdId: 0,
-    token: token,
-  },
-  cmds: [
-    {
-      type: "ALARM_DATA",
-      query: {
-        entityFilter: {
-          type: "singleEntity",
-          singleEntity: {
-            entityType: "DEVICE",
-            id: device_id,
-          },
-        },
-        pageLink: {
-          page: 0,
-          pageSize: 10,
-          textSearch: null,
-          typeList: [],
-          severityList: [],
-          statusList: ["ACTIVE", "CLEARED"],
-          searchPropagatedAlarms: false,
-          sortOrder: {
-            key: {
-              key: "createdTime",
-              type: "ALARM_FIELD",
-            },
-            direction: "DESC",
-          },
-          timeWindow: 2592000000,
-        },
-        alarmFields: [
-          {
-            type: "ALARM_FIELD",
-            key: "createdTime",
-          },
-          {
-            type: "ALARM_FIELD",
-            key: "originator",
-          },
-          {
-            type: "ALARM_FIELD",
-            key: "type",
-          },
-          {
-            type: "ALARM_FIELD",
-            key: "severity",
-          },
-          {
-            type: "ALARM_FIELD",
-            key: "type",
-          },
-          {
-            type: "ALARM_FIELD",
-            key: "status",
-          },
-        ],
-        entityFields: [],
-        latestValues: [],
-      },
-      cmdId: 3,
-    },
-  ],
-});
-
-const selectionOptions = [
-  {
-    value: "60s",
-    name: "Last 60 seconds",
-    seconds: 60,
-    interval: 1000,
-  },
-  {
-    value: "5min",
-    name: "Last 5 minutes",
-    seconds: 5 * 60,
-    interval: 1000,
-  },
-  {
-    value: "10min",
-    name: "Last 10 minutes",
-    seconds: 10 * 60,
-    interval: 1000,
-  },
-  {
-    value: "1hour",
-    name: "Last 1 hour",
-    seconds: 60 * 60,
-    interval: 60 * 1000,
-  },
-  {
-    value: "12hours",
-    name: "Last 12 hours",
-    seconds: 12 * 60 * 60,
-    interval: 10 * 60 * 1000,
-  },
-  {
-    value: "1day",
-    name: "Last 1 day",
-    seconds: 24 * 60 * 60,
-    interval: 10 * 60 * 1000,
-  },
-  {
-    value: "5day",
-    name: "Last 5 days",
-    seconds: 5 * 24 * 60 * 60,
-    interval: 30 * 60 * 1000,
-  },
-  {
-    value: "10day",
-    name: "Last 10 days",
-    seconds: 10 * 24 * 60 * 60,
-    interval: 60 * 60 * 1000,
-  },
-  {
-    value: "15days",
-    name: "Last 15 days",
-    seconds: 15 * 24 * 60 * 60,
-    interval: 60 * 60 * 1000,
-  },
-  {
-    value: "1month",
-    name: "Last 1 month",
-    seconds: 30 * 24 * 60 * 60,
-    interval: 12 * 60 * 60 * 1000,
-  },
-  {
-    value: "2month",
-    name: "Last 2 months",
-    seconds: 2 * 30 * 24 * 60 * 60,
-    interval: 12 * 60 * 60 * 1000,
-  },
-];
+// Register ECharts components
+echarts.use([
+  TitleComponent,
+  ToolboxComponent,
+  TooltipComponent,
+  GridComponent,
+  DataZoomComponent,
+  LegendComponent,
+  MarkAreaComponent,
+  LineChart,
+  ScatterChart,
+  UniversalTransition,
+  CanvasRenderer
+]);
 
 @Component({
-  selector: "tb-forecast-chart",
-  templateUrl: "./forecast-chart.component.html",
-  styleUrls: ["./forecast-chart.component.scss"],
+  selector: 'tb-forecast-chart',
+  templateUrl: './forecast-chart.component.html',
+  styleUrls: ['./forecast-chart.component.scss'],
   standalone: true,
   imports: [
     CommonModule,
@@ -215,712 +89,551 @@ const selectionOptions = [
 export class ForecastChartComponent
   implements OnInit, OnChanges, OnDestroy, AfterViewInit
 {
-  public forecastWs: WebSocketSubject<any>;
-  public dataWs: WebSocketSubject<any>;
-
-  public selected = { ...selectionOptions.find((a) => a.seconds === 60) };
-
-  public telemetryData: any[] = [];
-  public seriesHidden: number[] = [];
-  private originalSeriesData: { [key: number]: any[] } = {};
-  private destroy$ = new Subject<void>();
   @Input() deviceId: string;
+
   @Input() Attributes: string[];
+
   @Input() forecastId: string;
 
-  entityId: EntityId;
-  attributeScope: TelemetryType;
-  dataSource: AttributeDatasource;
-  displayData: boolean = true;
-  public hasNoData: boolean = false;
-  public noDataMessage: string = "No data available";
-  public forecast_chart_seconds_away = 60;
-  setIntervalId: number;
-  public chartInstance;
-  public selectionOptions = selectionOptions;
-  public series = [];
-  public oldForecastSeries = {};
+  @Input() forecastData: any; // Forecast data from parent component
 
-  startDate = new Date(+new Date() - 60 * 60 * 1000);
-  endDate = new Date();
-  startDateHours = Hours[0];
-  startDateMinutes = Minutes[0];
-  startDateSeconds = Seconds[0];
+  @Input() forecastMaxSteps: number; // Number of forecast points
 
-  endDateHours = Hours[0];
-  endDateMinutes = Minutes[0];
-  endDateSeconds = Seconds[0];
+  @Input() selectedSensor = 'rotate'; // Currently selected sensor (from parent viewPreferences)
 
-  public getHours() {
-    return Array.from(Hours);
-  }
+  @Output() sensorChanged = new EventEmitter<string>();
 
-  public getMinutes() {
-    return Array.from(Minutes);
-  }
+  @ViewChild('chart', { static: false }) chartElement: ElementRef<HTMLElement>;
 
-  public getSeconds() {
-    return Array.from(Seconds);
-  }
+  private chart: ECharts;
 
-  graphtype = "realtime";
-  public isHistoryMode = false;
-  public isRealtimeMode = true;
-  public isRefreshing = false;
-  public isExpanded = false;
+  private chartOptions: any;
+
+  private telemetrySubscription: Subscription;
+
+  // Data storage
+  private historicalData: Array<[number, number]> = [];
+
+  private forecastDataPoints: Array<[number, number]> = [];
+
+  // UI State properties
+  isExpanded = false;
+
+  isRefreshing = false;
+
+  hasNoData = false;
+
+  noDataMessage = 'No data available';
+
+  // History mode properties
+  isHistoryMode = false;
+
+  isRealtimeMode = true;
+
+  startDate: Date = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
+
+  endDate: Date = new Date();
+
+  // Time selection options
+  selectionOptions = [
+    { name: 'Last hour', value: 'hour' },
+    { name: 'Last 24 hours', value: '24h' },
+    { name: 'Last 7 days', value: '7d' },
+    { name: 'Last 30 days', value: '30d' }
+  ];
+
+  selected = { value: '24h' };
+
+  // Available sensors for selection
+  availableSensors = ['rotate', 'temp', 'pressure', 'vibration'];
 
   constructor(
     private attributeService: AttributeService,
     private telemetryWsService: TelemetryWebsocketService,
     private translate: TranslateService,
     private zone: NgZone,
-    private cdr: ChangeDetectorRef
-  ) {}
-
-  handleHistoryTimeChange(
-    start,
-    end,
-    shours,
-    smin,
-    sseconds,
-    ehours,
-    emin,
-    eseconds
+    private cdr: ChangeDetectorRef,
+    private predictiveModelsService: PredictiveModelsService,
+    private modelWebSocketService: ModelWebSocketService,
+    private renderer: Renderer2
   ) {
-    start = new Date(start.selected);
-    end = new Date(end.selected);
-    start.setHours(+shours.value, +smin.value, +sseconds.value);
-    end.setHours(+ehours.value, +emin.value, +eseconds.value);
-    if (!+start) {
-      this.hasNoData = true;
-      this.noDataMessage = "Invalid start date selected";
-      return;
-    }
-    if (!+end) {
-      this.hasNoData = true;
-      this.noDataMessage = "Invalid end date selected";
-      return;
-    }
-    this.startDate = start;
-    this.endDate = end;
-    this.handleTimeChangeDate();
-  }
-
-  updateEndDate() {
-    this.endDate = new Date();
-    this.handleTimeChangeDate();
-  }
-
-  toggleDatePicker(el) {
-    el.style.display = el.style.display === "block" ? "none" : "block";
-  }
-
-  ngAfterViewInit() {}
-
-  onSelectTimeChange(event) {
-    this.selected = {
-      ...selectionOptions.find((i) => i.value === event.value),
-    };
-    this.handleTimeChangeDate();
-  }
-
-  handleGraphChange(event) {
-    this.graphtype = event.value;
-    this.isHistoryMode = event.value === "history";
-    this.isRealtimeMode = event.value === "realtime";
-    // Trigger change detection to prevent ExpressionChangedAfterItHasBeenCheckedError
-    setTimeout(() => {
-      this.handleTimeChangeDate();
-      this.cdr.detectChanges();
-    });
-  }
-
-  toggleMode() {
-    this.graphtype = this.isRealtimeMode ? "history" : "realtime";
-    this.isHistoryMode = this.graphtype === "history";
-    this.isRealtimeMode = this.graphtype === "realtime";
-    setTimeout(() => {
-      this.handleTimeChangeDate();
-      this.cdr.detectChanges();
-    });
-  }
-
-  selectMode(mode: string) {
-    this.graphtype = mode;
-    this.isHistoryMode = mode === "history";
-    this.isRealtimeMode = mode === "realtime";
-    setTimeout(() => {
-      this.handleTimeChangeDate();
-      this.cdr.detectChanges();
-    });
-  }
-
-  handleTimeChangeDate() {
-    if (this.forecastWs) {
-      this.forecastWs.complete();
-    }
-    if (this.alarmsWs$) {
-      this.alarmsWs$.complete();
-    }
-    if (this.graphtype === "history") {
-      this.chartInstance.setOption({
-        xAxis: {
-          min: +this.startDate,
-          max: +this.endDate,
-        },
-      });
-    } else {
-      this.chartInstance.setOption({
-        xAxis: {
-          min: "dataMin",
-          max: "dataMax",
-        },
-      });
-    }
-    const history_series = [
-      {
-        name: "Pressure",
-        type: "line",
-        color: ["#FF5733"],
-        symbol: "none",
-        data: [],
-        // label: {
-        //   show: true,
-        //   color: 'black'
-        // }
-      },
-      {
-        name: "Pressure Historical Forecast",
-        type: "line",
-        color: ["#989898"],
-        symbol: "none",
-        data: [],
-        // label: {
-        //   show: true,
-        //   color: 'red'
-        // }
-      },
-    ];
-    const realtime_series = [
-      {
-        name: "Pressure",
-        type: "line",
-        color: ["#FF5733"],
-        symbol: "none",
-        data: [],
-        // label: {
-        //   show: true,
-        //   color: 'black'
-        // }
-      },
-      {
-        name: "Pressure Forecast",
-        type: "line",
-        color: ["#0000FF50"],
-        symbol: "none",
-        data: [],
-        // label: {
-        //   show: true,
-        //   color: 'black'
-        // }
-      },
-      {
-        name: "Pressure Historical Forecast",
-        type: "line",
-        color: ["#989898"],
-        symbol: "none",
-        data: [],
-        // label: {
-        //   show: true,
-        //   color: 'white'
-        // }
-      },
-    ];
-    if (this.graphtype === "history") {
-      this.chartInstance.setOption(
-        {
-          series: history_series,
-          legend: {},
-        },
-        {
-          replaceMerge: ["series"],
-        }
-      );
-    } else {
-      this.chartInstance.setOption(
-        {
-          series: realtime_series,
-          legend: {},
-        },
-        {
-          replaceMerge: ["series"],
-        }
-      );
-    }
-    this.oldForecastSeries["pressure"] = [];
-    this.getHistoricalData().then(([history, alarms]) => {
-      if (!history?.pressure || history.pressure.length === 0) {
-        this.hasNoData = true;
-        this.noDataMessage = "No data available for the selected time range";
-        return;
-      }
-      this.hasNoData = false;
-      history["pressure"].sort((a, b) => a.ts - b.ts);
-      this.chartInstance.setOption({
-        series: [
-          {
-            name: "Pressure",
-            data: history["pressure"].map((e) => [e.ts, parseFloat(e.value)]),
-            type: "line",
-            markArea: {
-              itemStyle: {
-                color: "rgba(255, 173, 177, 0.4)",
-              },
-              data: alarms.data.map((alarm) => [
-                { xAxis: alarm.startTs },
-                { xAxis: alarm.endTs },
-              ]),
-            },
-          },
-          {
-            name: "Pressure Historical Forecast",
-            data: history["forecast"].map((e) => [e.ts, parseFloat(e.value)]),
-            type: "line",
-          },
-        ],
-      });
-      if (this.graphtype === "realtime") {
-        this.getAlarms();
-        this.connectToSocket();
-      }
-    });
-  }
-
-  async getHistoricalData() {
-    let startTs;
-    if (this.graphtype === "realtime") {
-      startTs = Math.floor(Date.now() / 1000 - this.selected.seconds) * 1000;
-    } else {
-      startTs = +this.startDate;
-    }
-    let endTs;
-    if (this.graphtype === "realtime") {
-      endTs = +new Date();
-    } else {
-      endTs = +this.endDate;
-    }
-    const history = this.selected.seconds + 60;
-    const agg = "AVG";
-    const limit = 500;
-    let interval;
-    if (this.graphtype === "realtime") {
-      interval = Math.floor((this.selected.seconds * 1000) / limit);
-    } else {
-      interval = Math.floor((+this.endDate - +this.startDate) / limit);
-    }
-
-    const headers = {
-      "x-authorization": "Bearer " + localStorage.getItem("jwt_token"),
-      "content-type": "application/json",
-    };
-    const forecast = await fetch("/api/forecasts/" + this.forecastId, {
-      headers,
-    })
-      .then(async (res) =>
-        !res.ok ? { error: res.statusText } : { data: await res.json() }
-      )
-      .catch((err) => ({ error: err }));
-    if (forecast.error) return Promise.reject(forecast.error);
-    // @ts-ignore
-    const device_id = forecast.data.deviceId?.id;
-    if (typeof device_id != "string")
-      return Promise.reject("Didnt find device Id");
-    return await Promise.all([
-      fetch(
-        `/api/plugins/telemetry/DEVICE/${device_id}/values/timeseries?` +
-          "keys=pressure,forecast&startTs=" +
-          startTs +
-          "&endTs=" +
-          endTs +
-          "&interval=" +
-          interval +
-          "&limit=" +
-          limit +
-          "&agg=" +
-          agg,
-        { headers }
-      ),
-      fetch(
-        "/api/alarm/DEVICE/" +
-          device_id +
-          "?pageSize=1&page=0&sortProperty=createdTime",
-        { headers }
-      ),
-    ]).then(async ([history, alarms]) => [
-      await history.json(),
-      await alarms.json(),
-    ]);
-  }
-
-  alarmsWs$;
-
-  async getAlarms() {
-    const token = localStorage.getItem("jwt_token");
-    const headers = {
-      "x-authorization": "Bearer " + token,
-      "content-type": "application/json",
-    };
-    const forecast = await fetch("/api/forecasts/" + this.forecastId, {
-      headers,
-    })
-      .then(async (res) =>
-        !res.ok ? { error: res.statusText } : { data: await res.json() }
-      )
-      .catch((err) => ({ error: err }));
-    if (forecast.error) return Promise.reject(forecast.error);
-    // @ts-ignore
-    const device_id = forecast.data.deviceId?.id;
-    if (typeof device_id != "string")
-      return Promise.reject("Didnt find device id");
-    this.alarmsWs$ = webSocket({
-      url: "/api/ws",
-      // deserializer: (e) => e.data,
-      openObserver: {
-        next: (e) => {},
-      },
-    });
-    this.alarmsWs$.next(getAlarmSubscriptionCmd(token, device_id));
-    const alarms = new Map();
-    this.alarmsWs$.subscribe({
-      next: (msg) => {
-        const data = msg.data?.data ?? msg.update;
-        // console.log({ data });
-        data.forEach((alarm) => alarms.set(alarm.id.id, alarm));
-        const areas = Array.from(alarms.values()).map((alarm) => [
-          { xAxis: alarm.startTs },
-          { xAxis: alarm.endTs },
-        ]);
-        this.chartInstance.setOption({
-          series: [
-            {
-              name: "Pressure",
-              markArea: {
-                itemStyle: {
-                  color: "rgba(255, 173, 177, 0.4)",
-                },
-                data: areas,
-              },
-            },
-          ],
-        });
-      },
-    });
-  }
-
-  async connectToSocket() {
-    const series = this.chartInstance.getOption().series;
-    let pressureData = [
-      ...series.find((e) => e.name.toLowerCase() == "pressure").data,
-    ];
-    let historyForecastData = [
-      ...series.find(
-        (e) => e.name.toLowerCase() == "pressure historical forecast"
-      ).data,
-    ];
-    // DISABLED: Forecast chart WebSocket subscription (focusing on anomalies only)
-    // this.dataWs = webSocket({
-    //   url: "ws://" + environment.host + ":8080/api/ws",
-    // });
-    // this.dataWs.subscribe({
-    //   next: (
-    //     (tmp = null) =>
-    //     (data) => {
-    //       Object.keys(data.data).forEach((key) => {
-    //         let values = data.data[key].map(([x, y]) => [x, parseFloat(y)]);
-    //         values.sort((a, b) => a[0] - b[0]);
-    //         const list = key == "pressure" ? pressureData : historyForecastData;
-    //         if (key == "pressure" && tmp) {
-    //           historyForecastData.push(tmp);
-    //           tmp = null;
-    //         }
-    //         values = list.concat([values[values.length - 1]]);
-    //         values.sort((a, b) => a[0] - b[0]);
-    //         if (key == "forecast") {
-    //           tmp = values.pop();
-    //         }
-
-    //         values = values.slice(
-    //           -Math.floor(
-    //             (this.selected.seconds / this.selected.interval) * 1000
-    //           ) + 20
-    //         );
-
-    //         pressureData = key == "pressure" ? values : [...pressureData];
-    //         historyForecastData =
-    //           key == "forecast" ? values : [...historyForecastData];
-    //       });
-    //     }
-    //   )(),
-    // });
-    // const headers = {
-    //   "x-authorization": "Bearer " + localStorage.getItem("jwt_token"),
-    //   "content-type": "application/json",
-    // };
-    // const forecast = await fetch("/api/forecasts/" + this.forecastId, {
-    //   headers,
-    // })
-    //   .then(async (res) =>
-    //     !res.ok ? { error: res.statusText } : { data: await res.json() }
-    //   )
-    //   .catch((err) => ({ error: err }));
-    // if (forecast.error) return Promise.reject(forecast.error);
-    // // @ts-ignore
-    // const device_id = forecast.data.deviceId?.id;
-    // this.dataWs.next({
-    //   authCmd: {
-    //     cmdId: 0,
-    //     token: localStorage.getItem("jwt_token"),
-    //   },
-    //   cmds: [
-    //     {
-    //       cmdId: 10,
-    //       entityType: "DEVICE",
-    //       entityId: device_id,
-    //       keys: "pressure,forecast",
-    //       startTs: Date.now(),
-    //       timeWindow: Date.now(),
-    //       scope: "LATEST_TELEMETRY",
-    //       type: "TIMESERIES",
-    //     },
-    //   ],
-    // });
-    this.forecastWs = webSocket({
-      url:
-        "ws://" +
-        environment.host +
-        ":8000/forecast/" +
-        this.forecastId +
-        "/ws?token=" +
-        localStorage.getItem("jwt_token") +
-        "&startTs=" +
-        (Date.now() - (this.forecast_chart_seconds_away + 60) * 1000),
-      deserializer: (e) => e.data,
-      openObserver: {
-        next: () => {},
-      },
-    });
-    this.forecastWs.subscribe({
-      next: (msg) => {
-        if (!pressureData.length) return;
-        let data;
-        try {
-          data = JSON.parse(msg);
-        } catch {}
-        if (data && this.displayData) {
-          let currentDate = pressureData[pressureData.length - 1][0];
-          let _data = [];
-          if (data.forecast["pressure"]) {
-            _data = data.forecast["pressure"];
-          }
-          const values = pressureData;
-          let forecast = values.length ? [values[values.length - 1]] : [];
-          forecast = forecast.concat(
-            _data.map((point) => {
-              currentDate += 1000;
-              return [currentDate, point];
-            })
-          );
-          // const maxv = historyForecastData.reduce((max, [a]) => Math.max(max, a), -Infinity)
-          this.chartInstance.setOption({
-            series: [
-              {
-                name: "Pressure Forecast",
-                // data: forecast.filter(([x]) => x >= maxv),
-                data: forecast,
-                type: "line",
-              },
-              {
-                name: "Pressure",
-                data: pressureData,
-                type: "line",
-              },
-              {
-                name: "Pressure Historical Forecast",
-                data: historyForecastData,
-                type: "line",
-              },
-            ],
-          });
-        }
-      },
-      error: (err) => {},
-      complete: () => {},
-    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (
-      changes.deviceId &&
-      this.deviceId &&
-      changes.Attributes &&
-      this.Attributes &&
-      this.forecastId
-    ) {
-      const chart = document.getElementById("chart");
-      echarts.use([
-        TitleComponent,
-        ToolboxComponent,
-        TooltipComponent,
-        GridComponent,
-        DataZoomComponent,
-        LineChart,
-        CanvasRenderer,
-        UniversalTransition,
-        LegendComponent,
-        MarkAreaComponent,
-        ScatterChart,
-      ]);
-      this.chartInstance = echarts.init(chart);
-      const option = {
-        // width: '90%',
-        // grid: {
-        //   left: '1%',
-        // },
-        tooltip: {
-          trigger: "axis",
-          position: function (pt) {
-            return [pt[0], "10%"];
-          },
-        },
-        toolbox: {
-          right: 50,
-          feature: {
-            dataZoom: {
-              yAxisIndex: "none",
-            },
-            restore: {},
-            saveAsImage: {},
-            dataView: {},
-            brush: {},
-          },
-        },
-        xAxis: {
-          type: "time",
-          boundaryGap: false,
-          min: null,
-          max: null,
-        },
-        yAxis: {
-          type: "value",
-          boundaryGap: [0, "100%"],
-        },
-        dataZoom: [
-          {
-            type: "inside",
-            start: 0,
-            end: 100,
-          },
-          {
-            start: 0,
-            end: 100,
-          },
-        ],
-        animation: false,
-        legend: {
-          textStyle: {
-            color: "rgba(255, 255, 255, 0.8)",
-          },
-          inactiveColor: "grey",
-        },
-      };
-      this.chartInstance.setOption(option);
-      window.onresize = () => {
-        this.chartInstance.resize();
-      };
-      this.handleTimeChangeDate();
+    if (changes.forecastData && changes.forecastData.currentValue) {
+      console.log('Forecast data changed:', changes.forecastData);
+      console.log('Data structure:', changes.forecastData.currentValue);
+      this.processForecastData(changes.forecastData.currentValue);
+      if (this.chart) {
+        this.updateChartData();
+      }
+    }
+
+    if (changes.selectedSensor && !changes.selectedSensor.firstChange) {
+      console.log('Selected sensor changed to:', changes.selectedSensor.currentValue);
+      // Resubscribe to telemetry for the new sensor
+      if (this.telemetrySubscription) {
+        this.telemetrySubscription.unsubscribe();
+      }
+      this.historicalData = [];
+      this.subscribeToTelemetry();
     }
   }
 
-  refreshChart() {
-    if (this.isRefreshing) {
-      return; // Prevent multiple refresh operations
+  ngOnInit(): void {
+    if (this.forecastId) {
+      this.cdr.detectChanges();
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.telemetrySubscription) {
+      this.telemetrySubscription.unsubscribe();
+    }
+    if (this.chart) {
+      this.chart.dispose();
+    }
+  }
+
+  ngAfterViewInit(): void {
+    // Initialize ECharts
+    this.initializeChart();
+
+    // Initialize telemetry subscription for the device
+    if (this.deviceId && this.selectedSensor) {
+      this.subscribeToTelemetry();
     }
 
-    this.isRefreshing = true;
-    this.hasNoData = false; // Reset no data state when refreshing
-
-    try {
-      // Close existing WebSocket connections
-      if (this.forecastWs) {
-        this.forecastWs.complete();
-        this.forecastWs = null;
-      }
-
-      if (this.dataWs) {
-        this.dataWs.complete();
-        this.dataWs = null;
-      }
-
-      if (this.alarmsWs$) {
-        this.alarmsWs$.complete();
-        this.alarmsWs$ = null;
-      }
-
-      // Clear any existing intervals
-      if (this.setIntervalId) {
-        clearInterval(this.setIntervalId);
-        this.setIntervalId = null;
-      }
-
-      // Reset series data
-      this.oldForecastSeries = {};
-      this.telemetryData = [];
-      this.seriesHidden = [];
-      this.originalSeriesData = {};
-
-      // console.log("Refreshing forecast chart connections...");
-
-      // Small delay to ensure connections are properly closed
-      setTimeout(() => {
-        // Restart the data connection process
-        this.handleTimeChangeDate();
-
-        // Reset refresh state after a short delay
-        setTimeout(() => {
-          this.isRefreshing = false;
-          // console.log("Forecast chart refresh completed");
-        }, 1500);
-      }, 500);
-    } catch (error) {
-      console.error("Error during chart refresh:", error);
-      this.isRefreshing = false;
+    // Process initial forecast data if available
+    if (this.forecastData) {
+      this.processForecastData(this.forecastData);
+      this.updateChartData();
     }
   }
 
   toggleExpanded(): void {
     this.isExpanded = !this.isExpanded;
-    // Resize chart when toggling expanded state
-    if (this.chartInstance) {
-      setTimeout(() => {
-        this.chartInstance.resize();
-      }, 100);
+  }
+
+  // refresh chart data
+  refreshChart(): void {
+    this.isRefreshing = true;
+    // Resubscribe to telemetry to get fresh data
+    if (this.telemetrySubscription) {
+      this.telemetrySubscription.unsubscribe();
+    }
+    this.subscribeToTelemetry();
+    // Reset refreshing state after a delay
+    setTimeout(() => {
+      this.isRefreshing = false;
+      this.cdr.detectChanges();
+    }, 1000);
+  }
+
+  toggleMode(): void {
+    this.isRealtimeMode = !this.isRealtimeMode;
+    this.isHistoryMode = !this.isHistoryMode;
+
+    if (this.isRealtimeMode) {
+      // Switch to realtime mode - subscribe to live telemetry
+      this.subscribeToTelemetry();
+    } else {
+      // Switch to history mode - unsubscribe from live updates
+      if (this.telemetrySubscription) {
+        this.telemetrySubscription.unsubscribe();
+      }
     }
   }
 
-  ngOnInit(): void {}
+  toggleDatePicker(datepicker: any): void {
+    // Toggle datepicker visibility (handled by template)
+  }
 
-  ngOnDestroy(): void {
-    clearInterval(this.setIntervalId);
-    if (this.chartInstance) {
-      this.chartInstance.dispose();
+  updateEndDate(): void {
+    this.endDate = new Date();
+    this.cdr.detectChanges();
+  }
+
+  onSelectTimeChange(selection: { value: string }): void {
+    this.selected = selection;
+
+    // Update time range based on selection
+    const now = Date.now();
+    let startTime: number;
+
+    switch (selection.value) {
+      case 'hour':
+        startTime = now - 60 * 60 * 1000; // 1 hour ago
+        break;
+      case '24h':
+        startTime = now - 24 * 60 * 60 * 1000; // 24 hours ago
+        break;
+      case '7d':
+        startTime = now - 7 * 24 * 60 * 60 * 1000; // 7 days ago
+        break;
+      case '30d':
+        startTime = now - 30 * 24 * 60 * 60 * 1000; // 30 days ago
+        break;
+      default:
+        startTime = now - 24 * 60 * 60 * 1000; // Default to 24 hours
     }
-    if (this.alarmsWs$) {
-      this.alarmsWs$.complete();
+
+    this.startDate = new Date(startTime);
+    this.endDate = new Date(now);
+
+    // If in history mode, reload data for the new time range
+    if (this.isHistoryMode) {
+      this.loadHistoricalData(this.startDate, this.endDate);
     }
-    if (this.forecastWs) {
-      this.forecastWs.complete();
+  }
+
+  // Time selection helper methods
+  getHours(): string[] {
+    const hours: string[] = [];
+    for (let i = 0; i < 24; i++) {
+      hours.push(i < 10 ? '0' + i : i.toString());
     }
-    this.destroy$.next();
-    this.destroy$.complete();
+    return hours;
+  }
+
+  getMinutes(): string[] {
+    const minutes: string[] = [];
+    for (let i = 0; i < 60; i++) {
+      minutes.push(i < 10 ? '0' + i : i.toString());
+    }
+    return minutes;
+  }
+
+  getSeconds(): string[] {
+    const seconds: string[] = [];
+    for (let i = 0; i < 60; i++) {
+      seconds.push(i < 10 ? '0' + i : i.toString());
+    }
+    return seconds;
+  }
+
+  handleHistoryTimeChange(
+    dateStartRange: any,
+    dateEndRange: any,
+    startDateHours: any,
+    startDateMinutes: any,
+    startDateSeconds: any,
+    endDateHours: any,
+    endDateMinutes: any,
+    endDateSeconds: any
+  ): void {
+    // Extract selected dates from calendar components
+    const startDate = new Date(dateStartRange.selected);
+    const endDate = new Date(dateEndRange.selected);
+
+    // Set hours, minutes, seconds from selects
+    startDate.setHours(parseInt(startDateHours.value, 10));
+    startDate.setMinutes(parseInt(startDateMinutes.value, 10));
+    startDate.setSeconds(parseInt(startDateSeconds.value, 10));
+
+    endDate.setHours(parseInt(endDateHours.value, 10));
+    endDate.setMinutes(parseInt(endDateMinutes.value, 10));
+    endDate.setSeconds(parseInt(endDateSeconds.value, 10));
+
+    this.startDate = startDate;
+    this.endDate = endDate;
+
+    // Load historical data for the selected time range
+    this.loadHistoricalData(startDate, endDate);
+  }
+
+  private loadHistoricalData(startDate: Date, endDate: Date): void {
+    // TODO: Implement historical data loading
+    // This would typically fetch historical telemetry data from the server
+    // for the specified time range
+    console.log('Loading historical data from', startDate, 'to', endDate);
+  }
+
+  // Sensor selection methods
+  onSensorChange(sensor: string): void {
+    this.selectedSensor = sensor;
+  }
+
+  private initializeChart(): void {
+    if (!this.chartElement?.nativeElement) {
+      return;
+    }
+
+    // Initialize ECharts module
+    echartsModule.init();
+
+    // Create chart instance
+    this.chart = echarts.init(this.chartElement.nativeElement, null, {
+      renderer: 'canvas'
+    });
+
+    // Define chart options
+    this.chartOptions = {
+      darkMode: true,
+      backgroundColor: 'transparent',
+      title: {
+        text: this.translate.instant('predictive-maintenance.forecast-chart'),
+        left: 'center',
+        textStyle: {
+          color: '#fff'
+        }
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'cross'
+        },
+        formatter: (params: any) => {
+          if (!params || params.length === 0) {
+            return '';
+          }
+          const timestamp = params[0].value[0];
+          const date = new Date(timestamp);
+          let html = `<div style="font-weight: bold;">${date.toLocaleString()}</div>`;
+          params.forEach((param: any) => {
+            const value = param.value[1];
+            html += `<div style="color: ${param.color};">
+              ${param.seriesName}: ${value !== null && value !== undefined ? value.toFixed(2) : 'N/A'}
+            </div>`;
+          });
+          return html;
+        }
+      },
+      legend: {
+        data: ['Historical Data', 'Forecast'],
+        top: 30,
+        textStyle: {
+          color: '#fff'
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '10%',
+        top: '15%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'time',
+        boundaryGap: false,
+        axisLabel: {
+          color: '#fff',
+          formatter: (value: number) => {
+            const date = new Date(value);
+            return date.toLocaleTimeString();
+          }
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#fff'
+          }
+        }
+      },
+      yAxis: {
+        type: 'value',
+        name: this.selectedSensor,
+        nameTextStyle: {
+          color: '#fff'
+        },
+        axisLabel: {
+          color: '#fff'
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#fff'
+          }
+        },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          }
+        }
+      },
+      dataZoom: [
+        {
+          type: 'inside',
+          start: 0,
+          end: 100
+        },
+        {
+          type: 'slider',
+          start: 0,
+          end: 100,
+          textStyle: {
+            color: '#fff'
+          }
+        }
+      ],
+      series: [
+        {
+          name: 'Historical Data',
+          type: 'line',
+          data: [],
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 4,
+          lineStyle: {
+            width: 2,
+            color: '#5470c6'
+          },
+          itemStyle: {
+            color: '#5470c6'
+          }
+        },
+        {
+          name: 'Forecast',
+          type: 'line',
+          data: [],
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 4,
+          lineStyle: {
+            width: 2,
+            type: 'dashed',
+            color: '#ee6666'
+          },
+          itemStyle: {
+            color: '#ee6666'
+          }
+        }
+      ]
+    };
+
+    // Set initial options
+    this.chart.setOption(this.chartOptions);
+  }
+
+  private processForecastData(forecastData: any): void {
+    if (!forecastData) {
+      return;
+    }
+
+    this.forecastDataPoints = [];
+
+    // Process forecast data based on structure
+    // Assuming forecastData has a predictions array with timestamp and value
+    if (forecastData.predictions && Array.isArray(forecastData.predictions)) {
+      this.forecastDataPoints = forecastData.predictions.map((item: any) => {
+        const timestamp = item.timestamp || item.ts || item.time;
+        const value = item.value || item.prediction;
+        return [timestamp, value];
+      });
+    } else if (Array.isArray(forecastData)) {
+      // If forecastData is already an array
+      this.forecastDataPoints = forecastData.map((item: any) => {
+        if (Array.isArray(item) && item.length >= 2) {
+          return [item[0], item[1]];
+        }
+        const timestamp = item.timestamp || item.ts || item.time;
+        const value = item.value || item.prediction;
+        return [timestamp, value];
+      });
+    }
+
+    console.log('Processed forecast data points:', this.forecastDataPoints.length);
+  }
+
+  private updateChartData(): void {
+    if (!this.chart) {
+      return;
+    }
+
+    // Update series data
+    this.chart.setOption({
+      series: [
+        {
+          name: 'Historical Data',
+          data: this.historicalData
+        },
+        {
+          name: 'Forecast',
+          data: this.forecastDataPoints
+        }
+      ]
+    });
+
+    this.hasNoData = this.historicalData.length === 0 && this.forecastDataPoints.length === 0;
+    if (this.hasNoData) {
+      this.noDataMessage = 'No data available for the selected sensor';
+    }
+  }
+
+  private subscribeToTelemetry(): void {
+    if (!this.deviceId || !this.selectedSensor) {
+      console.warn('Cannot subscribe to telemetry: missing deviceId or selectedSensor');
+      this.hasNoData = true;
+      this.noDataMessage = 'Missing device or sensor configuration';
+      return;
+    }
+
+    console.log(`Subscribing to telemetry for device ${this.deviceId}, sensor: ${this.selectedSensor}`);
+
+    // Create entity ID
+    const entityId: EntityId = {
+      entityType: EntityType.DEVICE,
+      id: this.deviceId
+    };
+
+    // Create telemetry subscriber using the static factory method for timeseries data
+    const subscriber = TelemetrySubscriber.createEntityAttributesSubscription(
+      this.telemetryWsService,
+      entityId,
+      LatestTelemetry.LATEST_TELEMETRY,
+      this.zone,
+      [this.selectedSensor]
+    );
+
+    // Subscribe to data updates
+    this.telemetrySubscription = subscriber.data$.subscribe((update: SubscriptionUpdate) => {
+      this.handleTelemetryUpdate(update);
+    });
+
+    // Start the subscription with the telemetry service
+    this.telemetryWsService.subscribe(subscriber);
+  }
+
+  private handleTelemetryUpdate(update: SubscriptionUpdate): void {
+    if (!update || !update.data) {
+      return;
+    }
+
+    // Process incoming telemetry data
+    console.log('Telemetry update received:', update);
+
+    // SubscriptionUpdate.data is a map of key -> array of [timestamp, value]
+    Object.keys(update.data).forEach(key => {
+      if (key === this.selectedSensor) {
+        const values = update.data[key];
+        if (Array.isArray(values)) {
+          values.forEach(dataPoint => {
+            // dataPoint is [timestamp, value]
+            const timestamp = dataPoint[0];
+            const value = parseFloat(dataPoint[1]);
+
+            // Check if this timestamp already exists to avoid duplicates
+            const existingIndex = this.historicalData.findIndex(d => d[0] === timestamp);
+            if (existingIndex >= 0) {
+              // Update existing value
+              this.historicalData[existingIndex] = [timestamp, value];
+            } else {
+              // Add new data point
+              this.historicalData.push([timestamp, value]);
+            }
+          });
+
+          // Keep only last 1000 points to avoid memory issues
+          if (this.historicalData.length > 1000) {
+            this.historicalData = this.historicalData.slice(-1000);
+          }
+
+          // Sort by timestamp
+          this.historicalData.sort((a, b) => a[0] - b[0]);
+
+          // Update chart
+          this.updateChartData();
+          this.cdr.detectChanges();
+        }
+      }
+    });
   }
 }

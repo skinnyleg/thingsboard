@@ -161,6 +161,52 @@
 </div>
 
 <div class="model-dashboard">
+  <!-- Time Series Telemetry Section with Collapse Button -->
+  <div
+    class="chart-section"
+    [class.collapsed]="timeSeriesChartCollapsed"
+  >
+    <div
+      class="section-header"
+      (click)="toggleTimeSeriesChart()"
+      role="button"
+      [attr.aria-expanded]="!timeSeriesChartCollapsed"
+      aria-label="Toggle time series chart section"
+    >
+      <button
+        mat-icon-button
+        class="collapse-btn"
+        (click)="$event.stopPropagation(); toggleTimeSeriesChart()"
+        [matTooltip]="
+          timeSeriesChartCollapsed
+            ? 'Expand time series chart'
+            : 'Collapse time series chart'
+        "
+        matTooltipPosition="right"
+        [attr.aria-expanded]="!timeSeriesChartCollapsed"
+        aria-label="Toggle time series chart visibility"
+      >
+        <mat-icon>{{
+          timeSeriesChartCollapsed ? "chevron_right" : "expand_more"
+        }}</mat-icon>
+      </button>
+      <h3 class="section-title">
+        <mat-icon class="section-icon">timeline</mat-icon>
+        Sensor Telemetry (Real-time)
+      </h3>
+    </div>
+    <div
+      class="chart-content"
+      [@slideCollapse]="timeSeriesChartCollapsed ? 'collapsed' : 'expanded'"
+    >
+      <tb-time-series-telemetry
+        [deviceId]="deviceId"
+        [selectedSensor]="selectedSensor"
+        [title]="'Live Sensor Data'">
+      </tb-time-series-telemetry>
+    </div>
+  </div>
+
   <!-- Forecast Chart Section with Collapse Button -->
   <div
     class="chart-section"
@@ -227,6 +273,10 @@
         [deviceId]="deviceId"
         [Attributes]="Attributes"
         [forecastId]="trueId"
+        [forecastData]="forecastData"
+        [forecastMaxSteps]="forecastMaxSteps"
+        [selectedSensor]="selectedSensor"
+        (sensorChanged)="onSensorChanged($event)"
       ></tb-forecast-chart>
     </div>
   </div>

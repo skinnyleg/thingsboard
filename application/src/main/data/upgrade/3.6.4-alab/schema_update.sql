@@ -541,3 +541,7 @@ CREATE TRIGGER update_ml_models_updated_at BEFORE UPDATE ON ml_models
 -- WHERE model_id = 'xxx-xxx-xxx-xxx'
 -- GROUP BY hour_bucket
 -- ORDER BY hour_bucket DESC;
+
+alter table model_logs drop column tenant_id;
+-- add message title column
+alter table model_logs add column if not exists title varchar(255);

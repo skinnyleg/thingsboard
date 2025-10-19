@@ -56,6 +56,8 @@ public class ModelController extends BaseController {
     private final ModelLogService modelLogService;
     private final ObjectMapper mapper = new ObjectMapper();
 
+    // fetch predictions
+
     /**
      * PATCH /api/models/{forecastId}/activate
      * 

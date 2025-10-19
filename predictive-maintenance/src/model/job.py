@@ -5,6 +5,8 @@ Job management system for background prediction workers
 import json
 import logging
 import threading
+import time
+import uuid
 from pathlib import Path
 from datetime import datetime
 from collections import deque
@@ -16,6 +18,7 @@ import numpy as np
 from library.models.anomaly_predictor import predict_failure, feature_cols, load_models
 from .shared import get_data_registry
 import traceback
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,7 @@ job_lock = threading.Lock()
 # Log storage: {model_id: deque of log entries}
 model_logs: Dict[str, deque] = {}
 MAX_LOG_ENTRIES = 1000
+SYS_TENANT_ID = "13814000-1dd2-11b2-8080-808080808080"
 
 # WebSocket log broadcasters: {model_id: set of callback functions}
 log_broadcasters: Dict[str, Set[Callable]] = {}
@@ -38,15 +42,40 @@ JSONValue = Union[
     list["JSONValue"],
 ]
 
+def to_native(o):
+    # numbers
+    if isinstance(o, (np.integer,)):
+        return int(o)
+    if isinstance(o, (np.floating,)):
+        return float(o)
+    # booleans
+    if isinstance(o, (np.bool_,)):
+        return bool(o)
+    # datetimes
+    if isinstance(o, (pd.Timestamp, datetime)):
+        return o.isoformat()
+    # let json handle other types
+    return str(o)
+
 def add_model_log(model_id: str, level: str, message: JSONValue) -> None:
     """Add log entry for a model and broadcast to WebSocket subscribers"""
     if model_id not in model_logs:
         model_logs[model_id] = deque(maxlen=MAX_LOG_ENTRIES)
 
+    # Determine source based on model_id
+    if "forecast" in model_id.lower():
+        source = "ForecastModel"
+    elif "anomaly" in model_id.lower():
+        source = "AnomalyModel"
+    else:
+        source = "System"
+
     log_entry = {
         "timestamp": datetime.now().isoformat() + "Z",
         "level": level.upper(),
         "message": message,
+        "type": "forecast" if "forecast" in model_id else "anomaly" if "anomaly" in model_id else "system",
+        "source": source
     }
     model_logs[model_id].append(log_entry)
 
@@ -77,6 +106,8 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
     """
     print(f"[PREDICTION JOB] {model_id} - Worker thread started for {model_type}, device_id={device_id}", flush=True)
     add_model_log(model_id, "info", f"Prediction job started for {model_type}")
+
+    data_registry = get_data_registry()
 
     try:
         # Load model
@@ -155,7 +186,7 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
         # Prediction loop
         iteration = 0
         print(f"[PREDICTION JOB] {model_id} - Entering prediction loop", flush=True)
-        while iteration < 1:
+        while True:
             with job_lock:
                 if (
                     model_id not in active_jobs
@@ -234,20 +265,7 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                     #     f"Anomaly prediction result: {result}",
                     # )
 
-                    def to_native(o):
-                        # numbers
-                        if isinstance(o, (np.integer,)):
-                            return int(o)
-                        if isinstance(o, (np.floating,)):
-                            return float(o)
-                        # booleans
-                        if isinstance(o, (np.bool_,)):
-                            return bool(o)
-                        # datetimes
-                        if isinstance(o, (pd.Timestamp, datetime)):
-                            return o.isoformat()
-                        # let json handle other types
-                        return str(o)
+                    
 
                     # ... after you build predictions:
                     hourly_records = list(predictions["hourly_predictions"].values())
@@ -295,6 +313,25 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                             "result": result,
                         }
                     )
+                    # save prediction
+
+                    sensors = model.sensors
+                    for sensor in model.sensors:
+                        if sensor in result:
+                            result[sensor]["timestamp"] = [result[sensor]["timestamp"][0]]
+                            result[sensor]["forecast"] = [result[sensor]["forecast"][0]]
+
+                    _model_id = model_id.split("/")[0]
+
+                    save_prediction(
+                        data_registry,
+                        _model_id,
+                        device_id,
+                        "prediction",
+                        f"Forecast result (iteration {iteration})",
+                        result,
+                        "ForecastModel",
+                    )
 
                 # Update last run time
                 with job_lock:
@@ -327,6 +364,63 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
         print(f"[PREDICTION JOB] {model_id} - Job worker terminated", flush=True)
         add_model_log(model_id, "info", "Job worker terminated")
 
+def save_prediction(
+    data_registry,
+    model_id: str,
+    device_id: str,
+    log_level: str,
+    title: str,
+    message: str,
+    source: str,
+    metadata: Dict[str, JSONValue] = {},
+):
+    """Save the prediction result to the database or any persistent storage"""
+    _id = uuid.uuid4().hex
+    _model_id = model_id
+    _device_id = device_id
+    _timestamp = int(time.time() * 1000)
+    _log_level = log_level
+    _title = title
+    _message = message
+    _source = source
+    _metadata = metadata
+    created_at = datetime.now().isoformat() + "Z"
+    created_time = int(time.time() * 1000)
+
+    try:
+        with data_registry.engine.connect() as conn:
+            query = text(
+                """
+                INSERT INTO model_logs
+                (id, model_id, device_id, timestamp, log_level, title, message, source, metadata, created_at, created_time)
+                VALUES (:id, :model_id, :device_id, :timestamp, :log_level, :title, :message, :source, :metadata, :created_at, :created_time)
+                """
+            )
+
+            conn.execute(
+                query,
+                {
+                    "id": _id,
+                    "model_id": _model_id,
+                    "device_id": _device_id,
+                    "timestamp": _timestamp,
+                    "log_level": _log_level,
+                    "title": _title,
+                    "message": json.dumps(_message, default=to_native),
+                    "source": _source,
+                    "metadata": json.dumps(_metadata, default=to_native),
+                    "created_at": created_at,
+                    "created_time": created_time,
+                }
+            )
+            conn.commit()
+        print(f"[PREDICTION JOB] {model_id} - Prediction saved: {_id}", flush=True)
+    except Exception as e:
+        error_details = traceback.format_exc()
+        print(f"[PREDICTION JOB] {model_id} - Failed to save prediction: {str(e)}", flush=True)
+        print(f"[PREDICTION JOB] {model_id} - Save traceback:\n{error_details}", flush=True)
+        add_model_log(model_id, "error", f"Failed to save prediction: {str(e)}")
+        add_model_log(model_id, "error", f"Save traceback: {error_details}")
 
 def start_prediction_job(model_id: str, model_type: str, device_id: str = None) -> bool:
     """Start a prediction job for a model"""
