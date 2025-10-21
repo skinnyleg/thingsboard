@@ -351,13 +351,15 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                         flush=True,
                     )
 
+                    # make a copy of result to log
+
                     add_model_log(
                         model_id,
                         "prediction",
                         {
                             "iteration": iteration,
                             "device_id": device_id,
-                            "result": result,
+                            "result": result_copy,
                         },
                     )
                     # save prediction
