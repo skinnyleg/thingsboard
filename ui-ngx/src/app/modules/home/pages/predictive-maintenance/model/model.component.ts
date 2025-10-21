@@ -1,4 +1,4 @@
-import { ViewChild, ElementRef, ChangeDetectorRef, NgZone } from '@angular/core';
+import { ViewChild, ElementRef, ChangeDetectorRef, NgZone, Input, OnDestroy } from '@angular/core';
 // ...existing code...
 /* eslint-disable @angular-eslint/use-lifecycle-interface */
 import { Component } from '@angular/core';
@@ -35,11 +35,18 @@ import { ModelSelectionDialogComponent } from './model-selection-dialog/model-se
 import { ModelLogsDialogComponent } from './model-logs-dialog/model-logs-dialog.component';
 import {
   AnomaliesComponent,
+  LogEntry,
   AnomalyPrediction,
-  AnomalyReport
+  AnomalyReport,
+  ForecastPredictionLogEntry,
+  AnomalyPredictionLogEntry,
+  ForecastPrediction,
+  ForecastSensorPredictions,
+  ForecastPredictionLogEntryMessage
 } from '../../../components/predictive-maintenance/components/anomalies/anomalies.component';
 import { CommonModule } from '@angular/common';
 import { ForecastChartComponent } from '../../../components/predictive-maintenance/components/forecast-chart/forecast-chart.component';
+import { TimeSeriesTelemetryComponent } from '../../../components/predictive-maintenance/components/time-series-telemetry/time-series-telemetry.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
@@ -58,8 +65,9 @@ import {
 } from '@angular/animations';
 import { ModelWebSocketService } from '@app/core/http/model-websocket.service';
 import { ModelLogsNotifierService } from './model-logs-notifier.service';
-import { flatMap } from 'lodash';
+import { flatMap, result } from 'lodash';
 import { mergeMap, Observable } from 'rxjs';
+import { distinctUntilChanged, filter, tap } from 'rxjs/operators';
 
 @Component({
   selector: 'tb-forecast',
@@ -73,6 +81,7 @@ import { mergeMap, Observable } from 'rxjs';
     MatInputModule,
     FormsModule,
     ForecastChartComponent,
+    TimeSeriesTelemetryComponent,
     AnomaliesComponent,
     MatTooltipModule,
     MatCheckboxModule,
@@ -97,7 +106,8 @@ import { mergeMap, Observable } from 'rxjs';
     ]),
   ],
 })
-export class ModelComponent extends PageComponent implements Order {
+export class ModelComponent extends PageComponent implements Order, OnDestroy {
+
   // Reference to the anomalies table component
   @ViewChild(AnomaliesComponent) anomaliesComponent?: AnomaliesComponent;
 
@@ -108,7 +118,11 @@ export class ModelComponent extends PageComponent implements Order {
 
   Attributes: string[]; // To store the temperature data
 
-  forecastData: Order[];
+  @Input() forecastData: ForecastSensorPredictions; //Order[];
+
+  @Input() forecastMaxSteps: number; // Number of forecast points
+
+  modelsData: Order[];
 
   models: Order[];
 
@@ -141,6 +155,8 @@ export class ModelComponent extends PageComponent implements Order {
 
   anomaliesCollapsed = false;
 
+  timeSeriesChartCollapsed = false;
+
   // View selector options
   viewOptions = [
     {
@@ -156,6 +172,8 @@ export class ModelComponent extends PageComponent implements Order {
   ];
 
   selectedViews: ForecastViewType[] = [];
+
+  selectedSensor = 'rotate'; // Default sensor for forecast chart
 
   showViewSelector = false;
 
@@ -182,17 +200,17 @@ export class ModelComponent extends PageComponent implements Order {
   // Log tracking properties
   private lastReadLogTimestamp = 0;
 
-  private logsObservable: Observable<{
-    timestamp: string;
-    level: string;
-    message: string | {
-        result?: AnomalyPrediction[];
-    };
-    }> = null;
+  private logsObservable: Observable<LogEntry> = null;
+
+  private subscriptions: Array<any> = [];
 
   private notifierSubscription: any = null;
 
+  private routeParamsSubscription: any = null;
+
   private readonly LAST_READ_LOG_KEY_PREFIX = 'model-last-read-log-';
+
+  private forecastPredictionLogs$: Observable<ForecastPredictionLogEntry>;
 
   constructor(
     protected store: Store<AppState>,
@@ -224,10 +242,21 @@ export class ModelComponent extends PageComponent implements Order {
       this.modelWebSocketService.unsubscribeFromLogs(this.trueId);
     }
     this.modelWebSocketService.disconnect();
+
+    // Unsubscribe from notifier
     if (this.notifierSubscription) {
       this.notifierSubscription.unsubscribe();
       this.notifierSubscription = null;
     }
+
+    // Unsubscribe from route params
+    if (this.routeParamsSubscription) {
+      this.routeParamsSubscription.unsubscribe();
+      this.routeParamsSubscription = null;
+    }
+
+    // Unsubscribe from all tracked subscriptions
+    this.subscriptions.forEach((sub) => sub.unsubscribe());
   }
 
   changeModel(value: any) {
@@ -262,7 +291,7 @@ export class ModelComponent extends PageComponent implements Order {
   ngOnInit(): void {
     // Check if data was passed via the router's state
     if (history.state && history.state.forecastData) {
-      this.forecastData = history.state.forecastData;
+      this.modelsData = history.state.forecastData;
       // console.log("Forecast data received:", this.forecastData);
     } else {
       // Optionally, handle the case when data is not passed
@@ -364,13 +393,16 @@ export class ModelComponent extends PageComponent implements Order {
   }
 
   private init() {
-    this.route.params.subscribe((params) => {
+    // Track route params subscription for proper cleanup
+    this.routeParamsSubscription = this.route.params.pipe(
+  distinctUntilChanged((prev, curr) => prev.id === curr.id)
+).subscribe((params) => {
       // console.log('Route params:', params);
       if (params.id) {
         this.trueId = params.id;
         this.id = params.id;
         this.fetchPredictiveModelConfig(params.id);
-        this.models = this.forecastData;
+        this.models = this.modelsData;
         // console.log("models === ", this.models);
         if (this.models === undefined || this.models.length === 0) {
           return this.router.navigateByUrl('/predictiveMaintenance');
@@ -411,99 +443,198 @@ export class ModelComponent extends PageComponent implements Order {
         this.initializeUnreadLogsState();
         console.log('Initial unreadLogs after initialization:', this.unreadLogs);
 
+        // Clean up previous subscriptions before creating new ones
+        this.subscriptions.forEach((sub) => sub.unsubscribe());
+        this.subscriptions = [];
+
         // map job logs to each log entry
         this.logsObservable = this.modelWebSocketService.requestJobLogs(this.trueId)
         .pipe(
-          mergeMap((msg) => flatMap(msg.data.logs))
+          mergeMap((msg) => flatMap(msg.data.logs)),
+          tap((log) => {
+            console.log('%cReceived log entry:', 'color: green;', log);
+          }),
         );
 
-        this.logsObservable.subscribe(log => {
-              console.log('Log entry:', log);
+        // this.subscriptions.push(this.logsObservable.subscribe((log) => {
+        //   console.log('Log entry:', log);
+        // }));
 
-              // Check if this log is new (after last read timestamp)
-              const logTimestamp = log.timestamp ? new Date(log.timestamp).getTime() : Date.now();
-              console.log(
-                'Log timestamp:',
-                logTimestamp,
-                'Last read:',
-                this.lastReadLogTimestamp,
-                'Is new?',
-                logTimestamp > this.lastReadLogTimestamp
-              );
-              if (logTimestamp > this.lastReadLogTimestamp) {
-                console.log('Setting unreadLogs to true');
-                // Run inside Angular zone to ensure change detection
-                this.ngZone.run(() => {
-                  this.unreadLogs = true;
-                  console.log('Inside zone, unreadLogs set to:', this.unreadLogs);
-                });
-                console.log('After zone.run, unreadLogs:', this.unreadLogs);
-                // update global notifier
-                try {
-                  if (this.trueId) {
-                    this.logsNotifier.setUnread(this.trueId, true);
-                  }
-                } catch (e) {
-                  // ignore notifier errors
-                }
-              }
+        // const anomalyPredictionLogs$ = this.logsObservable.pipe(
+        //   filter((log: LogEntry) =>
+        //     log.type && log.type.toLowerCase() === 'anomaly' && log.level && log.level.toLowerCase() === 'prediction')
+        // ) as Observable<AnomalyPredictionLogEntry>;
 
-              if (log.level.toLowerCase() === 'prediction') {
-                console.log('Job prediction:', log.message);
-                // Try to parse prediction log as JSON
+        // anomalyPredictionLogs$.subscribe(log => {
+        //       // console.log('Log entry:', log);
+        //       console.log('Anomaly Prediction Log entry:', log);
 
-                if (typeof log.message !== 'string') {
-                  const anomalies: AnomalyReport[] = log.message?.result?.filter((result) =>
+        //       // Check if this log is new (after last read timestamp)
+        //       const logTimestamp = log.timestamp ? new Date(log.timestamp).getTime() : Date.now();
+        //       console.log(
+        //         'Log timestamp:',
+        //         logTimestamp,
+        //         'Last read:',
+        //         this.lastReadLogTimestamp,
+        //         'Is new?',
+        //         logTimestamp > this.lastReadLogTimestamp
+        //       );
+        //       if (logTimestamp > this.lastReadLogTimestamp) {
+        //         console.log('Setting unreadLogs to true');
+        //         // Run inside Angular zone to ensure change detection
+        //         this.ngZone.run(() => {
+        //           this.unreadLogs = true;
+        //           console.log('Inside zone, unreadLogs set to:', this.unreadLogs);
+        //         });
+        //         console.log('After zone.run, unreadLogs:', this.unreadLogs);
+        //         // update global notifier
+        //         try {
+        //           if (this.trueId) {
+        //             this.logsNotifier.setUnread(this.trueId, true);
+        //           }
+        //         } catch (e) {
+        //           // ignore notifier errors
+        //         }
+        //       }
 
-                  result.failure_predicted === true
+        //       if (log.level.toLowerCase() === 'prediction') {
+        //         console.log('Job prediction:', log.message);
+        //         // Try to parse prediction log as JSON
 
-                  ).map((result: any) => {
-                    const confidence = result.general_failure_probability ? Math.round(result.general_failure_probability * 100) : 0;
-                    const severity = confidence >= 90 ? 'Critical' : confidence >= 70 ? 'Major' : 'Minor';
+        //         if (typeof log.message !== 'string') {
+        //           const anomalies: AnomalyReport[] = log.message?.result?.filter((result) =>
 
-                    // Normalize timeRange -> startTime/endTime if possible
-                    let startTime: string | number | undefined;
-                    let endTime: string | number | undefined;
-                    if (result.datetime) {
-                      const parts = (result.datetime || '').toString().split('/');
-                      if (parts.length === 2) {
-                        startTime = parts[0];
-                        endTime = parts[1];
-                      } else {
-                        startTime = result.datetime;
-                        endTime = result.datetime;
-                      }
-                    }
+        //           result.failure_predicted === true
 
-                    return {
-                      timeRange: result.datetime || '',
-                      startTime,
-                      endTime,
-                      confidence,
-                      affectedMetrics: result.predicted_failing_component ? [result.predicted_failing_component] : [],
-                      componentFailureProbabilities: result.component_failure_probabilities || {},
-                      componentProbabilities: result.component_probabilities || {},
-                      id: result.id || `${this.trueId || 'forecast'}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
-                      reportEntity: this.deviceId,
-                      errorName: result.predicted_failing_component || 'Unknown',
-                      severity,
-                      creationDate: result.datetime || new Date().toISOString(),
-                      componentType: result.predicted_failing_component || 'Unknown',
-                      deviceType: 'Unknown',
-                      location: 'Unknown',
-                      description: 'Predicted failure for component ' + (result.predicted_failing_component || 'Unknown'),
-                      status: 'Active',
-                    };
-                  }) || [];
-                  this.anomaliesComponent.updateAnomalies(anomalies || []);
-                }
+        //           ).map((result: any) => {
+        //             const confidence = result.general_failure_probability ? Math.round(result.general_failure_probability * 100) : 0;
+        //             const severity = confidence >= 90 ? 'Critical' : confidence >= 70 ? 'Major' : 'Minor';
 
+        //             // Normalize timeRange -> startTime/endTime if possible
+        //             let startTime: string | number | undefined;
+        //             let endTime: string | number | undefined;
+        //             if (result.datetime) {
+        //               const parts = (result.datetime || '').toString().split('/');
+        //               if (parts.length === 2) {
+        //                 startTime = parts[0];
+        //                 endTime = parts[1];
+        //               } else {
+        //                 startTime = result.datetime;
+        //                 endTime = result.datetime;
+        //               }
+        //             }
+
+        //             return {
+        //               timeRange: result.datetime || '',
+        //               startTime,
+        //               endTime,
+        //               confidence,
+        //               affectedMetrics: result.predicted_failing_component ? [result.predicted_failing_component] : [],
+        //               componentFailureProbabilities: result.component_failure_probabilities || {},
+        //               componentProbabilities: result.component_probabilities || {},
+        //               id: result.id || `${this.trueId || 'forecast'}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+        //               reportEntity: this.deviceId,
+        //               errorName: result.predicted_failing_component || 'Unknown',
+        //               severity,
+        //               creationDate: result.datetime || new Date().toISOString(),
+        //               componentType: result.predicted_failing_component || 'Unknown',
+        //               deviceType: 'Unknown',
+        //               location: 'Unknown',
+        //               description: 'Predicted failure for component ' + (result.predicted_failing_component || 'Unknown'),
+        //               status: 'Active',
+        //             };
+        //           }) || [];
+        //           this.anomaliesComponent.updateAnomalies(anomalies || []);
+        //         }
+
+        //       } else {
+        //         // console.log4('Job log:', log.message);
+        //       }
+        //     });
+
+        this.forecastPredictionLogs$ = this.logsObservable.pipe(
+          tap((log) => {
+            console.log('%cProcessing log entry for forecast predictions:', 'color: blue;', log);
+          }),
+          filter((log: LogEntry) =>
+            log.level && log.level.toLowerCase() === 'prediction' &&
+          (log.type && log.type.toLowerCase() === 'forecast') || (log.source && log.source.toLowerCase() === 'forecastmodel'))
+        ) as Observable<ForecastPredictionLogEntry>;
+
+        this.subscriptions.push(
+          this.forecastPredictionLogs$.subscribe(log => {
+          console.log('[MODEL] Forecast Prediction Log entry received:', log);
+
+          let results: ForecastPrediction = null;
+
+          // Safely parse log message - it could be JSON or plain text
+          if (typeof log.message === 'string') {
+            try {
+              results = JSON.parse(log.message);
+            } catch (e) {
+              // Message is plain text, not JSON - skip processing
+              console.log('[MODEL] Non-JSON log message:', log.message);
+              return;
+            }
+          } else {
+            results = log.message.result as ForecastPrediction;
+          }
+
+          console.log('[MODEL] Parsed forecast results:', results);
+          // console.log('[MODEL] Raw results object:', JSON.stringify(results, null, 2));
+            // check if
+
+          if (results) {
+            const forecast_max_steps = results.forecast_max_steps;
+
+            // Store forecast_max_steps for display in chart toolbar
+            this.forecastMaxSteps = forecast_max_steps;
+
+            delete results.forecast_max_steps;
+
+            const data = results as ForecastSensorPredictions;
+
+            console.log('[MODEL] Processing forecast data with', Object.keys(data).length, 'sensors');
+            console.log('[MODEL] Sensor keys:', Object.keys(data));
+            // console.log('[MODEL] Full data structure:', JSON.stringify(data, null, 2));
+
+            // Check if selected sensor exists in forecast data
+            console.log('[MODEL] Forecast data:', data);
+            const availableSensors = Object.keys(data);
+            if (!availableSensors.includes(this.selectedSensor)) {
+              console.warn(`[MODEL] ⚠️ Selected sensor '${this.selectedSensor}' not found in forecast data.`);
+              console.warn(`[MODEL] Available sensors in forecast: [${availableSensors.join(', ')}]`);
+
+              // Auto-select the first available sensor if current selection is not available
+              if (availableSensors.length > 0) {
+                const newSensor = availableSensors[0];
+                console.log(`[MODEL] ✓ Auto-selecting sensor '${newSensor}' from forecast data`);
+                this.selectedSensor = newSensor;
+                this.saveViewPreferences();
               } else {
-                // console.log4('Job log:', log.message);
+                console.warn(`[MODEL] No sensors available in forecast data, skipping update`);
+                return;
               }
-            });
+            }
+
+            // Run inside Angular zone to trigger change detection
+            // this.ngZone.run(() => {
+              this.forecastData = data;
+              // Force change detection
+              this.cdr.detectChanges();
+              console.log('[MODEL] ✓ Forecast data updated and passed to widgets:', {
+                sensors: Object.keys(this.forecastData),
+                selectedSensor: this.selectedSensor,
+                maxSteps: this.forecastMaxSteps,
+                data: this.forecastData
+              });
+            // });
+          } else {
+            console.warn('[MODEL] No forecast results to process');
+          }
+        }));
         // Subscribe to real-time job status updates
-          this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
+        this.subscriptions.push(this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
           // if (msg.type === 'prediction') {
           //   console.log('Job prediction:', msg.data.logs);
           // } else {
@@ -523,7 +654,7 @@ export class ModelComponent extends PageComponent implements Order {
               if (msg.data.model_exists) {
                 // this.status = 'active';
                 this.status = 'inactive';
-                this.anomaliesComponent.setStreamStatus(true, null);
+                this.anomaliesComponent?.setStreamStatus(true, null);
               } else {
                 this.status = 'inactive';
               }
@@ -531,22 +662,28 @@ export class ModelComponent extends PageComponent implements Order {
         }, (err) => {
           console.error('Error subscribing to job status:', err);
           this.anomaliesComponent?.setStreamStatus(false, 'Error subscribing to job status');
-        });
+        }));
 
         // Fetch status from the service to ensure it's up-to-date
         // this.getModelStatus();
       }
-    });
 
-        // Subscribe to notifier changes so the UI updates if other parts mark read
-        this.notifierSubscription = this.logsNotifier.changes().subscribe(change => {
-          if (change.modelId === this.trueId) {
-            this.ngZone.run(() => {
-              this.unreadLogs = change.unread;
-              console.log('Notifier changed unreadLogs to:', this.unreadLogs, 'for model:', this.trueId);
-            });
-          }
-        });
+      // Clean up previous notifier subscription before creating new one
+      if (this.notifierSubscription) {
+        this.notifierSubscription.unsubscribe();
+        this.notifierSubscription = null;
+      }
+
+      // Subscribe to notifier changes so the UI updates if other parts mark read
+      this.notifierSubscription = this.logsNotifier.changes().subscribe(change => {
+        if (change.modelId === this.trueId) {
+          this.ngZone.run(() => {
+            this.unreadLogs = change.unread;
+            console.log('Notifier changed unreadLogs to:', this.unreadLogs, 'for model:', this.trueId);
+          });
+        }
+      });
+    });
   }
 
   private fetchModelNames() {
@@ -603,6 +740,13 @@ export class ModelComponent extends PageComponent implements Order {
       (data) => {
         this.deviceId = data.deviceId.id;
         this.Attributes = data.attributes.map((attr) => attr.key);
+
+        // Initialize selectedSensor from model's configured attributes (first sensor)
+        if (this.Attributes.length > 0 && !this.Attributes.includes(this.selectedSensor)) {
+          this.selectedSensor = this.Attributes[0];
+          console.log(`[MODEL] Initialized selectedSensor to '${this.selectedSensor}' from model attributes`);
+        }
+
         this.trueId = data.id.id;
         this.forecastName = data.name || data.id.id.split('-')[0]; // Use name if available, fallback to ID
         this.forecastAlgorithm = data.forecastAlgorithm;
@@ -631,6 +775,7 @@ export class ModelComponent extends PageComponent implements Order {
       width: '600px',
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.addForecast(result); // Call addForecast if a result is returned
@@ -824,6 +969,7 @@ export class ModelComponent extends PageComponent implements Order {
           data: dialogData,
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-shadow
         dialogRef.afterClosed().subscribe((result) => {
           if (result) {
             // Check if result contains needsRebuild flag (edit mode format)
@@ -907,6 +1053,7 @@ export class ModelComponent extends PageComponent implements Order {
       this.translate.instant('action.no'),
       this.translate.instant('action.yes'),
       true
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     ).subscribe((result) => {
       if (result) {
         this.predictiveModelsService.deletePredictiveModel(this.trueId).subscribe(
@@ -1089,7 +1236,7 @@ export class ModelComponent extends PageComponent implements Order {
         this.activationComplete = true;
         // this.status = 'active';
         this.status = 'inactive';
-        this.anomaliesComponent.setStreamStatus(true, null);
+        this.anomaliesComponent?.setStreamStatus(true, null);
         // Show the logs tooltip after activation
         // this.displayLogsTooltip();
         // this.getModelStatus();
@@ -1103,6 +1250,11 @@ export class ModelComponent extends PageComponent implements Order {
   }
 
   // Methods to toggle collapse/expand states
+  toggleTimeSeriesChart(): void {
+    this.timeSeriesChartCollapsed = !this.timeSeriesChartCollapsed;
+    this.saveCollapsedStates();
+  }
+
   toggleForecastChart(): void {
     this.forecastChartCollapsed = !this.forecastChartCollapsed;
     this.saveCollapsedStates();
@@ -1123,6 +1275,7 @@ export class ModelComponent extends PageComponent implements Order {
       console.log(savedStates);
       if (savedStates) {
         const states = JSON.parse(savedStates);
+        this.timeSeriesChartCollapsed = states.timeSeriesChartCollapsed || false;
         this.forecastChartCollapsed = states.forecastChartCollapsed || false;
         this.anomaliesCollapsed = states.anomaliesCollapsed || false;
       }
@@ -1137,6 +1290,7 @@ export class ModelComponent extends PageComponent implements Order {
   private saveCollapsedStates(): void {
     try {
       const states = {
+        timeSeriesChartCollapsed: this.timeSeriesChartCollapsed,
         forecastChartCollapsed: this.forecastChartCollapsed,
         anomaliesCollapsed: this.anomaliesCollapsed,
       };
@@ -1206,6 +1360,7 @@ export class ModelComponent extends PageComponent implements Order {
           forecast.viewPreferences || ''
         );
         this.selectedViews = preferences.selectedViews;
+        this.selectedSensor = preferences.selectedSensor || 'rotate';
       },
       (error) => {
         console.warn(
@@ -1216,6 +1371,7 @@ export class ModelComponent extends PageComponent implements Order {
           ForecastViewType.FORECAST,
           ForecastViewType.ANOMALIES,
         ]; // Default fallback
+        this.selectedSensor = 'rotate';
       }
     );
   }
@@ -1230,6 +1386,7 @@ export class ModelComponent extends PageComponent implements Order {
       (forecast) => {
         const preferences: ForecastViewPreferences = {
           selectedViews: this.selectedViews,
+          selectedSensor: this.selectedSensor,
         };
 
         // Update the forecast with new view preferences
@@ -1268,6 +1425,7 @@ export class ModelComponent extends PageComponent implements Order {
     try {
       const preferences: ForecastViewPreferences = {
         selectedViews: this.selectedViews,
+        selectedSensor: this.selectedSensor,
       };
       localStorage.setItem(
         `forecast-view-${this.trueId}`,
@@ -1283,6 +1441,14 @@ export class ModelComponent extends PageComponent implements Order {
         error
       );
     }
+  }
+
+  /**
+   * Handle sensor change from forecast chart
+   */
+  onSensorChanged(sensor: string): void {
+    this.selectedSensor = sensor;
+    this.saveViewPreferences();
   }
 
   // Document click listener for closing dropdown

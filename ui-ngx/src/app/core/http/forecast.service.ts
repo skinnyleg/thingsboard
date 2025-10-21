@@ -29,6 +29,8 @@ import { Forecast, ForecastCreate } from '@app/shared/models/forecast.models';
 export class PredictiveModelsService {
   private baseUrl = '/api/forecasts'; // Base URL for your API
 
+  private baseUrlModels = '/api/models'; // Base URL for your API
+
   constructor(private http: HttpClient) {}
 
   // Fetch forecasts with pagination (PageLink handling like in DeviceService)

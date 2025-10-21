@@ -510,10 +510,19 @@ public class PythonWebSocketClientService {
      * Handle response from Python service
      */
     private void handlePythonResponse(JsonNode message) {
+        // log at debug level the received message - type, commandId, forecastId
+        log.info("[handlePythonResponse] Received Python response: type={}, commandId={}, forecastId={}",
+                message.has("type") ? message.get("type").asText() : "N/A",
+                message.has("commandId") ? message.get("commandId").asText() : "N/A",
+                message.has("forecastId") ? message.get("forecastId").asText() : "N/A");
         try {
             String type = message.get("type").asText();
 
             if ("prediction".equals(type)) {
+                log.info(
+                        "[handlePythonResponse] Received prediction response: commandId={}, forecastId={}",
+                        message.has("commandId") ? message.get("commandId").asText() : "N/A",
+                        message.has("forecastId") ? message.get("forecastId").asText() : "N/A");
                 // Store prediction in database
                 storePrediction(message);
 
@@ -529,6 +538,10 @@ public class PythonWebSocketClientService {
                 routeToUiSession(message);
 
             } else if ("logs".equals(type)) {
+                log.info(
+                        "[handlePythonResponse] Received logs message: commandId={}, forecastId={}",
+                        message.has("commandId") ? message.get("commandId").asText() : "N/A",
+                        message.has("forecastId") ? message.get("forecastId").asText() : "N/A");
                 // Forward logs to UI - always route regardless of commandId
                 routeToUiSession(message);
 
@@ -709,6 +722,10 @@ public class PythonWebSocketClientService {
      * Store prediction in database
      */
     private void storePrediction(JsonNode message) {
+        log.info(
+                "[storePrediction] Received prediction message: forecastId={}, modelType={}",
+                message.has("forecastId") ? message.get("forecastId").asText() : "N/A",
+                message.has("model") ? message.get("model").asText() : "N/A");
         try {
             String forecastId = message.get("forecastId").asText();
             String modelType = message.get("model").asText();
@@ -792,6 +809,10 @@ public class PythonWebSocketClientService {
     private void broadcastPrediction(JsonNode message) throws IOException {
         String forecastId = message.get("forecastId").asText();
         String modelType = message.get("model").asText();
+
+        log.info(
+                "[broadcastPrediction] Broadcasting {} prediction for forecastId={} to subscribed UI sessions",
+                modelType, forecastId);
 
         // Get subscribed sessions
         Set<String> subscribedSessions = subscriptions

@@ -119,24 +119,33 @@ export class TbTimeSeriesChart {
   private readonly settings: TimeSeriesChartSettings;
 
   private readonly comparisonEnabled: boolean;
+
   private readonly stackMode: boolean;
 
   private xAxisList: TimeSeriesChartXAxis[] = [];
+
   private yAxisList: TimeSeriesChartYAxis[] = [];
+
   private dataItems: TimeSeriesChartDataItem[] = [];
+
   private thresholdItems: TimeSeriesChartThresholdItem[] = [];
 
   private hasVisualMap = false;
+
   private visualMapSelectedRanges: {[key: number]: boolean};
 
   private timeSeriesChart: ECharts;
+
   private timeSeriesChartOptions: EChartsOption;
 
   private readonly tooltipDateFormat: DateFormatProcessor;
+
   private readonly tooltipValueFormatFunction: TimeSeriesChartTooltipValueFormatFunction;
+
   private readonly stateValueConverter: TimeSeriesChartStateValueConverter;
 
   private yMinSubject = new BehaviorSubject(-1);
+
   private yMaxSubject = new BehaviorSubject(1);
 
   private darkMode = false;
@@ -154,6 +163,7 @@ export class TbTimeSeriesChart {
   private latestData: FormattedData[] = [];
 
   yMin$ = this.yMinSubject.asObservable();
+
   yMax$ = this.yMaxSubject.asObservable();
 
   constructor(private ctx: WidgetContext,

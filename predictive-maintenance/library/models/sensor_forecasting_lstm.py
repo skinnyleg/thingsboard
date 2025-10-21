@@ -55,10 +55,12 @@ from tensorflow.keras.layers import LSTM, Dense
 import tensorflow as tf
 
 # Set plot style
-plt.style.use('fivethirtyeight')
+plt.style.use("fivethirtyeight")
 
 
-def configure_gpu(memory_growth: bool = True, memory_limit_mb: int = None, required: bool = False) -> bool:
+def configure_gpu(
+    memory_growth: bool = True, memory_limit_mb: int = None, required: bool = False
+) -> bool:
     """
     Configure GPU settings for TensorFlow.
 
@@ -70,7 +72,7 @@ def configure_gpu(memory_growth: bool = True, memory_limit_mb: int = None, requi
     Returns:
         True if GPU is available, False otherwise
     """
-    gpus = tf.config.list_physical_devices('GPU')
+    gpus = tf.config.list_physical_devices("GPU")
 
     if gpus:
         try:
@@ -85,9 +87,11 @@ def configure_gpu(memory_growth: bool = True, memory_limit_mb: int = None, requi
                 for gpu in gpus:
                     tf.config.set_logical_device_configuration(
                         gpu,
-                        [tf.config.LogicalDeviceConfiguration(
-                            memory_limit=memory_limit_mb
-                        )]
+                        [
+                            tf.config.LogicalDeviceConfiguration(
+                                memory_limit=memory_limit_mb
+                            )
+                        ],
                     )
                 print(f"✓ GPU memory limit set to {memory_limit_mb} MB")
 
@@ -95,7 +99,7 @@ def configure_gpu(memory_growth: bool = True, memory_limit_mb: int = None, requi
             for i, gpu in enumerate(gpus):
                 print(f"✓ GPU {i}: {gpu.name}")
 
-            logical_gpus = tf.config.list_logical_devices('GPU')
+            logical_gpus = tf.config.list_logical_devices("GPU")
             print(f"✓ {len(gpus)} Physical GPU(s), {len(logical_gpus)} Logical GPU(s)")
 
             return True
@@ -106,6 +110,7 @@ def configure_gpu(memory_growth: bool = True, memory_limit_mb: int = None, requi
                 print("\n✗ FATAL: GPU is required but configuration failed.")
                 print("Please check your CUDA and cuDNN installation.")
                 import sys
+
                 sys.exit(1)
             return False
     else:
@@ -119,6 +124,7 @@ def configure_gpu(memory_growth: bool = True, memory_limit_mb: int = None, requi
             print("  4. TensorFlow GPU version is installed")
             print("\nSee GPU_SETUP.md for detailed installation instructions.")
             import sys
+
             sys.exit(1)
         else:
             print("Running on CPU.")
@@ -134,12 +140,12 @@ def get_device_info() -> dict:
         Dictionary with device information
     """
     info = {
-        'gpu_available': len(tf.config.list_physical_devices('GPU')) > 0,
-        'gpu_count': len(tf.config.list_physical_devices('GPU')),
-        'gpu_names': [gpu.name for gpu in tf.config.list_physical_devices('GPU')],
-        'cpu_count': len(tf.config.list_physical_devices('CPU')),
-        'tensorflow_version': tf.__version__,
-        'built_with_cuda': tf.test.is_built_with_cuda()
+        "gpu_available": len(tf.config.list_physical_devices("GPU")) > 0,
+        "gpu_count": len(tf.config.list_physical_devices("GPU")),
+        "gpu_names": [gpu.name for gpu in tf.config.list_physical_devices("GPU")],
+        "cpu_count": len(tf.config.list_physical_devices("CPU")),
+        "tensorflow_version": tf.__version__,
+        "built_with_cuda": tf.test.is_built_with_cuda(),
     }
     return info
 
@@ -148,23 +154,23 @@ def print_device_info() -> None:
     """Print detailed information about available compute devices."""
     info = get_device_info()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("DEVICE INFORMATION")
-    print("="*60)
+    print("=" * 60)
     print(f"TensorFlow Version: {info['tensorflow_version']}")
     print(f"Built with CUDA: {info['built_with_cuda']}")
     print(f"GPU Available: {info['gpu_available']}")
     print(f"GPU Count: {info['gpu_count']}")
 
-    if info['gpu_names']:
+    if info["gpu_names"]:
         print("\nGPU Devices:")
-        for i, name in enumerate(info['gpu_names']):
+        for i, name in enumerate(info["gpu_names"]):
             print(f"  [{i}] {name}")
     else:
         print("\nNo GPU devices found.")
 
     print(f"\nCPU Count: {info['cpu_count']}")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
 
 def enable_mixed_precision() -> None:
@@ -175,8 +181,8 @@ def enable_mixed_precision() -> None:
     """
     from tensorflow.keras import mixed_precision
 
-    if tf.config.list_physical_devices('GPU'):
-        policy = mixed_precision.Policy('mixed_float16')
+    if tf.config.list_physical_devices("GPU"):
+        policy = mixed_precision.Policy("mixed_float16")
         mixed_precision.set_global_policy(policy)
         print(f"✓ Mixed precision enabled: {policy.name}")
         print(f"  - Compute dtype: {policy.compute_dtype}")
@@ -190,7 +196,7 @@ def verify_gpu_usage() -> None:
     """
     Print current GPU usage information and verify TensorFlow is using GPU.
     """
-    gpus = tf.config.list_physical_devices('GPU')
+    gpus = tf.config.list_physical_devices("GPU")
 
     if gpus:
         print(f"\n{'='*60}")
@@ -203,7 +209,7 @@ def verify_gpu_usage() -> None:
 
         # Check if GPU is actually being used
         try:
-            with tf.device('/GPU:0'):
+            with tf.device("/GPU:0"):
                 a = tf.constant([[1.0, 2.0], [3.0, 4.0]])
                 b = tf.constant([[1.0, 2.0], [3.0, 4.0]])
                 _ = tf.matmul(a, b)  # Test GPU compute capability
@@ -263,7 +269,9 @@ def prepare_sensor_data(df: pd.DataFrame, sensor: str) -> pd.DataFrame:
     """
     # Extract the sensor column
     if sensor not in df.columns:
-        raise ValueError(f"Sensor column '{sensor}' not found in DataFrame. Available columns: {df.columns.tolist()}")
+        raise ValueError(
+            f"Sensor column '{sensor}' not found in DataFrame. Available columns: {df.columns.tolist()}"
+        )
 
     sensor_data = pd.DataFrame(data=df, columns=[sensor])
 
@@ -321,10 +329,7 @@ def plot_sensor_timescales(sensor: pd.Series, save_path: str = None) -> None:
 
 
 def scale_and_split_data(
-    sensor: pd.DataFrame,
-    sensor_name: str,
-    train_size: int = 8041,
-    lookback: int = 720
+    sensor: pd.DataFrame, sensor_name: str, train_size: int, lookback: int
 ) -> Tuple[np.ndarray, np.ndarray, StandardScaler]:
     """
     Scale sensor data and split into train/test sets.
@@ -342,17 +347,21 @@ def scale_and_split_data(
     # scaled_sensor = scaler.fit_transform(sensor.to_numpy().reshape(-1, 1))
 
     # print(f"Sensor Range before scaling: {sensor[sensor_name].min()}, {sensor[sensor_name].max()}")
-    print(f"Vibration Range after scaling: {scaled_sensor.min()}, {scaled_sensor.max()}")
+    print(
+        f"Vibration Range after scaling: {scaled_sensor.min()}, {scaled_sensor.max()}"
+    )
 
     train_sensor = scaled_sensor[0:train_size, :]
-    test_sensor = scaled_sensor[train_size-lookback:, :]
+    test_sensor = scaled_sensor[train_size - lookback :, :]
 
     print(f"\nShapes of train and test: {train_sensor.shape}, {test_sensor.shape}")
 
     return train_sensor, test_sensor, scaler
 
 
-def create_rnn_dataset(data: np.ndarray, lookback: int = 1) -> Tuple[np.ndarray, np.ndarray]:
+def create_rnn_dataset(
+    data: np.ndarray, lookback: int
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Prepare dataset for RNN training with lookback windows.
 
@@ -363,15 +372,28 @@ def create_rnn_dataset(data: np.ndarray, lookback: int = 1) -> Tuple[np.ndarray,
     Returns:
         Tuple of (X, y) arrays for RNN
     """
+
+    print("$" * 60)
+    print("$" * 20)
+
+    print(data)
+
+    print("$" * 20)
+
     data_x, data_y = [], []
     for i in range(len(data) - lookback - 1):
-        a = data[i:(i + lookback), 0]
+        a = data[i : (i + lookback), 0]
+        print(
+            f"[Create RNN datasets] Sample {i}: Input shape: {a.shape}, Target: {data[i + lookback, 0]}"
+        )
         data_x.append(a)
         data_y.append(data[i + lookback, 0])
     return np.array(data_x), np.array(data_y)
 
 
-def build_lstm_model(lookback: int = 720, lstm_units: int = 256, use_gpu: bool = True) -> Sequential:
+def build_lstm_model(
+    lookback: int, lstm_units: int = 256, use_gpu: bool = True
+) -> Sequential:
     """
     Build and compile LSTM model for time series forecasting.
 
@@ -386,17 +408,15 @@ def build_lstm_model(lookback: int = 720, lstm_units: int = 256, use_gpu: bool =
     tf.random.set_seed(3)
 
     # Use GPU device if available and requested
-    device = '/GPU:0' if use_gpu and tf.config.list_physical_devices('GPU') else '/CPU:0'
+    device = (
+        "/GPU:0" if use_gpu and tf.config.list_physical_devices("GPU") else "/CPU:0"
+    )
 
     with tf.device(device):
         model = Sequential()
         model.add(LSTM(lstm_units, input_shape=(1, lookback)))
         model.add(Dense(1))
-        model.compile(
-            loss="mean_squared_error",
-            optimizer='adam',
-            metrics=["mse"]
-        )
+        model.compile(loss="mean_squared_error", optimizer="adam", metrics=["mse"])
 
     print(f"Model built on device: {device}")
     return model
@@ -408,7 +428,7 @@ def create_optimized_dataset(
     batch_size: int = 64,
     shuffle_buffer: int = 1000,
     prefetch_size: int = tf.data.AUTOTUNE,
-    use_gpu: bool = True
+    use_gpu: bool = True,
 ) -> tf.data.Dataset:
     """
     Create an optimized tf.data pipeline for efficient GPU training.
@@ -426,7 +446,7 @@ def create_optimized_dataset(
     """
     # Determine device - TensorFlow will automatically use GPU for model.fit()
     # but we make tensors explicitly to ensure they're on GPU
-    if use_gpu and tf.config.list_physical_devices('GPU'):
+    if use_gpu and tf.config.list_physical_devices("GPU"):
         # Convert numpy arrays to TF tensors (will be placed on GPU during training)
         train_x_tensor = tf.constant(train_x, dtype=tf.float32)
         train_y_tensor = tf.constant(train_y, dtype=tf.float32)
@@ -441,7 +461,9 @@ def create_optimized_dataset(
     dataset = dataset.shuffle(buffer_size=shuffle_buffer)
     dataset = dataset.batch(batch_size)
     dataset = dataset.cache()  # Cache data in memory after first epoch
-    dataset = dataset.prefetch(buffer_size=prefetch_size)  # Prefetch next batch while GPU processes current
+    dataset = dataset.prefetch(
+        buffer_size=prefetch_size
+    )  # Prefetch next batch while GPU processes current
 
     return dataset
 
@@ -453,7 +475,7 @@ def train_lstm_model(
     epochs: int = 1,
     batch_size: int = 128,
     use_optimized_pipeline: bool = True,
-    validation_split: float = 0.2
+    validation_split: float = 0.2,
 ) -> Sequential:
     """
     Train the LSTM model with optimized data pipeline for GPU.
@@ -489,37 +511,36 @@ def train_lstm_model(
         val_y_split = train_y[split_idx:]
 
         # Check if GPU is available
-        gpu_available = len(tf.config.list_physical_devices('GPU')) > 0
+        gpu_available = len(tf.config.list_physical_devices("GPU")) > 0
 
         # Create optimized datasets
         train_dataset = create_optimized_dataset(
-            train_x_split, train_y_split,
+            train_x_split,
+            train_y_split,
             batch_size=batch_size,
             shuffle_buffer=min(len(train_x_split), 1000),
-            use_gpu=gpu_available
+            use_gpu=gpu_available,
         )
 
         val_dataset = create_optimized_dataset(
-            val_x_split, val_y_split,
+            val_x_split,
+            val_y_split,
             batch_size=batch_size,
             shuffle_buffer=1,  # No need to shuffle validation
-            use_gpu=gpu_available
+            use_gpu=gpu_available,
         )
 
         # Verify GPU usage
         if gpu_available:
-            print(f"✓ Training will use GPU: {tf.config.list_physical_devices('GPU')[0].name}")
+            print(
+                f"✓ Training will use GPU: {tf.config.list_physical_devices('GPU')[0].name}"
+            )
             print(f"✓ Data pipeline optimized for GPU with batch_size={batch_size}")
         else:
             print(f"⚠ No GPU detected - training on CPU (will be slow)")
 
         # Train with optimized pipeline on GPU
-        model.fit(
-            train_dataset,
-            validation_data=val_dataset,
-            epochs=epochs,
-            verbose=1
-        )
+        model.fit(train_dataset, validation_data=val_dataset, epochs=epochs, verbose=1)
 
         if gpu_available:
             print(f"\n✓ Training completed on GPU")
@@ -527,11 +548,12 @@ def train_lstm_model(
         # Fallback to standard training (slower)
         print("Using standard training pipeline (not optimized)")
         model.fit(
-            train_x, train_y,
+            train_x,
+            train_y,
             epochs=epochs,
             batch_size=batch_size,
             validation_split=validation_split,
-            verbose=1
+            verbose=1,
         )
 
     return model
@@ -542,7 +564,7 @@ def evaluate_and_predict(
     train_x: np.ndarray,
     test_x: np.ndarray,
     test_y: np.ndarray,
-    scaler: StandardScaler
+    scaler: StandardScaler,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Evaluate model and make predictions on train and test sets.
@@ -570,11 +592,8 @@ def evaluate_and_predict(
 
     return predict_on_train, predict_on_test
 
-def predict(
-    model: Sequential,
-    data: np.ndarray,
-    scaler: StandardScaler
-):
+
+def predict(model: Sequential, data: np.ndarray, scaler: StandardScaler):
     # Make predictions
     predictions = model.predict(data)
 
@@ -583,12 +602,13 @@ def predict(
 
     return predictions
 
+
 def plot_predictions(
     sensor: pd.Series,
     predict_train: np.ndarray,
     predict_test: np.ndarray,
     lookback: int = 720,
-    save_path: str = None
+    save_path: str = None,
 ) -> None:
     """
     Plot original data with train and test predictions.
@@ -606,24 +626,24 @@ def plot_predictions(
     orig_data = sensor.to_numpy().reshape(-1, 1)
     orig_plot = np.empty((total_size, 1))
     orig_plot[:, :] = np.nan
-    orig_plot[0:total_size, :] = orig_data[lookback:-2, ]
+    orig_plot[0:total_size, :] = orig_data[lookback:-2,]
 
     # Prepare train predictions plot
     predict_train_plot = np.empty((total_size, 1))
     predict_train_plot[:, :] = np.nan
-    predict_train_plot[0:len(predict_train), :] = predict_train
+    predict_train_plot[0 : len(predict_train), :] = predict_train
 
     # Prepare test predictions plot
     predict_test_plot = np.empty((total_size, 1))
     predict_test_plot[:, :] = np.nan
-    predict_test_plot[len(predict_train):total_size, :] = predict_test
+    predict_test_plot[len(predict_train) : total_size, :] = predict_test
 
     # Plot
     plt.figure(figsize=(20, 10))
     plt.suptitle("Plot Predictions for Original, Training & Test Data", fontsize=20)
-    plt.plot(orig_plot[::24], label='Original')
-    plt.plot(predict_train_plot[::24], label='Train Predictions')
-    plt.plot(predict_test_plot[::24], label='Test Predictions')
+    plt.plot(orig_plot[::24], label="Original")
+    plt.plot(predict_train_plot[::24], label="Train Predictions")
+    plt.plot(predict_test_plot[::24], label="Test Predictions")
     plt.legend()
 
     if save_path:
@@ -636,8 +656,8 @@ def forecast_future(
     model: Sequential,
     test_x: np.ndarray,
     scaler: StandardScaler,
-    lookback: int = 720,
-    predict_for: int = 720
+    lookback: int,
+    predict_for: int,
 ) -> np.ndarray:
     """
     Forecast future sensor values.
@@ -652,7 +672,7 @@ def forecast_future(
     Returns:
         Array of future predictions in original scale
     """
-    curr_input = test_x[1, :].flatten()
+    curr_input = test_x[-1].flatten()
 
     for i in range(predict_for):
         this_input = curr_input[-lookback:]
@@ -661,8 +681,7 @@ def forecast_future(
         curr_input = np.append(curr_input, this_prediction.flatten())
 
     predict_on_future = np.reshape(
-        np.array(curr_input[-predict_for:]),
-        (predict_for, 1)
+        np.array(curr_input[-predict_for:]), (predict_for, 1)
     )
     predict_on_future = scaler.inverse_transform(predict_on_future)
 
@@ -673,7 +692,7 @@ def plot_forecast(
     predict_train: np.ndarray,
     predict_test: np.ndarray,
     predict_future: np.ndarray,
-    save_path: str = None
+    save_path: str = None,
 ) -> None:
     """
     Plot training, test, and forecast predictions.
@@ -689,23 +708,27 @@ def plot_forecast(
     # Setup training chart
     predict_train_plot = np.empty((total_size, 1))
     predict_train_plot[:, :] = np.nan
-    predict_train_plot[0:len(predict_train), :] = predict_train
+    predict_train_plot[0 : len(predict_train), :] = predict_train
 
     # Setup test chart
     predict_test_plot = np.empty((total_size, 1))
     predict_test_plot[:, :] = np.nan
-    predict_test_plot[len(predict_train):len(predict_train)+len(predict_test), :] = predict_test
+    predict_test_plot[
+        len(predict_train) : len(predict_train) + len(predict_test), :
+    ] = predict_test
 
     # Setup future forecast chart
     predict_future_plot = np.empty((total_size, 1))
     predict_future_plot[:, :] = np.nan
-    predict_future_plot[len(predict_train)+len(predict_test):total_size, :] = predict_future
+    predict_future_plot[len(predict_train) + len(predict_test) : total_size, :] = (
+        predict_future
+    )
 
     plt.figure(figsize=(20, 10))
     plt.suptitle("Plot Predictions for Training, Test & Forecast Data", fontsize=20)
-    plt.plot(predict_train_plot[::24], label='Train')
-    plt.plot(predict_test_plot[::24], label='Test')
-    plt.plot(predict_future_plot[::24], label='Forecast')
+    plt.plot(predict_train_plot[::24], label="Train")
+    plt.plot(predict_test_plot[::24], label="Test")
+    plt.plot(predict_future_plot[::24], label="Forecast")
     plt.legend()
 
     if save_path:
@@ -714,10 +737,7 @@ def plot_forecast(
         plt.show()
 
 
-def generate_date_range(
-    start_date: datetime,
-    hours: int
-) -> List[str]:
+def generate_date_range(start_date: datetime, hours: int) -> List[str]:
     """
     Generate a list of hourly datetime strings.
 
@@ -744,9 +764,9 @@ def plot_forecast_with_dates(
     start_date: datetime,
     hours: int,
     title: str,
-    color: str = 'purple',
+    color: str = "purple",
     tick_interval: int = 12,
-    save_path: str = None
+    save_path: str = None,
 ) -> None:
     """
     Plot forecast with datetime labels.
@@ -768,21 +788,22 @@ def plot_forecast_with_dates(
     ax.set(xlabel="Date and Time", ylabel="sensor", title=title)
 
     tick_positions = list(range(0, hours, tick_interval))
-    plt.xticks(tick_positions, [dates[i] for i in tick_positions], rotation='vertical')
+    plt.xticks(tick_positions, [dates[i] for i in tick_positions], rotation="vertical")
 
     if save_path:
         plt.savefig(save_path)
     else:
         plt.show()
 
+
 if __name__ == "__main__":
     """
     Main function to run the complete LSTM forecasting pipeline.
     """
     # Configure GPU (must be done before loading data or building model)
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("CONFIGURING GPU")
-    print("="*60)
+    print("=" * 60)
 
     # Set required=True to exit if GPU not found
     # Set required=False to allow CPU fallback
@@ -791,7 +812,7 @@ if __name__ == "__main__":
     gpu_available = configure_gpu(
         memory_growth=True,  # Allocate memory as needed
         memory_limit_mb=None,  # Set to limit GPU memory (e.g., 4096 for 4GB)
-        required=REQUIRE_GPU  # Exit if GPU not found
+        required=REQUIRE_GPU,  # Exit if GPU not found
     )
 
     print_device_info()
@@ -806,10 +827,10 @@ if __name__ == "__main__":
 
     # Configuration
     # DATA_PATH = 'PdM_telemetry.csv'
-    DATA_PATH = '../../data/PdM_telemetry.csv'  # Adjust path as needed
+    DATA_PATH = "../../data/PdM_telemetry.csv"  # Adjust path as needed
     MACHINE_ID = 1
     TRAIN_SIZE = 8041
-    LOOKBACK = 720
+    LOOKBACK = 40
     LSTM_UNITS = 256
     # EPOCHS = 20
     EPOCHS = 1
@@ -827,20 +848,30 @@ if __name__ == "__main__":
     print(f"Filtering data for machine {MACHINE_ID}...")
     df = filter_machine(telemetry, MACHINE_ID)
 
-    print(f"Print first 5 rows of data:\n{df.head()} - columns: {df.columns.tolist()}", flush=True)
+    print(
+        f"Print first 5 rows of data:\n{df.head()} - columns: {df.columns.tolist()}",
+        flush=True,
+    )
 
     # =============================================
 
-    SENSOR = 'pressure'
+    SENSOR = "pressure"
 
     print("Preparing sensor data...")
     sensor = prepare_sensor_data(df, sensor=SENSOR)
     print(f"Total sensor samples: {len(sensor)}")
 
+    print(f"Sensor data types:\n{sensor}")
+
     # Scale and split data
     print("\nScaling and splitting data...")
     train_data, test_data, scaler = scale_and_split_data(
         sensor, SENSOR, TRAIN_SIZE, LOOKBACK
+    )
+
+    print(
+        f"[Scale and split] First 5 samples of test data:\n{test_data}",
+        flush=True,
     )
 
     # Create RNN datasets
@@ -850,12 +881,30 @@ if __name__ == "__main__":
     # print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x.head()}")
     # print(f"[Create RNN datasets] Columns of train X before reshape:\n{train_x.columns.tolist()}")
     # print first 5 rows of train_x
-    print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x[:5]}")
+    print(
+        f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x[:5]}"
+    )
     print(f"[Create RNN datasets] Shape of train Y: {train_y[:5]}")
     train_x = np.reshape(train_x, (train_x.shape[0], 1, train_x.shape[1]))
     print(f"[Create RNN datasets] Shapes of X and Y: {train_x.shape}, {train_y.shape}")
 
+    print(
+        f"[PREDICT] First 5 samples of test data before RNN dataset creation:\n{test_data}",
+        flush=True,
+    )
+
+    print(
+        f"[PREDICT] Length of test data before RNN dataset creation: {len(test_data)} - shape: {test_data.shape}",
+        flush=True,
+    )
+
     test_x, test_y = create_rnn_dataset(test_data, LOOKBACK)
+
+    print(
+        f"[PREDICT] Created RNN dataset, test_x shape: {test_x.shape}",
+        # flush=True,
+    )
+
     test_x = np.reshape(test_x, (test_x.shape[0], 1, test_x.shape[1]))
 
     # Build and train model
@@ -881,9 +930,7 @@ if __name__ == "__main__":
 
     predict_train = predict(model, train_x, scaler)
 
-    predict_future = forecast_future(
-        model, test_x, scaler, LOOKBACK, 20
-    )
+    predict_future = forecast_future(model, test_x, scaler, LOOKBACK, 20)
 
     print(f"First 5 training predictions:\n{predict_train}")
 

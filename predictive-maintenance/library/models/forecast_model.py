@@ -38,16 +38,19 @@ class ForecastModel(BaseModel):
 
     def __init__(
         self,
-        sensors: List[str],
+        sensors: List[str] = None,
         name: str = "forecast_model",
         algorithm_name: str = "prophet",
         algorithm_hyperparams: Optional[Dict[str, Any]] = None,
         data_registry=None,
-        lookback: int = 720,
+        additional_info: Optional[Dict[str, Any]] = {},
+        lookback: int = 20,
         train_size: int = 8041,
         train_start_date: Optional[datetime] = None,
         train_end_date: Optional[datetime] = None,
         device_id: str = None,
+        group_by_ms: int = 3600000,
+        last_fetched_date: Optional[datetime] = datetime(1970, 1, 1),
     ):
         """
         Initialize the forecast model.
@@ -63,12 +66,21 @@ class ForecastModel(BaseModel):
         self.algorithm_hyperparams = algorithm_hyperparams or {}
         self.sensor_name: Optional[str] = None
 
-        self.lookback = lookback
-        self.train_size = train_size
+        # print lookback
+        print(f"[INIT] ForecastModel lookback: {lookback}", flush=True)
+
+        self.lookback = lookback or additional_info.get("lookback", 720)
+        self.train_size = train_size or additional_info.get("train_size", 8041)
         self.device_id = device_id
         self.sensors = sensors
-        self.train_start_date = train_start_date
-        self.train_end_date = train_end_date
+        self.train_start_date = train_start_date or additional_info.get(
+            "train_start_date", None
+        )
+        self.train_end_date = train_end_date or additional_info.get(
+            "train_end_date", None
+        )
+        self.group_by_ms = group_by_ms or additional_info.get("group_by_ms", 3600000)
+        self.last_fetched_date = last_fetched_date
 
         # Create time series algorithm
         config = TimeSeriesConfig(
@@ -127,13 +139,21 @@ class ForecastModel(BaseModel):
                     desc=desc,
                 )
 
+                print(
+                    f"Fetched {len(forecast_data)} rows for sensor {sensor_key}",
+                    flush=True,
+                )
+                print(forecast_data.head(), flush=True)
+
                 # TODO: group by time interval (hourly, daily) if needed
 
                 if forecast_data.empty:
                     logger.warning(
                         f"No forecast data available, using synthetic data as fallback"
                     )
-                    forecast_dict[sensor_key] = self._generate_sample_data(sensor_key=sensor_key, n_days=90)
+                    forecast_dict[sensor_key] = self._generate_sample_data(
+                        sensor_key=sensor_key, n_days=90
+                    )
 
                 else:
                     forecast_dict[sensor_key] = forecast_data
@@ -146,23 +166,75 @@ class ForecastModel(BaseModel):
             # Return a dictionary with synthetic data for each sensor
             forecast_dict = {}
             for sensor_key in sensor_keys:
-                forecast_dict[sensor_key] = self._generate_sample_data(sensor_key=sensor_key, n_days=90)
+                forecast_dict[sensor_key] = self._generate_sample_data(
+                    sensor_key=sensor_key, n_days=90
+                )
             return forecast_dict
 
     def fetch_latest(self, **kwargs):
-        limit = kwargs.get("limit", self.lookback)
+        # Need lookback + 2 for RNN dataset creation
+        # (create_rnn_dataset uses range(len(data) - lookback - 1))
+        # limit = kwargs.get("limit", self.lookback + 2)
+        limit = self.lookback + 2
+        ts = datetime.now()
+
+        print(
+            f"[FETCH_LATEST] Starting fetch with last_fetched_date={self.last_fetched_date}, limit={limit}",
+            flush=True,
+        )
+
+        # Always fetch the most recent N points (rolling window approach)
+        # This ensures we always have enough data for prediction
+        # Instead of incremental fetching which might not have enough new points
         data = self.fetch(
             sensor_keys=self.sensors,
-            limit=limit,
-            desc=True,
+            start_date=self.last_fetched_date,
+            end_date=datetime.now(),
+            limit=limit,  # SQL LIMIT with DESC will give us last N points
+            desc=False,
             # TODO: add groupby param
         )
+
+        # NOTE: this is for testing only
+        # we fetch max timestamp and set it as last_fetched_date
+        for sensor, df in data.items():
+            print(
+                f"[FETCH_LATEST] Fetched {len(df)} rows for sensor {sensor} (needed {self.lookback + 2})",
+                flush=True,
+            )
+            print(
+                # print columns of df
+                f"[FETCH_LATEST] Columns for sensor {sensor}: {df.columns.tolist()}",
+                flush=True,
+            )
+            print(
+                f"[FETCH_LATEST] first condition: {'datetime' in df.columns}",
+                flush=True,
+            )
+            print(f"[FETCH_LATEST] second condition: {not df.empty}", flush=True)
+            if "datetime" in df.columns and not df.empty:
+
+                # order by datetime ascending
+                df = df.sort_values(by="datetime", ascending=True)
+                print(df.head(), flush=True)
+                # order by datetime descending
+                df = df.sort_values(by="datetime", ascending=False)
+                print(df.head(), flush=True)
+                old_date = self.last_fetched_date
+                self.last_fetched_date = df["datetime"].max()
+                print(
+                    f"[FETCH_LATEST] Sensor {sensor} - df",
+                    flush=True,
+                )
+                print(
+                    f"[FETCH_LATEST] Updated last_fetched_date: {old_date} -> {self.last_fetched_date}",
+                    flush=True,
+                )
 
         for sensor, df in data.items():
             self.models[sensor]["data"] = df
         # read the latest timestamp from data
         # merge self.data with new data
-
 
     def _generate_sample_data(self, sensor_key: str = None, n_days=90) -> pd.DataFrame:
         """
@@ -216,7 +288,10 @@ class ForecastModel(BaseModel):
             end_date=self.train_end_date,
         )
 
-        print(f"Fetched data for training: {[ (k, type(v)) for k,v in data.items() ]}", flush=True)
+        print(
+            f"Fetched data for training: {[ (k, type(v)) for k,v in data.items() ]}",
+            flush=True,
+        )
 
         # self.sensor_name = sensor_name
         training_start = datetime.now()
@@ -233,7 +308,7 @@ class ForecastModel(BaseModel):
 
         USE_GPU = True  # Set to True if GPU is available
         TRAIN_SIZE = 8041
-        LOOKBACK = 720
+        # LOOKBACK = 720
         LSTM_UNITS = 256
         EPOCHS = 1
         BATCH_SIZE = 128
@@ -241,7 +316,10 @@ class ForecastModel(BaseModel):
         models = dict()
 
         for sensor_key, df in data.items():
-            print(f"\n [Preparing data for {sensor_key}] - type of df: {type(df)}", flush=True)
+            print(
+                f"\n [Preparing data for {sensor_key}] - type of df: {type(df)}",
+                flush=True,
+            )
             print(f"Data preview: - and columns: {df.columns.tolist()}", flush=True)
             print(df.head(), flush=True)
             print("Preparing sensor data...", flush=True)
@@ -259,27 +337,31 @@ class ForecastModel(BaseModel):
             # scale_and_split_data expects (sensor_df, sensor_name, train_size, lookback)
             # pass the sensor key/name so train_size and lookback are used correctly
             train_data, test_data, scaler = scale_and_split_data(
-                sensor, sensor_key, TRAIN_SIZE, LOOKBACK
+                sensor, sensor_key, TRAIN_SIZE, self.lookback
             )
 
             # Create RNN datasets
             print("\n[Create RNN datasets] Creating RNN datasets...", flush=True)
-            train_x, train_y = create_rnn_dataset(train_data, LOOKBACK)
+            train_x, train_y = create_rnn_dataset(train_data, self.lookback)
             train_x = np.reshape(train_x, (train_x.shape[0], 1, train_x.shape[1]))
 
-            print(f"[Create RNN datasets] Shape of train X before reshape: {train_x.shape}")
+            print(
+                f"[Create RNN datasets] Shape of train X before reshape: {train_x.shape}"
+            )
             # print first 5 rows of train_x
-            print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x[:5]}")
+            print(
+                f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x[:5]}"
+            )
             print(f"[Create RNN datasets] Shape of train Y: {train_y[:5]}")
             # print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x.head()}")
             # print(f"[Create RNN datasets] Columns of train X before reshape:\n{train_x.columns.tolist()}")
 
-            test_x, test_y = create_rnn_dataset(test_data, LOOKBACK)
+            test_x, test_y = create_rnn_dataset(test_data, self.lookback)
             test_x = np.reshape(test_x, (test_x.shape[0], 1, test_x.shape[1]))
 
             # Build and train model
             print("\nBuilding LSTM model...", flush=True)
-            model = build_lstm_model(LOOKBACK, LSTM_UNITS, use_gpu=USE_GPU)
+            model = build_lstm_model(self.lookback, LSTM_UNITS, use_gpu=USE_GPU)
 
             print("\nTraining model...", flush=True)
             model = train_lstm_model(model, train_x, train_y, EPOCHS, BATCH_SIZE)
@@ -321,6 +403,7 @@ class ForecastModel(BaseModel):
         import os
         import joblib
         from pathlib import Path
+
         path = Path(path)
         if not path.exists():
             os.makedirs(path)
@@ -359,9 +442,14 @@ class ForecastModel(BaseModel):
                         "model": model,
                         "scaler": scaler,
                     }
-                    print(f"Model and scaler loaded for sensor {sensor_key}", flush=True)
+                    print(
+                        f"Model and scaler loaded for sensor {sensor_key}", flush=True
+                    )
                 else:
-                    print(f"Scaler file {scaler_file} not found, skipping sensor {sensor_key}", flush=True)
+                    print(
+                        f"Scaler file {scaler_file} not found, skipping sensor {sensor_key}",
+                        flush=True,
+                    )
 
         self.models = models
         self.is_trained = len(models) > 0
@@ -369,7 +457,6 @@ class ForecastModel(BaseModel):
 
     def predict(
         self,
-        data: dict[str, pd.DataFrame],
         predict_for: int = 24,
     ) -> Dict[str, Any]:
         """
@@ -384,48 +471,157 @@ class ForecastModel(BaseModel):
             Dictionary with forecasted values for each sensor
         """
         results = dict()
+        results["forecast_max_steps"] = predict_for
 
         for sensor_key, model_dict in self.models.items():
-            # Get model and scaler
-            model = model_dict["model"]
-            scaler = model_dict["scaler"]
-
-            # Get the raw data for this sensor
-            sensor_df = data.get(sensor_key)
-            if sensor_df is None or sensor_df.empty:
-                print(f"[PREDICT] No data for sensor {sensor_key}, skipping", flush=True)
+            if sensor_key != "rotate":
                 continue
+            try:
 
-            # Prepare the data: extract sensor column and process
-            sensor_data = prepare_sensor_data(sensor_df, sensor_key)
+                # Get model and scaler
+                model = model_dict.get("model", None)
+                scaler = model_dict.get("scaler", None)
+                sensor_df = model_dict.get("data", None)
+                if model is None or scaler is None or sensor_df is None:
+                    print(
+                        f"[PREDICT] Model, scaler, or data missing for sensor {sensor_key}, skipping",
+                        flush=True,
+                    )
+                    continue
 
-            # Scale the data
-            sensor_values = sensor_data[sensor_key].values.reshape(-1, 1)
-            scaled_data = scaler.transform(sensor_values)
+                # Get the raw data for this sensor
+                if sensor_df is None or sensor_df.empty:
+                    print(
+                        f"[PREDICT] No data for sensor {sensor_key}, skipping",
+                        flush=True,
+                    )
+                    continue
 
-            # Create RNN dataset from the latest data
-            # We need at least lookback + 1 points to create a single input
-            if len(scaled_data) < self.lookback + 1:
-                print(f"[PREDICT] Insufficient data for sensor {sensor_key} (need {self.lookback + 1}, got {len(scaled_data)})", flush=True)
-                continue
+                # Prepare the data: extract sensor column and process
+                sensor_data = prepare_sensor_data(sensor_df, sensor_key)
 
-            # Create RNN input array
-            test_x, _ = create_rnn_dataset(scaled_data, self.lookback)
-            test_x = np.reshape(test_x, (test_x.shape[0], 1, test_x.shape[1]))
+                print(
+                    f"[PREDICT] sensor_data preview for {sensor_key}:\n{sensor_data.head()}",
+                    flush=True,
+                )
 
-            # Forecast future values
-            result = forecast_future(
-                model,
-                test_x,
-                scaler,
-                self.lookback,
-                predict_for=predict_for,
-            )
+                # log something for debug
+                print(
+                    f"[PREDICT] Preparing data for sensor {sensor_key}, total samples: {len(sensor_data)}",
+                    flush=True,
+                )
 
-            results[sensor_key] = result
+                print(
+                    f"[PREDICT] Sensor data preview for {sensor_key}:\n{sensor_data.head()}",
+                    flush=True,
+                )
+
+                # Scale the data
+                sensor_values = sensor_data[sensor_key].values.reshape(-1, 1)
+
+                # log something for debug
+                print(
+                    f"[PREDICT] Scaling data for sensor {sensor_key}, sample values: {sensor_values[-5:].flatten().tolist()}",
+                    flush=True,
+                )
+
+                scaled_data = scaler.transform(sensor_values)
+                # scaled_data = sensor_values
+
+                # log something for debug
+                # print(
+                #     f"[PREDICT] Scaled data for sensor {sensor_key}, sample values: {scaled_data[-5:].flatten().tolist()}",
+                #     flush=True,
+                # )
+
+                print(
+                    f"[PREDICT] Scaled data shape for sensor {sensor_key}: {scaled_data.shape}",
+                    flush=True,
+                )
+
+                print(
+                    f"[PREDICT] Scaled data preview for sensor {sensor_key}:\n{scaled_data}",
+                    flush=True,
+                )
+
+                # Create RNN dataset from the latest data
+                # We need at least lookback + 2 points to create a single input
+                # (because create_rnn_dataset uses range(len(data) - lookback - 1))
+                # if len(scaled_data) < self.lookback + 2:
+                #     print(
+                #         f"[PREDICT] Insufficient data for sensor {sensor_key} (need {self.lookback + 2}, got {len(scaled_data)})",
+                #         flush=True,
+                #     )
+                #     continue
+
+                # Create RNN input array
+
+                print(
+                    f"[PREDICT] Creating RNN dataset for sensor {sensor_key} with lookback {self.lookback}",
+                    flush=True,
+                )
+
+                test_x, _ = create_rnn_dataset(scaled_data, self.lookback)
+
+                # create rnn dataset for forecasting
+
+                # log something for debug
+                print(
+                    f"[PREDICT] Created RNN dataset for sensor {sensor_key}, test_x shape: {test_x.shape}",
+                    flush=True,
+                )
+
+                # Check if we got any samples
+                if len(test_x) == 0:
+                    print(
+                        f"[PREDICT] No samples created for sensor {sensor_key}",
+                        flush=True,
+                    )
+                    continue
+
+                test_x = np.reshape(test_x, (test_x.shape[0], 1, test_x.shape[1]))
+
+                # Forecast future values
+                result = forecast_future(
+                    model,
+                    test_x,
+                    scaler,
+                    self.lookback,
+                    predict_for=predict_for,
+                )
+
+                max_timestamp = sensor_df["datetime"].max()
+
+                results[sensor_key] = {}
+                # Convert forecast numpy array to list of floats
+                if isinstance(result, np.ndarray):
+                    # Flatten the array and convert to list of floats
+                    results[sensor_key]["forecast"] = result.flatten().tolist()
+                else:
+                    results[sensor_key]["forecast"] = result
+
+                # create a list of future timestamps from max_timestamp steps of self.group_by_ms
+                future_timestamps = [
+                    max_timestamp
+                    + pd.Timedelta(milliseconds=self.group_by_ms * (i + 1))
+                    for i in range(predict_for)
+                ]
+                # Convert timestamps to milliseconds (Unix timestamp in ms)
+                results[sensor_key]["timestamp"] = [
+                    int(ts.timestamp() * 1000) for ts in future_timestamps
+                ]
+            except Exception as e:
+                # print stack trace
+                import traceback
+
+                traceback.print_exc()
+                print(
+                    f"[PREDICT] Error during prediction for sensor {sensor_key}: {e}",
+                    flush=True,
+                )
+                break
 
         return results
-
 
     def forecast(self, predict_for: int = 24) -> Dict[str, Any]:
         """
@@ -447,9 +643,10 @@ class ForecastModel(BaseModel):
         self.fetch_latest()
         results = self.predict(
             # pass dict of dataframes for each sensor
-            data={sensor: model_dict["data"] for sensor, model_dict in self.models.items()},
             predict_for=predict_for,
         )
+        # print results
+        print(f"[FORECAST] Forecast results: {results}", flush=True)
         return results
 
     def forecast_multiple_horizons(

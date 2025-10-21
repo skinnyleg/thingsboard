@@ -4,13 +4,15 @@ args=$@
 
 echo args $args
 
-entity_token=$1
+entity_token="u0liwrrBwb9dM5fI8uIV"
 
-path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
+# path='./PdM_telemetry_MachineID11_OLD_DATA_random.csv'
+path='./PdM_telemetry_MachineID1.csv'
 increment_value=40
-if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
-  path='./PdM_telemetry_MachineID1.csv'
-fi
+# if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
+# if [ $entity_token == "u0liwrrBwb9dM5fI8uIV" ]; then
+#   path='./PdM_telemetry_MachineID1.csv'
+# fi
 
 # COUNT=1000
 
@@ -50,14 +52,14 @@ while true; do
   paste -d, "$path" | while IFS="," read -r datetime machineId volt rotate pressure vibration; do
     # printf "LOOP: $i, PRESSURE: $pressure, DATETIME: $datetime\r"
     sleep "$time"
-    if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
-      set_alarm=$(cat ./set-alarm.txt)
-      echo "set_alarm: $set_alarm"
-      if [ "$set_alarm" == "1" ]; then
-        pressure=$(echo "$pressure + $increment_value" | bc)
-      fi
-    fi
-    mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "$entity_token" -m "{pressure:$pressure,datetime:'$datetime'}" >/dev/null
+    # if [ $entity_token == "8PyIT47tVem2abB0zi5e" ]; then
+    #   set_alarm=$(cat ./set-alarm.txt)
+    #   echo "set_alarm: $set_alarm"
+    #   if [ "$set_alarm" == "1" ]; then
+    #     pressure=$(echo "$pressure + $increment_value" | bc)
+    #   fi
+    # fi
+    mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "$entity_token" -m "{rotate:$rotate}" >/dev/null
   done
   echo "Restarting file read..."
 done

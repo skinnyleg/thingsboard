@@ -1,0 +1,114 @@
+/**
+ * Copyright © 2016-2024 The Thingsboard Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.time-series-telemetry-container {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.timewindow-panel {
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+
+  .timewindow-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .timewindow-selector {
+      flex: 1;
+      display: flex;
+      justify-content: flex-start;
+
+      // Hide text in tb-timewindow on mobile
+      @media (max-width: 768px) {
+        ::ng-deep {
+          .tb-timewindow-panel .tb-timewindow-content .mat-mdc-button-base span:not(.mat-icon) {
+            display: none !important;
+          }
+          .tb-timewindow-panel .tb-timewindow-content .mat-mdc-button-base .tb-timewindow-value {
+            display: none !important;
+          }
+        }
+      }
+    }
+
+    .sensor-selector {
+      flex-shrink: 0;
+
+      .sensor-selector-button {
+        color: rgba(255, 255, 255, 0.7);
+        min-width: auto;
+        padding: 0 12px;
+        height: 40px;
+
+        &:hover {
+          color: #2196f3;
+          background: rgba(33, 150, 243, 0.1);
+        }
+
+        ::ng-deep {
+          .mat-mdc-button-touch-target {
+            height: 40px;
+          }
+
+          .mdc-button__label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+        }
+
+        .sensor-name-text {
+          font-size: 14px;
+          font-weight: 500;
+          white-space: nowrap;
+
+          // Hide sensor name text on mobile
+          @media (max-width: 768px) {
+            display: none;
+          }
+        }
+
+        // On mobile, make button square to fit icon only
+        @media (max-width: 768px) {
+          min-width: 40px;
+          width: 40px;
+          padding: 0;
+        }
+      }
+
+      ::ng-deep {
+        .mat-mdc-menu-item.selected {
+          background: rgba(33, 150, 243, 0.1);
+          color: #2196f3;
+        }
+      }
+    }
+  }
+}
+
+.telemetry-chart {
+  width: 100%;
+  flex: 1;
+  min-height: 350px;
+}

@@ -152,7 +152,8 @@ public class PredictiveMaintenanceController extends BaseController {
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
     @DeleteMapping(value = "/forecasts/{forecastId}")
     @ResponseBody
-    public void deletePredictiveModel(@PathVariable("forecastId") String strPredictiveModelId) throws ThingsboardException {
+    public void deletePredictiveModel(@PathVariable("forecastId") String strPredictiveModelId)
+            throws ThingsboardException {
         checkParameter("forecastId", strPredictiveModelId);
         PredictiveModelId predictiveModelId = new PredictiveModelId(toUUID(strPredictiveModelId));
         predictiveModelsService.delete(new PredictiveModel(predictiveModelId), getCurrentUser());

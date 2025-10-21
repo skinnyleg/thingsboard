@@ -21,10 +21,12 @@ export enum ForecastViewType {
 
 export interface ForecastViewPreferences {
   selectedViews: ForecastViewType[];
+  selectedSensor?: string; // Currently selected sensor for forecast chart (e.g., 'rotate', 'pressure', 'vibration', 'volt')
 }
 
 export const DEFAULT_VIEW_PREFERENCES: ForecastViewPreferences = {
   selectedViews: [ForecastViewType.FORECAST, ForecastViewType.ANOMALIES],
+  selectedSensor: 'rotate', // Default to first sensor
 };
 
 export function parseForecastViewPreferences(
@@ -63,6 +65,7 @@ export function parseForecastViewPreferences(
         selectedViews: parsed.selectedViews.filter((view) =>
           Object.values(ForecastViewType).includes(view)
         ),
+        selectedSensor: parsed.selectedSensor || DEFAULT_VIEW_PREFERENCES.selectedSensor,
       };
     }
 

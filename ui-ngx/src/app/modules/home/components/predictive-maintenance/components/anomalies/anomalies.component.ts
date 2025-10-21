@@ -92,14 +92,51 @@ export interface AnomalyPrediction {
   failure_predicted: boolean;
 }
 
+export interface LogEntry {
+  timestamp: string;
+  type: 'forecast' | 'anomaly' | 'system' | 'other';
+  level: string; // 'info', 'warn', 'error', etc.
+  message: string | {
+    result?: AnomalyPrediction[];
+  };
+  source?: 'ForecastModel' | 'AnomalyModel';
+}
+
+export type AnomalyPredictionLogEntry = LogEntry & {
+  type: 'anomaly';
+  level: 'PREDICTION';
+  message: {
+    result?: AnomalyPrediction[];
+  };
+};
+
+export interface ForecastSensorPrediction {
+    forecast: number[];
+    timestamp: number[];
+};
+
+export interface ForecastPrediction {
+  [key: string]: ForecastSensorPrediction | number;
+  forecast_max_steps: number;
+}
+
+export interface ForecastSensorPredictions {
+    [sensor: string]: ForecastSensorPrediction;
+}
+
+export interface ForecastPredictionLogEntryMessage {
+  result?: ForecastPrediction;
+}
+
+export type ForecastPredictionLogEntry = LogEntry & {
+  type: 'forecast';
+  level: 'PREDICTION';
+  message: string | ForecastPredictionLogEntryMessage;
+};
+
+
 export interface AnomalyLogs {
-  logs: Array<{
-    timestamp: string;
-    level: string; // 'info', 'warn', 'error', 'prediction', etc.
-    message: string | {
-      result?: AnomalyPrediction[];
-    };
-  }>;
+  logs: Array<LogEntry>;
   count: number;
 }
 

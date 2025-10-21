@@ -1086,7 +1086,7 @@ class DataRegistry:
             # Fetch time series data
             forecast_df = self._fetch_time_series_data(
                 device_id=device_id,
-                sensor_key=sensor_key,                
+                sensor_key=sensor_key,
                 limit=limit,
                 desc=desc,
                 start_date=start_time,
@@ -1099,7 +1099,9 @@ class DataRegistry:
                 )
                 return forecast_df
 
-            logger.info(f"Fetched {len(forecast_df)} time series points of {sensor_key}")
+            logger.info(
+                f"Fetched {len(forecast_df)} time series points of {sensor_key}"
+            )
             return forecast_df
 
         except Exception as e:
@@ -1214,14 +1216,12 @@ class DataRegistry:
                 df.rename(columns={"value": sensor_key}, inplace=True)
                 df = df.sort_values("datetime").reset_index(drop=True)
                 return df
-        
 
             return pd.DataFrame(columns=["datetime", sensor_key])
 
         except Exception as e:
             logger.error(f"Error fetching sensor data: {e}")
             return pd.DataFrame(columns=["datetime", "value"])
-
 
     def _fetch_failure_labels(
         self, device_id: str, start_ts: int, end_ts: int, index: pd.Index
@@ -1285,7 +1285,7 @@ class DataRegistry:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         limit: int = None,
-        desc: bool = False,
+        desc: bool = True,
         group_by: Optional[str] = None,
     ) -> pd.DataFrame:
         """
@@ -1309,8 +1309,7 @@ class DataRegistry:
         order_clause = "DESC" if desc else "ASC"
         limit_clause = " LIMIT :limit" if limit is not None else ""
 
-        query = text(
-            f"""
+        text_q = f"""
             SELECT
                 ts as datetime,
                 COALESCE(dbl_v, long_v, str_v::float) as value
@@ -1321,7 +1320,10 @@ class DataRegistry:
             ORDER BY ts {order_clause}
             {limit_clause}
             """
-        )
+
+        query = text(text_q)
+        # print query text for debugging
+        print(f"[DEBUG] _fetch_time_series_data query: {text_q}", flush=True)
         # Build parameters dictionary, only including limit if it's not None
         params = {
             "device_id": device_id,
