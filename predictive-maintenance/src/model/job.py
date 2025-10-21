@@ -352,6 +352,7 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                     )
 
                     # make a copy of result to log
+                    result_copy = json.loads(json.dumps(result, default=to_native))
 
                     add_model_log(
                         model_id,
