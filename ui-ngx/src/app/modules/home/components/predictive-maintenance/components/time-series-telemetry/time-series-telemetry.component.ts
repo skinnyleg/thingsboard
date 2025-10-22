@@ -563,8 +563,8 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       if (sensorForecast.forecast && sensorForecast.timestamp) {
         this.forecastDataPoints = sensorForecast.timestamp.map((ts: number, index: number) => [ts, sensorForecast.forecast[index]]);
 
-        // console.log(`[TIME-SERIES] ✓ Loaded ${this.forecastDataPoints.length} forecast points for sensor ${this.selectedSensor}`);
-        // console.log('[TIME-SERIES] First few points:', this.forecastDataPoints.slice(0, 3));
+        console.log(`[TIME-SERIES] ✓ Loaded ${this.forecastDataPoints.length} forecast points for sensor ${this.selectedSensor}`);
+        console.log('[TIME-SERIES] First few points:', this.forecastDataPoints.slice(0, 3));
       } else {
         console.warn(`[TIME-SERIES] Sensor forecast missing 'forecast' or 'timestamp' fields:`, sensorForecast);
         this.forecastDataPoints = [];

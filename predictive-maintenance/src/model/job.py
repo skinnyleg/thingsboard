@@ -223,6 +223,8 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                     add_model_log(model_id, "info", "Job stopped by user")
                     break
 
+            result = {}
+
             try:
                 iteration += 1
                 print(
@@ -379,10 +381,11 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                     sensors = model.sensors
                     for sensor in model.sensors:
                         if sensor in result:
-                            result[sensor]["timestamp"] = [
-                                result[sensor]["timestamp"][0]
-                            ]
-                            result[sensor]["forecast"] = [result[sensor]["forecast"][0]]
+                            if len(result[sensor].get("forecast", [])) > 1:
+                                result[sensor]["timestamp"] = [
+                                    result[sensor]["timestamp"][0]
+                                ]
+                                result[sensor]["forecast"] = [result[sensor]["forecast"][0]]
 
                     # DEBUG: Log sensors AFTER truncating
                     print(f"[DEBUG] {model_id} - AFTER truncating:", flush=True)

@@ -563,7 +563,7 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
 
         this.subscriptions.push(
           this.forecastPredictionLogs$.subscribe(log => {
-          console.log('[MODEL] Forecast Prediction Log entry received:', log);
+          // console.log('[MODEL] Forecast Prediction Log entry received:', log);
 
           let results: ForecastPrediction = null;
 
@@ -573,14 +573,14 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
               results = JSON.parse(log.message);
             } catch (e) {
               // Message is plain text, not JSON - skip processing
-              console.log('[MODEL] Non-JSON log message:', log.message);
+              // console.log('[MODEL] Non-JSON log message:', log.message);
               return;
             }
           } else {
             results = log.message.result as ForecastPrediction;
           }
 
-          console.log('[MODEL] Parsed forecast results:', results);
+          // console.log('[MODEL] Parsed forecast results:', results);
           // console.log('[MODEL] Raw results object:', JSON.stringify(results, null, 2));
             // check if
 
@@ -594,12 +594,12 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
 
             const data = results as ForecastSensorPredictions;
 
-            console.log('[MODEL] Processing forecast data with', Object.keys(data).length, 'sensors');
-            console.log('[MODEL] Sensor keys:', Object.keys(data));
+            // console.log('[MODEL] Processing forecast data with', Object.keys(data).length, 'sensors');
+            // console.log('[MODEL] Sensor keys:', Object.keys(data));
             // console.log('[MODEL] Full data structure:', JSON.stringify(data, null, 2));
 
             // Check if selected sensor exists in forecast data
-            console.log('[MODEL] Forecast data:', data);
+            // console.log('[MODEL] Forecast data:', data);
             const availableSensors = Object.keys(data);
             if (!availableSensors.includes(this.selectedSensor)) {
               console.warn(`[MODEL] ⚠️ Selected sensor '${this.selectedSensor}' not found in forecast data.`);
@@ -622,12 +622,12 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
               this.forecastData = data;
               // Force change detection
               this.cdr.detectChanges();
-              console.log('[MODEL] ✓ Forecast data updated and passed to widgets:', {
-                sensors: Object.keys(this.forecastData),
-                selectedSensor: this.selectedSensor,
-                maxSteps: this.forecastMaxSteps,
-                data: this.forecastData
-              });
+              // console.log('[MODEL] ✓ Forecast data updated and passed to widgets:', {
+              //   sensors: Object.keys(this.forecastData),
+              //   selectedSensor: this.selectedSensor,
+              //   maxSteps: this.forecastMaxSteps,
+              //   data: this.forecastData
+              // });
             // });
           } else {
             console.warn('[MODEL] No forecast results to process');
