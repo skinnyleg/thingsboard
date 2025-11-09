@@ -215,6 +215,7 @@
       padding: 12px 8px;
       border-bottom: 1px solid var(--mat-divider-color);
       font-size: 13px;
+      vertical-align: middle;
 
       // Sticky column styles for cells
       &.sticky-column {
@@ -320,6 +321,7 @@
 
     .component-name {
       font-weight: 500;
+      white-space: pre-line;
       //   color: #333;
     }
 
@@ -328,18 +330,6 @@
       //   color: #666;
       opacity: 0.7;
     }
-  }
-}
-
-.date-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  .date-icon {
-    color: #666;
-    font-size: 16px;
-    opacity: 0.7;
   }
 }
 
@@ -401,15 +391,15 @@
     font-weight: 500;
 
     &.high-confidence {
-      color: #4caf50;
+      color: #d32f2f; // Dark red for high failure risk
     }
 
     &.medium-confidence {
-      color: #ff9800;
+      color: #ff6b35; // Orange-red for medium failure risk
     }
 
     &.low-confidence {
-      color: #f44336;
+      color: #ffb74d; // Light orange/amber for low failure risk
     }
   }
 
@@ -586,15 +576,15 @@
 
     .confidence-value {
       &.high-confidence {
-        color: #66bb6a;
+        color: #d32f2f; // Dark red for high failure risk
       }
 
       &.medium-confidence {
-        color: #ffa726;
+        color: #ff6b35; // Orange-red for medium failure risk
       }
 
       &.low-confidence {
-        color: #ff6b6b;
+        color: #ffb74d; // Light orange/amber for low failure risk
       }
     }
 

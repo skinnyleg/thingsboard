@@ -112,6 +112,8 @@ export class ForecastChartComponent
 
   private telemetrySubscription: Subscription;
 
+  private resizeObserver: ResizeObserver;
+
   // Data storage
   private historicalData: Array<[number, number]> = [];
 
@@ -125,6 +127,11 @@ export class ForecastChartComponent
   hasNoData = false;
 
   noDataMessage = 'No data available';
+
+  // Job state properties
+  isPaused = false;
+
+  jobRunning = false;
 
   // History mode properties
   isHistoryMode = false;
@@ -193,6 +200,9 @@ export class ForecastChartComponent
     if (this.telemetrySubscription) {
       this.telemetrySubscription.unsubscribe();
     }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
     if (this.chart) {
       this.chart.dispose();
     }
@@ -223,7 +233,75 @@ export class ForecastChartComponent
           this.updateChartData();
         }
       }
+
+      // Check initial job status
+      if (this.forecastId) {
+        this.checkJobStatus();
+      }
+
+      // Setup resize observer
+      this.setupResizeObserver();
     }, 0);
+  }
+
+  // Setup ResizeObserver to watch for container size changes
+  private setupResizeObserver(): void {
+    if (!this.chartElement?.nativeElement) {
+      return;
+    }
+
+    // Create ResizeObserver to watch for container size changes
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.chart) {
+        // Resize chart to fit new container dimensions
+        this.chart.resize();
+      }
+    });
+
+    // Observe the chart container element
+    this.resizeObserver.observe(this.chartElement.nativeElement);
+  }
+
+  // Check job status to initialize pause/unpause button state
+  checkJobStatus(): void {
+    if (!this.forecastId) {
+      return;
+    }
+
+    console.log('[FORECAST-CHART] Checking job status for', this.forecastId);
+
+    const commandId = Date.now();
+    const command = {
+      commandId: commandId,
+      type: 'job_status',
+      forecastId: this.forecastId,
+      data: {
+        modelType: 'forecast'
+      }
+    };
+
+    // Subscribe to job status updates
+    this.modelWebSocketService.subscribeToJobStatus(this.forecastId, 'forecast').subscribe({
+      next: (response: any) => {
+        console.log('[FORECAST-CHART] Job status response:', response);
+        if (response.data) {
+          const status = response.data.status || response.data.data?.status;
+          const paused = response.data.paused || response.data.data?.paused || false;
+
+          this.jobRunning = status === 'running';
+          this.isPaused = paused;
+          this.cdr.detectChanges();
+
+          console.log('[FORECAST-CHART] Updated job state:', {
+            running: this.jobRunning,
+            paused: this.isPaused
+          });
+        }
+      },
+      error: (error) => {
+        console.error('[FORECAST-CHART] Error checking job status:', error);
+      }
+    });
   }
 
   toggleExpanded(): void {
@@ -249,6 +327,68 @@ export class ForecastChartComponent
       this.isRefreshing = false;
       this.cdr.detectChanges();
     }, 1000);
+  }
+
+  // Pause prediction job
+  pausePredictions(): void {
+    if (!this.forecastId) {
+      console.error('[FORECAST-CHART] Cannot pause: No forecast ID');
+      return;
+    }
+
+    console.log('[FORECAST-CHART] Pausing predictions for', this.forecastId);
+
+    // Send pause command via WebSocket
+    const commandId = Date.now();
+    const command = {
+      commandId: commandId,
+      type: 'pause_job',
+      forecastId: this.forecastId,
+      data: {
+        modelType: 'forecast'
+      }
+    };
+
+    this.modelWebSocketService.connect();
+    const ws$ = this.modelWebSocketService.connect();
+    ws$.next(command);
+
+    // Update UI state
+    this.isPaused = true;
+    this.cdr.detectChanges();
+
+    console.log('[FORECAST-CHART] Pause command sent:', command);
+  }
+
+  // Resume (unpause) prediction job
+  unpausePredictions(): void {
+    if (!this.forecastId) {
+      console.error('[FORECAST-CHART] Cannot unpause: No forecast ID');
+      return;
+    }
+
+    console.log('[FORECAST-CHART] Resuming predictions for', this.forecastId);
+
+    // Send unpause command via WebSocket
+    const commandId = Date.now();
+    const command = {
+      commandId: commandId,
+      type: 'unpause_job',
+      forecastId: this.forecastId,
+      data: {
+        modelType: 'forecast'
+      }
+    };
+
+    this.modelWebSocketService.connect();
+    const ws$ = this.modelWebSocketService.connect();
+    ws$.next(command);
+
+    // Update UI state
+    this.isPaused = false;
+    this.cdr.detectChanges();
+
+    console.log('[FORECAST-CHART] Unpause command sent:', command);
   }
 
   toggleMode(): void {

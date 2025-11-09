@@ -78,7 +78,7 @@ export class ModelWebSocketService {
 
   private authToken: string | null = null;
 
-  constructor() {}
+  constructor() { }
 
   private onConnectCbs: Array<() => void> = [];
 
@@ -98,7 +98,7 @@ export class ModelWebSocketService {
         // No need for custom serializer - it would cause double encoding
         openObserver: {
           next: () => {
-            console.log('[AnomalyStream] WebSocket connection opened');
+            console.info('%c[AnomalyStream] WebSocket connection opened', 'color: #9E9E9E; font-weight: bold');
             this.authenticate();
             this.onConnectCbs.forEach((cb) => cb());
           },
@@ -113,7 +113,9 @@ export class ModelWebSocketService {
 
       // Handle incoming messages
       this.ws$.subscribe({
-        next: (message) => this.handleMessage(message),
+        next: (message) => {
+          this.handleMessage(message);
+        },
         error: (error) => {
           console.error('[AnomalyStream] WebSocket error:', error);
           // console.log("[AnomalyStream] Error details:", JSON.stringify(error));
@@ -140,8 +142,8 @@ export class ModelWebSocketService {
     } else {
       // console.error("[AnomalyStream] No JWT token found for authentication");
       // console.log(
-        // "[AnomalyStream] AuthService.getJwtToken() returned:",
-        // this.authToken
+      // "[AnomalyStream] AuthService.getJwtToken() returned:",
+      // this.authToken
       // );
       // console.log("[AnomalyStream] Make sure you are logged in to ThingsBoard");
     }
@@ -158,7 +160,7 @@ export class ModelWebSocketService {
    * Handle incoming WebSocket messages
    */
   private handleMessage(message: any): void {
-    // console.log("[AnomalyStream] Received message:", message);
+    console.log("[ModelComponent] [handleMessage()] Received message:", message);
 
     switch (message.type) {
       case 'progress':
@@ -235,60 +237,60 @@ export class ModelWebSocketService {
    * @param startTime Optional start time (timestamp in ms) for historical data
    * @returns Observable of anomaly stream messages
    */
-  subscribeToAnomalyStream(
-    forecastId: string,
-    startTime?: number
-  ): Observable<AnomalyStreamMessage> {
-    const ws = this.connect();
-    const cmdId = this.cmdIdCounter++;
-
-    // console.log(
-    //   `[AnomalyStream] Subscribing to forecast ${forecastId} with cmdId ${cmdId}`,
-    //   startTime
-    //     ? `from ${new Date(startTime).toISOString()}`
-    //     : "without time filter"
-    // );
-
-    // Send subscription command with authentication in the correct format
-    const attemptSubscription = (attempt: number = 1) => {
-      if (this.isAuthenticated && ws && this.authToken) {
-        // console.log(
-        //   `[AnomalyStream] Sending subscription command (attempt ${attempt})`
-        // );
-        const cmd: any = {
-          cmdId,
-          forecastId,
-          type: AnomalyStreamType.ANOMALY_STREAM_COMMAND,
-        };
-
-        // Add time window if provided
-        if (startTime) {
-          cmd.startTime = startTime;
-          // console.log(
-          //   `[AnomalyStream] Including startTime: ${startTime} (${new Date(
-          //     startTime
-          //   ).toISOString()})`
-          // );
-        }
-        ws.next(cmd);
-      } else if (attempt < 5) {
-        // console.log(
-        //   `[AnomalyStream] Not authenticated yet, waiting... (attempt ${attempt}/5)`
-        // );
-        setTimeout(() => attemptSubscription(attempt + 1), 1000);
-      } else {
-        console.error(
-          '[AnomalyStream] Cannot subscribe - authentication timeout'
-        );
-        // subject.error('Authentication timeout');
-      }
-    };
-
-    // Wait for WebSocket connection to be established
-    setTimeout(() => attemptSubscription(), 500);
-
-    return this.subscribe(AnomalyStreamType.ANOMALY_STREAM_COMMAND);
-  }
+  // subscribeToAnomalyStream(
+  //   forecastId: string,
+  //   startTime?: number
+  // ): Observable<AnomalyStreamMessage> {
+  //   const ws = this.connect();
+  //   const cmdId = this.cmdIdCounter++;
+  //
+  //   // console.log(
+  //   //   `[AnomalyStream] Subscribing to forecast ${forecastId} with cmdId ${cmdId}`,
+  //   //   startTime
+  //   //     ? `from ${new Date(startTime).toISOString()}`
+  //   //     : "without time filter"
+  //   // );
+  //
+  //   // Send subscription command with authentication in the correct format
+  //   const attemptSubscription = (attempt: number = 1) => {
+  //     if (this.isAuthenticated && ws && this.authToken) {
+  //       // console.log(
+  //       //   `[AnomalyStream] Sending subscription command (attempt ${attempt})`
+  //       // );
+  //       const cmd: any = {
+  //         cmdId,
+  //         forecastId,
+  //         type: AnomalyStreamType.ANOMALY_STREAM_COMMAND,
+  //       };
+  //
+  //       // Add time window if provided
+  //       if (startTime) {
+  //         cmd.startTime = startTime;
+  //         // console.log(
+  //         //   `[AnomalyStream] Including startTime: ${startTime} (${new Date(
+  //         //     startTime
+  //         //   ).toISOString()})`
+  //         // );
+  //       }
+  //       ws.next(cmd);
+  //     } else if (attempt < 5) {
+  //       // console.log(
+  //       //   `[AnomalyStream] Not authenticated yet, waiting... (attempt ${attempt}/5)`
+  //       // );
+  //       setTimeout(() => attemptSubscription(attempt + 1), 1000);
+  //     } else {
+  //       console.error(
+  //         '[AnomalyStream] Cannot subscribe - authentication timeout'
+  //       );
+  //       // subject.error('Authentication timeout');
+  //     }
+  //   };
+  //
+  //   // Wait for WebSocket connection to be established
+  //   setTimeout(() => attemptSubscription(), 500);
+  //
+  //   return this.subscribe(AnomalyStreamType.ANOMALY_STREAM_COMMAND);
+  // }
 
   onConnect(cb: () => void): void {
     this.onConnectCbs.push(cb);
@@ -308,23 +310,23 @@ export class ModelWebSocketService {
       return this.subscribe(AnomalyStreamType.ACTIVATE_COMMAND);
     }
 
-    this.sentActivateCommand = true;
-       // console.log(
-      //   `[AnomalyStream] Sending ACTIVATE command for forecast ${forecastId} with cmdId ${cmdId}`
-      // );
+    // this.sentActivateCommand = true;
+    // console.log(
+    //   `[AnomalyStream] Sending ACTIVATE command for forecast ${forecastId} with cmdId ${cmdId}`
+    // );
 
-      const cmd = {
-        cmdId: this.cmdIdCounter++,
-        forecastId,
-        type: AnomalyStreamType.ACTIVATE_COMMAND,
-      };
-      if (!this.isConnected()) {
-        this.onConnect(() => {
-          this.ws$.next(cmd);
-        });
-      } else {
+    const cmd = {
+      cmdId: this.cmdIdCounter++,
+      forecastId,
+      type: AnomalyStreamType.ACTIVATE_COMMAND,
+    };
+    if (!this.isConnected()) {
+      this.onConnect(() => {
         this.ws$.next(cmd);
-      }
+      });
+    } else {
+      this.ws$.next(cmd);
+    }
 
     return this.subscribe(AnomalyStreamType.ACTIVATE_COMMAND);
   }

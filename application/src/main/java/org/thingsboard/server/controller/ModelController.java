@@ -22,6 +22,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import retrofit2.http.DELETE;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -442,7 +444,8 @@ public class ModelController extends BaseController {
             @Parameter(description = "Maximum number of log entries") @RequestParam(value = "limit", required = false, defaultValue = "100") int limit)
             throws ThingsboardException {
         try {
-            return modelManagementService.getModelLogs(modelId, level, limit);
+            String type = "all";
+            return modelManagementService.getModelLogs(modelId, level, limit, type);
         } catch (Exception e) {
             throw new ThingsboardException(e.getMessage(), ThingsboardErrorCode.GENERAL);
         }
@@ -616,6 +619,116 @@ public class ModelController extends BaseController {
             log.info("Deleted all logs for model: {}", modelId);
         } catch (Exception e) {
             log.error("Failed to delete model logs for modelId: {}", modelId, e);
+            throw new ThingsboardException(e.getMessage(), ThingsboardErrorCode.GENERAL);
+        }
+    }
+
+    /**
+     * GET /api/models/anomaly-history-predictions/{modelId}/{predictionType}
+     * 
+     * Fetch anomaly history predictions for a specific model and prediction type.
+     * 
+     * Path params:
+     * - modelId: Model ID (predictive_maintenance_config ID)
+     * - predictionType: Prediction type (Anomaly, Forecast, Failure)
+     * 
+     * Query params:
+     * - startTs: Start timestamp (milliseconds, optional)
+     * - endTs: End timestamp (milliseconds, optional)
+     * - limit: Maximum number of records (default: 100)
+     * 
+     * Response:
+     * {
+     * "predictions": [
+     * {
+     * "id": "uuid",
+     * "modelId": "uuid",
+     * "createdTime": 1234567890000,
+     * "predictionTime": "2024-01-01T12:00:00Z",
+     * "predictionType": "Anomaly",
+     * "predictionValue": {...}
+     * }
+     * ],
+     * "totalCount": 123
+     * }
+     */
+    @PreAuthorize("hasAnyAuthority('SYS_ADMIN', 'TENANT_ADMIN', 'CUSTOMER_USER')")
+    @GetMapping("/models/anomaly-history-predictions/{modelId}/{predictionType}")
+    @ResponseBody
+    public JsonNode fetchAnomalyHistoryPredictions(
+            @Parameter(description = "Model ID (predictive_maintenance_config ID)") @PathVariable("modelId") String modelId,
+            @Parameter(description = "Prediction type: Anomaly, Forecast, Failure") @PathVariable("predictionType") String predictionType,
+            @Parameter(description = "Start timestamp in milliseconds (optional)") @RequestParam(value = "startTs", required = false) Long startTs,
+            @Parameter(description = "End timestamp in milliseconds (optional)") @RequestParam(value = "endTs", required = false) Long endTs,
+            @Parameter(description = "Maximum number of records to return (default: 100)") @RequestParam(value = "limit", required = false, defaultValue = "100") int limit)
+            throws ThingsboardException {
+        try {
+            log.info("Fetching predictions for modelId: {}, type: {}, startTs: {}, endTs: {}, limit: {}",
+                    modelId, predictionType, startTs, endTs, limit);
+
+            UUID modelUuid = UUID.fromString(modelId);
+
+            return modelManagementService.fetchPredictions(
+                    modelUuid,
+                    startTs,
+                    endTs,
+                    predictionType,
+                    limit);
+
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid modelId format: {}", modelId);
+            throw new ThingsboardException("Invalid modelId format", ThingsboardErrorCode.BAD_REQUEST_PARAMS);
+        } catch (Exception e) {
+            log.error("Failed to fetch anomaly history predictions for modelId: {} and type: {}", modelId,
+                    predictionType, e);
+            throw new ThingsboardException(e.getMessage(), ThingsboardErrorCode.GENERAL);
+        }
+    }
+
+    /**
+     * DELETE /api/models/anomaly-history-predictions/{modelId}
+     * 
+     * Delete all predictions for a specific model.
+     * 
+     * Path params:
+     * - modelId: Model ID (predictive_maintenance_config ID)
+     * 
+     * Query params:
+     * - predictionType: Optional prediction type filter (Anomaly, Forecast,
+     * Failure)
+     * 
+     * Response:
+     * {
+     * "deletedCount": 42,
+     * "message": "Successfully deleted predictions"
+     * }
+     */
+    @PreAuthorize("hasAnyAuthority('SYS_ADMIN', 'TENANT_ADMIN')")
+    @DeleteMapping("/models/anomaly-history-predictions/{modelId}")
+    @ResponseBody
+    public JsonNode deletePredictions(
+            @Parameter(description = "Model ID (predictive_maintenance_config ID)") @PathVariable("modelId") String modelId,
+            @Parameter(description = "Prediction type filter (optional): Anomaly, Forecast, Failure") @RequestParam(value = "predictionType", required = false) String predictionType)
+            throws ThingsboardException {
+        try {
+            log.info("Deleting predictions for modelId: {}, type: {}", modelId, predictionType);
+
+            UUID modelUuid = UUID.fromString(modelId);
+
+            int deletedCount = modelManagementService.deletePredictions(modelUuid, predictionType);
+
+            ObjectNode response = mapper.createObjectNode();
+            response.put("deletedCount", deletedCount);
+            response.put("message", "Successfully deleted " + deletedCount + " predictions");
+
+            log.info("Deleted {} predictions for modelId: {}", deletedCount, modelId);
+            return response;
+
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid modelId format: {}", modelId);
+            throw new ThingsboardException("Invalid modelId format", ThingsboardErrorCode.BAD_REQUEST_PARAMS);
+        } catch (Exception e) {
+            log.error("Failed to delete predictions for modelId: {}", modelId, e);
             throw new ThingsboardException(e.getMessage(), ThingsboardErrorCode.GENERAL);
         }
     }

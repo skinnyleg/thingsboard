@@ -212,10 +212,15 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
 
   private forecastPredictionLogs$: Observable<ForecastPredictionLogEntry>;
 
+  // Forecast job pause/unpause state
+  forecastJobRunning = false;
+
+  forecastJobPaused = false;
+
   constructor(
     protected store: Store<AppState>,
     protected route: ActivatedRoute,
-    private predictiveModelsService: PredictiveModelsService,
+    public predictiveModelsService: PredictiveModelsService,
     private deviceService: DeviceService,
     protected router: Router,
     public dialog: MatDialog,
@@ -257,6 +262,285 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
 
     // Unsubscribe from all tracked subscriptions
     this.subscriptions.forEach((sub) => sub.unsubscribe());
+  }
+
+  /**
+   * Fetch historical anomaly predictions from the database
+   * and add them to the anomalies table component.
+   */
+  fetchAnomalyHistoryPredictions() {
+    if (!this.trueId) {
+      console.warn('[MODEL] Cannot fetch history: No model ID available');
+      return;
+    }
+
+    console.log('[MODEL] Fetching anomaly history predictions for model:', this.trueId);
+
+    // Calculate time range: last 30 days
+    const endTs = Date.now();
+    const startTs = endTs - (30 * 24 * 60 * 60 * 1000); // 30 days ago
+
+    // Fetch anomaly predictions from the database
+    this.predictiveModelsService.fetchANomalyHistoryPredictions(
+      this.trueId,
+      'Anomaly', // prediction type
+      startTs,
+      endTs,
+      100 // limit
+    ).subscribe({
+      next: (response) => {
+        console.log('[MODEL] Fetched anomaly history:', response);
+
+        if (response.predictions && response.predictions.length > 0) {
+          let addedCount = 0;
+          // Process each historical prediction and add to the anomalies table
+          response.predictions.forEach((prediction: any) => {
+            try {
+              // Parse the prediction value if it's a string
+              const predictionValue = typeof prediction.predictionValue === 'string'
+                ? JSON.parse(prediction.predictionValue)
+                : prediction.predictionValue;
+
+              // Only show predictions where failure_predicted is true
+              if (predictionValue.failure_predicted === true) {
+                // Convert database prediction to AnomalyReport format
+                const anomaly = this.convertPredictionToAnomaly(prediction, predictionValue);
+
+                // Add to anomalies component
+                if (this.anomaliesComponent) {
+                  this.anomaliesComponent.addAnomaly(anomaly);
+                  addedCount++;
+                }
+              } else {
+                console.log('[MODEL] Skipping prediction (failure_predicted is not true):', prediction.id);
+              }
+            } catch (error) {
+              console.error('[MODEL] Error processing historical prediction:', error, prediction);
+            }
+          });
+
+          console.log(
+            `[MODEL] ✓ Added ${addedCount} historical anomalies ` +
+            `(filtered from ${response.predictions.length} total)`
+          );
+        } else {
+          console.log('[MODEL] No historical anomaly predictions found');
+        }
+      },
+      error: (error) => {
+        console.error('[MODEL] Error fetching anomaly history:', error);
+      }
+    });
+  }
+
+  /**
+   * Convert a database prediction record to an AnomalyReport
+   */
+  private convertPredictionToAnomaly(prediction: any, predictionValue: any): AnomalyReport {
+    // Extract confidence and severity
+    const confidence = predictionValue.general_failure_probability
+      ? Math.round(predictionValue.general_failure_probability * 100)
+      : predictionValue.confidence || 0;
+    const severity = confidence >= 90 ? 'Critical' : confidence >= 70 ? 'Major' : 'Minor';
+
+    // Extract time information - create 1 hour range
+    let startTime: string | number | undefined;
+    let endTime: string | number | undefined;
+
+    if (predictionValue.datetime) {
+      const parts = predictionValue.datetime.split('/');
+      if (parts.length === 2) {
+        startTime = parts[0];
+        endTime = parts[1];
+      } else {
+        // Single datetime - create 1 hour range
+        const startDate = new Date(predictionValue.datetime);
+        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // Add 1 hour
+        startTime = startDate.toISOString();
+        endTime = endDate.toISOString();
+      }
+    } else if (prediction.predictionTime) {
+      // Use predictionTime and create 1 hour range
+      const startDate = new Date(prediction.predictionTime);
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // Add 1 hour
+      startTime = startDate.toISOString();
+      endTime = endDate.toISOString();
+    }
+
+    // Get component type, remove "Unknown" fallback
+    const componentType = predictionValue.predicted_failing_component || predictionValue.component_type || '';
+
+    return {
+      id: prediction.id,
+      reportEntity: this.deviceId,
+      errorName: predictionValue.predicted_failing_component || predictionValue.error_name || '',
+      severity,
+      creationDate: prediction.predictionTime || prediction.createdAt || new Date().toISOString(),
+      componentType,
+      deviceType: '',
+      location: '',
+      description: predictionValue.description ||
+        `Predicted failure for component ${predictionValue.predicted_failing_component || ''}`,
+      status: 'Active',
+      timeRange: predictionValue.datetime || prediction.predictionTime || '',
+      startTime,
+      endTime,
+      confidence,
+      affectedMetrics: predictionValue.predicted_failing_component
+        ? [predictionValue.predicted_failing_component]
+        : predictionValue.affected_metrics || [],
+    };
+  }
+
+  subscribeToAnomalyPredictions() {
+    const anomalyPredictionLogs$ = this.logsObservable.pipe(
+      filter((log: LogEntry) =>
+        log.type && log.type.toLowerCase() === 'anomaly' && log.level && log.level.toLowerCase() === 'prediction')
+    ) as Observable<AnomalyPredictionLogEntry>;
+
+    const anomalyPredictionLogsSubscription = anomalyPredictionLogs$.subscribe(log => {
+      // console.log('Log entry:', log);
+      console.log('Anomaly Prediction Log entry:', log);
+      // return
+
+      // Check if this log is new (after last read timestamp)
+      const logTimestamp = log.timestamp ? new Date(log.timestamp).getTime() : Date.now();
+      console.log(
+        'Log timestamp:',
+        logTimestamp,
+        'Last read:',
+        this.lastReadLogTimestamp,
+        'Is new?',
+        logTimestamp > this.lastReadLogTimestamp
+      );
+      if (logTimestamp > this.lastReadLogTimestamp) {
+        console.log('Setting unreadLogs to true');
+        // Run inside Angular zone to ensure change detection
+        this.ngZone.run(() => {
+          this.unreadLogs = true;
+          console.log('Inside zone, unreadLogs set to:', this.unreadLogs);
+        });
+        console.log('After zone.run, unreadLogs:', this.unreadLogs);
+        // update global notifier
+        try {
+          if (this.trueId) {
+            this.logsNotifier.setUnread(this.trueId, true);
+          }
+        } catch (e) {
+          // ignore notifier errors
+        }
+      }
+
+      if (log.level.toLowerCase() === 'prediction') {
+        console.log('Job prediction:', log.message);
+        // Try to parse prediction log as JSON
+
+        if (typeof log.message !== 'string' && log.message?.result) {
+          // Process each prediction result individually
+          const results = Array.isArray(log.message.result) ? log.message.result : [log.message.result];
+
+          results.forEach((predictionItem: any) => {
+            // Only process results that predict a failure
+            if (predictionItem.failure_predicted === true) {
+              const anomaly = this.processAnomalyPrediction(predictionItem);
+              this.anomaliesComponent?.addAnomaly(anomaly);
+            }
+          });
+        }
+      } else {
+        // console.log4('Job log:', log.message);
+      }
+    });
+
+    this.subscriptions.push(anomalyPredictionLogsSubscription);
+  }
+
+  subscribeToForecastPredictions() {
+    this.forecastPredictionLogs$ = this.logsObservable.pipe(
+      tap((log) => {
+        console.log('%cProcessing log entry for forecast predictions:', 'color: orange;', log);
+      }),
+      filter((log: LogEntry) =>
+        log.level && log.level.toLowerCase() === 'prediction' &&
+        (log.type && log.type.toLowerCase() === 'forecast') || (log.source && log.source.toLowerCase() === 'forecastmodel'))
+    ) as Observable<ForecastPredictionLogEntry>;
+
+    const forecastLogsSubscription = this.forecastPredictionLogs$.subscribe(log => {
+      // console.log('[MODEL] Forecast Prediction Log entry received:', log);
+
+      let results: ForecastPrediction = null;
+
+      // Safely parse log message - it could be JSON or plain text
+      if (typeof log.message === 'string') {
+        try {
+          results = JSON.parse(log.message);
+        } catch (e) {
+          // Message is plain text, not JSON - skip processing
+          // console.log('[MODEL] Non-JSON log message:', log.message);
+          return;
+        }
+      } else {
+        results = log.message.result as ForecastPrediction;
+      }
+
+      // console.log('[MODEL] Parsed forecast results:', results);
+      // console.log('[MODEL] Raw results object:', JSON.stringify(results, null, 2));
+      // check if
+
+      if (results) {
+        const forecast_max_steps = results.forecast_max_steps;
+
+        // Store forecast_max_steps for display in chart toolbar
+        this.forecastMaxSteps = forecast_max_steps;
+
+        delete results.forecast_max_steps;
+
+        const data = results as ForecastSensorPredictions;
+
+        // console.log('[MODEL] Processing forecast data with', Object.keys(data).length, 'sensors');
+        // console.log('[MODEL] Sensor keys:', Object.keys(data));
+        // console.log('[MODEL] Full data structure:', JSON.stringify(data, null, 2));
+
+        // Check if selected sensor exists in forecast data
+        // console.log('[MODEL] Forecast data:', data);
+        const availableSensors = Object.keys(data);
+        if (!availableSensors.includes(this.selectedSensor)) {
+          console.warn(`[MODEL] ⚠️ Selected sensor '${this.selectedSensor}' not found in forecast data.`);
+          console.warn(`[MODEL] Available sensors in forecast: [${availableSensors.join(', ')}]`);
+
+          // Auto-select the first available sensor if current selection is not available
+          if (availableSensors.length > 0) {
+            const newSensor = availableSensors[0];
+            console.log(`[MODEL] ✓ Auto-selecting sensor '${newSensor}' from forecast data`);
+            this.selectedSensor = newSensor;
+            this.saveViewPreferences();
+          } else {
+            console.warn(`[MODEL] No sensors available in forecast data, skipping update`);
+            return;
+          }
+        }
+
+        // Run inside Angular zone to trigger change detection
+        // this.ngZone.run(() => {
+        this.forecastData = data;
+        // Force change detection
+        this.cdr.detectChanges();
+        // console.log('[MODEL] ✓ Forecast data updated and passed to widgets:', {
+        //   sensors: Object.keys(this.forecastData),
+        //   selectedSensor: this.selectedSensor,
+        //   maxSteps: this.forecastMaxSteps,
+        //   data: this.forecastData
+        // });
+        // });
+      } else {
+        console.warn('[MODEL] No forecast results to process');
+      }
+    });
+
+    this.subscriptions.push(forecastLogsSubscription);
+
+
+
   }
 
   changeModel(value: any) {
@@ -313,6 +597,7 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
     }
     // Ensure we update anomalies component when the WebSocket actually connects
     this.modelWebSocketService.onConnect(() => {
+      console.info('%c[ModelComponent] WebSocket connection established successfully', 'color: #9E9E9E; font-weight: bold');
       try {
         // const connected = this.modelWebSocketService.isConnected();
         // this.anomaliesComponent?.setStreamStatus(connected, connected ? null : null);
@@ -329,74 +614,74 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
     // this.displayLogsTooltip();
 
     // set 3 random anomalies for testing
-        // const testAnomalies: AnomalyReport[] = [
-        //   {
-        //     id: '1',
-        //     reportEntity: this.deviceId,
-        //     errorName: 'Overheat',
-        //     severity: 'Critical',
-        //     creationDate: new Date().toISOString(),
-        //     componentType: 'Engine',
-        //     deviceType: 'Type A',
-        //     location: 'Factory 1',
-        //     description: 'Engine temperature exceeded threshold',
-        //     status: 'Active',
-        //     affectedMetrics: ['temperature'],
-        //     confidence: 95,
-        //     timeRange: '2024-10-01 10:00 - 2024-10-01 10:30'
-        //   },
-        //   {
-        //     id: '2',
-        //     reportEntity: this.deviceId,
-        //     errorName: 'Vibration Alert',
-        //     severity: 'Major',
-        //     creationDate: new Date().toISOString(),
-        //     componentType: 'Motor',
-        //     deviceType: 'Type B',
-        //     location: 'Factory 2',
-        //     description: 'Unusual vibration patterns detected',
-        //     status: 'Investigating',
-        //     affectedMetrics: ['vibration'],
-        //     confidence: 85,
-        //     timeRange: '2024-10-02 14:00 - 2024-10-02 14:45'
-        //   }
-        // ];
+    // const testAnomalies: AnomalyReport[] = [
+    //   {
+    //     id: '1',
+    //     reportEntity: this.deviceId,
+    //     errorName: 'Overheat',
+    //     severity: 'Critical',
+    //     creationDate: new Date().toISOString(),
+    //     componentType: 'Engine',
+    //     deviceType: 'Type A',
+    //     location: 'Factory 1',
+    //     description: 'Engine temperature exceeded threshold',
+    //     status: 'Active',
+    //     affectedMetrics: ['temperature'],
+    //     confidence: 95,
+    //     timeRange: '2024-10-01 10:00 - 2024-10-01 10:30'
+    //   },
+    //   {
+    //     id: '2',
+    //     reportEntity: this.deviceId,
+    //     errorName: 'Vibration Alert',
+    //     severity: 'Major',
+    //     creationDate: new Date().toISOString(),
+    //     componentType: 'Motor',
+    //     deviceType: 'Type B',
+    //     location: 'Factory 2',
+    //     description: 'Unusual vibration patterns detected',
+    //     status: 'Investigating',
+    //     affectedMetrics: ['vibration'],
+    //     confidence: 85,
+    //     timeRange: '2024-10-02 14:00 - 2024-10-02 14:45'
+    //   }
+    // ];
 
-        // testAnomalies.forEach((a) => {
-        //   // console.log('Adding test anomaly:', a);
-        //   this.anomaliesComponent.addAnomaly(a);
-        //   if (this.anomaliesComponent) {
-        //   }
-        // });
+    // testAnomalies.forEach((a) => {
+    //   // console.log('Adding test anomaly:', a);
+    //   this.anomaliesComponent.addAnomaly(a);
+    //   if (this.anomaliesComponent) {
+    //   }
+    // });
   }
 
   private positionLogsTooltip(): void {
     // setTimeout(() => {
-      if (this.logsButton) {
-        const buttonElement = this.logsButton.nativeElement;
-        const iconElement = buttonElement.querySelector('mat-icon');
+    if (this.logsButton) {
+      const buttonElement = this.logsButton.nativeElement;
+      const iconElement = buttonElement.querySelector('mat-icon');
 
-        // Use the icon element's bounding box if available, otherwise fall back to button
-        const rect = iconElement ? iconElement.getBoundingClientRect() : buttonElement.getBoundingClientRect();
+      // Use the icon element's bounding box if available, otherwise fall back to button
+      const rect = iconElement ? iconElement.getBoundingClientRect() : buttonElement.getBoundingClientRect();
 
-        // Calculate tooltip position so the arrow points right after the icon (not the button container)
-        this.logsTooltipPosition = {
-          top: rect.bottom + 14, // 2px below the icon itself
-          left: rect.left + (rect.width / 2), // Align arrow with center of icon
-          zIndex: 1000 // Ensure tooltip is above other elements
-        };
+      // Calculate tooltip position so the arrow points right after the icon (not the button container)
+      this.logsTooltipPosition = {
+        top: rect.bottom + 14, // 2px below the icon itself
+        left: rect.left + (rect.width / 2), // Align arrow with center of icon
+        zIndex: 1000 // Ensure tooltip is above other elements
+      };
 
-        // Only show tooltip after calculations are complete (for testing purposes)
-        // this.showLogsTooltip = true;
-      }
+      // Only show tooltip after calculations are complete (for testing purposes)
+      // this.showLogsTooltip = true;
+    }
     // }, 200); // Increased timeout to ensure UI is stable
   }
 
   private init() {
     // Track route params subscription for proper cleanup
     this.routeParamsSubscription = this.route.params.pipe(
-  distinctUntilChanged((prev, curr) => prev.id === curr.id)
-).subscribe((params) => {
+      distinctUntilChanged((prev, curr) => prev.id === curr.id)
+    ).subscribe((params) => {
       // console.log('Route params:', params);
       if (params.id) {
         this.trueId = params.id;
@@ -449,192 +734,30 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
 
         // map job logs to each log entry
         this.logsObservable = this.modelWebSocketService.requestJobLogs(this.trueId)
-        .pipe(
-          mergeMap((msg) => flatMap(msg.data.logs)),
-          tap((log) => {
-            console.log('%cReceived log entry:', 'color: green;', log);
-          }),
-        );
+          .pipe(
+            mergeMap((msg) => flatMap(msg.data.logs)),
+            tap((log) => {
+              console.log('%cReceived log entry:', 'color: green;', log);
+            }),
+          );
 
         // this.subscriptions.push(this.logsObservable.subscribe((log) => {
         //   console.log('Log entry:', log);
         // }));
+        //
+        //
+        //
+        console.log(`[ModelComponent] Fetch history of predictions`);
 
-        // const anomalyPredictionLogs$ = this.logsObservable.pipe(
-        //   filter((log: LogEntry) =>
-        //     log.type && log.type.toLowerCase() === 'anomaly' && log.level && log.level.toLowerCase() === 'prediction')
-        // ) as Observable<AnomalyPredictionLogEntry>;
+        this.fetchAnomalyHistoryPredictions();
 
-        // anomalyPredictionLogs$.subscribe(log => {
-        //       // console.log('Log entry:', log);
-        //       console.log('Anomaly Prediction Log entry:', log);
+        console.log(`[ModelComponent] Subscribing to anomaly predictions`);
 
-        //       // Check if this log is new (after last read timestamp)
-        //       const logTimestamp = log.timestamp ? new Date(log.timestamp).getTime() : Date.now();
-        //       console.log(
-        //         'Log timestamp:',
-        //         logTimestamp,
-        //         'Last read:',
-        //         this.lastReadLogTimestamp,
-        //         'Is new?',
-        //         logTimestamp > this.lastReadLogTimestamp
-        //       );
-        //       if (logTimestamp > this.lastReadLogTimestamp) {
-        //         console.log('Setting unreadLogs to true');
-        //         // Run inside Angular zone to ensure change detection
-        //         this.ngZone.run(() => {
-        //           this.unreadLogs = true;
-        //           console.log('Inside zone, unreadLogs set to:', this.unreadLogs);
-        //         });
-        //         console.log('After zone.run, unreadLogs:', this.unreadLogs);
-        //         // update global notifier
-        //         try {
-        //           if (this.trueId) {
-        //             this.logsNotifier.setUnread(this.trueId, true);
-        //           }
-        //         } catch (e) {
-        //           // ignore notifier errors
-        //         }
-        //       }
+        this.subscribeToAnomalyPredictions();
+        // this.subscribeToForecastPredictions();
 
-        //       if (log.level.toLowerCase() === 'prediction') {
-        //         console.log('Job prediction:', log.message);
-        //         // Try to parse prediction log as JSON
-
-        //         if (typeof log.message !== 'string') {
-        //           const anomalies: AnomalyReport[] = log.message?.result?.filter((result) =>
-
-        //           result.failure_predicted === true
-
-        //           ).map((result: any) => {
-        //             const confidence = result.general_failure_probability ? Math.round(result.general_failure_probability * 100) : 0;
-        //             const severity = confidence >= 90 ? 'Critical' : confidence >= 70 ? 'Major' : 'Minor';
-
-        //             // Normalize timeRange -> startTime/endTime if possible
-        //             let startTime: string | number | undefined;
-        //             let endTime: string | number | undefined;
-        //             if (result.datetime) {
-        //               const parts = (result.datetime || '').toString().split('/');
-        //               if (parts.length === 2) {
-        //                 startTime = parts[0];
-        //                 endTime = parts[1];
-        //               } else {
-        //                 startTime = result.datetime;
-        //                 endTime = result.datetime;
-        //               }
-        //             }
-
-        //             return {
-        //               timeRange: result.datetime || '',
-        //               startTime,
-        //               endTime,
-        //               confidence,
-        //               affectedMetrics: result.predicted_failing_component ? [result.predicted_failing_component] : [],
-        //               componentFailureProbabilities: result.component_failure_probabilities || {},
-        //               componentProbabilities: result.component_probabilities || {},
-        //               id: result.id || `${this.trueId || 'forecast'}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
-        //               reportEntity: this.deviceId,
-        //               errorName: result.predicted_failing_component || 'Unknown',
-        //               severity,
-        //               creationDate: result.datetime || new Date().toISOString(),
-        //               componentType: result.predicted_failing_component || 'Unknown',
-        //               deviceType: 'Unknown',
-        //               location: 'Unknown',
-        //               description: 'Predicted failure for component ' + (result.predicted_failing_component || 'Unknown'),
-        //               status: 'Active',
-        //             };
-        //           }) || [];
-        //           this.anomaliesComponent.updateAnomalies(anomalies || []);
-        //         }
-
-        //       } else {
-        //         // console.log4('Job log:', log.message);
-        //       }
-        //     });
-
-        this.forecastPredictionLogs$ = this.logsObservable.pipe(
-          tap((log) => {
-            console.log('%cProcessing log entry for forecast predictions:', 'color: blue;', log);
-          }),
-          filter((log: LogEntry) =>
-            log.level && log.level.toLowerCase() === 'prediction' &&
-          (log.type && log.type.toLowerCase() === 'forecast') || (log.source && log.source.toLowerCase() === 'forecastmodel'))
-        ) as Observable<ForecastPredictionLogEntry>;
-
-        this.subscriptions.push(
-          this.forecastPredictionLogs$.subscribe(log => {
-          // console.log('[MODEL] Forecast Prediction Log entry received:', log);
-
-          let results: ForecastPrediction = null;
-
-          // Safely parse log message - it could be JSON or plain text
-          if (typeof log.message === 'string') {
-            try {
-              results = JSON.parse(log.message);
-            } catch (e) {
-              // Message is plain text, not JSON - skip processing
-              // console.log('[MODEL] Non-JSON log message:', log.message);
-              return;
-            }
-          } else {
-            results = log.message.result as ForecastPrediction;
-          }
-
-          // console.log('[MODEL] Parsed forecast results:', results);
-          // console.log('[MODEL] Raw results object:', JSON.stringify(results, null, 2));
-            // check if
-
-          if (results) {
-            const forecast_max_steps = results.forecast_max_steps;
-
-            // Store forecast_max_steps for display in chart toolbar
-            this.forecastMaxSteps = forecast_max_steps;
-
-            delete results.forecast_max_steps;
-
-            const data = results as ForecastSensorPredictions;
-
-            // console.log('[MODEL] Processing forecast data with', Object.keys(data).length, 'sensors');
-            // console.log('[MODEL] Sensor keys:', Object.keys(data));
-            // console.log('[MODEL] Full data structure:', JSON.stringify(data, null, 2));
-
-            // Check if selected sensor exists in forecast data
-            // console.log('[MODEL] Forecast data:', data);
-            const availableSensors = Object.keys(data);
-            if (!availableSensors.includes(this.selectedSensor)) {
-              console.warn(`[MODEL] ⚠️ Selected sensor '${this.selectedSensor}' not found in forecast data.`);
-              console.warn(`[MODEL] Available sensors in forecast: [${availableSensors.join(', ')}]`);
-
-              // Auto-select the first available sensor if current selection is not available
-              if (availableSensors.length > 0) {
-                const newSensor = availableSensors[0];
-                console.log(`[MODEL] ✓ Auto-selecting sensor '${newSensor}' from forecast data`);
-                this.selectedSensor = newSensor;
-                this.saveViewPreferences();
-              } else {
-                console.warn(`[MODEL] No sensors available in forecast data, skipping update`);
-                return;
-              }
-            }
-
-            // Run inside Angular zone to trigger change detection
-            // this.ngZone.run(() => {
-              this.forecastData = data;
-              // Force change detection
-              this.cdr.detectChanges();
-              // console.log('[MODEL] ✓ Forecast data updated and passed to widgets:', {
-              //   sensors: Object.keys(this.forecastData),
-              //   selectedSensor: this.selectedSensor,
-              //   maxSteps: this.forecastMaxSteps,
-              //   data: this.forecastData
-              // });
-            // });
-          } else {
-            console.warn('[MODEL] No forecast results to process');
-          }
-        }));
         // Subscribe to real-time job status updates
-        this.subscriptions.push(this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
+        const jobStatusSubscription = this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
           // if (msg.type === 'prediction') {
           //   console.log('Job prediction:', msg.data.logs);
           // } else {
@@ -643,26 +766,27 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
           if (msg?.data) {
             this.currentIteration = msg.data.iteration || 0;
             this.jobStatus = msg.data.status;
-              this.lastRunTime = msg.data.last_run;
+            this.lastRunTime = msg.data.last_run;
 
-              // Update main status if job is running (ensure it's a string)
-              // if (this.jobStatus === 'running') {
-              //   this.status = 'active';
-              // } else if (this.jobStatus === 'stopped' || this.jobStatus === 'not_found') {
-              //   this.status = 'inactive';
-              // }
-              if (msg.data.model_exists) {
-                // this.status = 'active';
-                this.status = 'inactive';
-                this.anomaliesComponent?.setStreamStatus(true, null);
-              } else {
-                this.status = 'inactive';
-              }
+            // Update main status if job is running (ensure it's a string)
+            // if (this.jobStatus === 'running') {
+            //   this.status = 'active';
+            // } else if (this.jobStatus === 'stopped' || this.jobStatus === 'not_found') {
+            //   this.status = 'inactive';
+            // }
+            if (msg.data.model_exists) {
+              // this.status = 'active';
+              this.status = 'inactive';
+              this.anomaliesComponent?.setStreamStatus(true, null);
+            } else {
+              this.status = 'inactive';
             }
+          }
         }, (err) => {
           console.error('Error subscribing to job status:', err);
           this.anomaliesComponent?.setStreamStatus(false, 'Error subscribing to job status');
-        }));
+        });
+        this.subscriptions.push(jobStatusSubscription);
 
         // Fetch status from the service to ensure it's up-to-date
         // this.getModelStatus();
@@ -752,6 +876,9 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
         this.forecastAlgorithm = data.forecastAlgorithm;
         this.anomalyAlgorithm = data.anomalyAlgorithm;
         this.forecastGrouping = JSON.parse(data.additionalData || '{}').forecastGrouping || 'hourly';
+
+        // Check forecast job status after loading model
+        this.checkForecastJobStatus();
 
         // Fetch device name
         this.deviceService.getDevice(data.deviceId.id).subscribe(
@@ -861,6 +988,104 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
 
     dialogRef.afterClosed().subscribe(() => {
       // console.log('Anomaly logs dialog closed');
+    });
+  }
+
+  // Pause forecast prediction job
+  pauseForecastJob(): void {
+    console.log('[MODEL] pauseForecastJob called', {
+      trueId: this.trueId,
+      forecastJobRunning: this.forecastJobRunning,
+      forecastJobPaused: this.forecastJobPaused
+    });
+
+    if (!this.trueId) {
+      console.error('[MODEL] Cannot pause: No forecast ID');
+      return;
+    }
+
+    console.log('[MODEL] Pausing forecast predictions for', this.trueId);
+
+    // Send pause command via WebSocket
+    const commandId = Date.now();
+    const command = {
+      commandId,
+      type: 'pause_job',
+      forecastId: this.trueId,
+      data: {
+        modelType: 'forecast'
+      }
+    };
+
+    const ws$ = this.modelWebSocketService.connect();
+    ws$.next(command);
+
+    // Update UI state
+    this.forecastJobPaused = true;
+    this.cdr.detectChanges();
+
+    console.log('[MODEL] Pause command sent:', command);
+  }
+
+  // Resume (unpause) forecast prediction job
+  unpauseForecastJob(): void {
+    if (!this.trueId) {
+      console.error('[MODEL] Cannot unpause: No forecast ID');
+      return;
+    }
+
+    console.log('[MODEL] Resuming forecast predictions for', this.trueId);
+
+    // Send unpause command via WebSocket
+    const commandId = Date.now();
+    const command = {
+      commandId,
+      type: 'unpause_job',
+      forecastId: this.trueId,
+      data: {
+        modelType: 'forecast'
+      }
+    };
+
+    const ws$ = this.modelWebSocketService.connect();
+    ws$.next(command);
+
+    // Update UI state
+    this.forecastJobPaused = false;
+    this.cdr.detectChanges();
+
+    console.log('[MODEL] Unpause command sent:', command);
+  }
+
+  // Check forecast job status to initialize pause/unpause button state
+  checkForecastJobStatus(): void {
+    if (!this.trueId) {
+      return;
+    }
+
+    console.log('[MODEL] Checking forecast job status for', this.trueId);
+
+    // Subscribe to job status updates
+    this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'forecast').subscribe({
+      next: (response: any) => {
+        console.log('[MODEL] Forecast job status response:', response);
+        if (response.data) {
+          const status = response.data.status || response.data.data?.status;
+          const paused = response.data.paused || response.data.data?.paused || false;
+
+          this.forecastJobRunning = status === 'running';
+          this.forecastJobPaused = paused;
+          this.cdr.detectChanges();
+
+          console.log('[MODEL] Updated forecast job state:', {
+            running: this.forecastJobRunning,
+            paused: this.forecastJobPaused
+          });
+        }
+      },
+      error: (error) => {
+        console.error('[MODEL] Error checking forecast job status:', error);
+      }
     });
   }
 
@@ -1053,7 +1278,7 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
       this.translate.instant('action.no'),
       this.translate.instant('action.yes'),
       true
-    // eslint-disable-next-line @typescript-eslint/no-shadow
+      // eslint-disable-next-line @typescript-eslint/no-shadow
     ).subscribe((result) => {
       if (result) {
         this.predictiveModelsService.deletePredictiveModel(this.trueId).subscribe(
@@ -1168,13 +1393,13 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
       this.progressMessage = null;
     }
     // Set status to pending if not already set
-    if (this.status !== 'pending') {
-      this.status = 'pending';
-    }
+    // if (this.status !== 'pending') {
+    //   this.status = 'pending';
+    // }
     this.modelWebSocketService.sendActivateCommand(this.trueId).subscribe((msg) => {
-        this.handleWebSocketMessage(msg);
+      this.handleWebSocketMessage(msg);
     });
-    this.displayLogsTooltip();
+    // this.displayLogsTooltip();
   }
 
   private shouldShowLogsTooltip(): boolean {
@@ -1253,11 +1478,23 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
   toggleTimeSeriesChart(): void {
     this.timeSeriesChartCollapsed = !this.timeSeriesChartCollapsed;
     this.saveCollapsedStates();
+
+    // Trigger window resize event after animation completes to resize charts
+    // The animation duration is 300ms (defined in the slideCollapse animation)
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 350);
   }
 
   toggleForecastChart(): void {
     this.forecastChartCollapsed = !this.forecastChartCollapsed;
     this.saveCollapsedStates();
+
+    // Trigger window resize event after animation completes to resize charts
+    // The animation duration is 300ms (defined in the slideCollapse animation)
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 350);
   }
 
   toggleAnomalies(): void {
@@ -1529,5 +1766,62 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
     const key = this.LAST_READ_LOG_KEY_PREFIX + this.trueId;
     localStorage.setItem(key, Date.now().toString());
     this.lastReadLogTimestamp = Date.now();
+  }
+
+  /**
+   * Navigate to the device details page
+   */
+  navigateToDevice(): void {
+    if (this.deviceId) {
+      this.router.navigate(['/entities/devices', this.deviceId]);
+    }
+  }
+
+  /**
+   * Process a single anomaly prediction result and convert it to an AnomalyReport
+   */
+  private processAnomalyPrediction(predictionResult: any): AnomalyReport {
+    const confidence = predictionResult.general_failure_probability
+      ? Math.round(predictionResult.general_failure_probability * 100)
+      : 0;
+    const severity = confidence >= 90 ? 'Critical' : confidence >= 70 ? 'Major' : 'Minor';
+
+    // Normalize timeRange -> startTime/endTime with 1 hour range
+    let startTime: string | number | undefined;
+    let endTime: string | number | undefined;
+    if (predictionResult.datetime) {
+      const parts = (predictionResult.datetime || '').toString().split('/');
+      if (parts.length === 2) {
+        startTime = parts[0];
+        endTime = parts[1];
+      } else {
+        // Single datetime - create 1 hour range
+        const startDate = new Date(predictionResult.datetime);
+        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // Add 1 hour
+        startTime = startDate.toISOString();
+        endTime = endDate.toISOString();
+      }
+    }
+
+    // Get component type, remove "Unknown" fallback
+    const componentType = predictionResult.predicted_failing_component || '';
+
+    return {
+      timeRange: predictionResult.datetime || '',
+      startTime,
+      endTime,
+      confidence,
+      affectedMetrics: predictionResult.predicted_failing_component ? [predictionResult.predicted_failing_component] : [],
+      id: predictionResult.id || `${this.trueId || 'forecast'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      reportEntity: this.deviceId,
+      errorName: predictionResult.predicted_failing_component || '',
+      severity,
+      creationDate: predictionResult.datetime || new Date().toISOString(),
+      componentType,
+      deviceType: '',
+      location: '',
+      description: 'Predicted failure for component ' + (predictionResult.predicted_failing_component || ''),
+      status: 'Active',
+    };
   }
 }

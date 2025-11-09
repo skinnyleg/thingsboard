@@ -21,6 +21,10 @@ from src.model.model import router as model_router
 from src.notify import router as notify_router
 from dotenv import load_dotenv
 from src.settings import settings
+import pandas as pd
+
+pd.set_option("display.max_columns", None)
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -59,6 +63,14 @@ async def startup_event():
     """
     Startup event handler: Auto-start prediction jobs for trained models
     """
+    # Check if auto-start is enabled via environment variable
+    auto_start_enabled = os.getenv("AUTO_START_PREDICTION_JOBS", "false").lower() == "true"
+    if not auto_start_enabled:
+        print(
+            "AUTO_START_PREDICTION_JOBS is disabled, skipping auto-start of prediction jobs",
+            flush=True,
+        )
+        return
     import logging
     from pathlib import Path
     from src.model.shared import get_data_registry
@@ -114,30 +126,35 @@ async def startup_event():
             has_metadata = (forecast_model_dir / "metadata.json").exists()
             has_model_files = False
             if forecast_model_dir.exists():
-                model_files = (list(forecast_model_dir.glob("*.pkl")) +
-                             list(forecast_model_dir.glob("*.h5")) +
-                             list(forecast_model_dir.glob("*.joblib")))
+                model_files = (
+                    list(forecast_model_dir.glob("*.pkl"))
+                    + list(forecast_model_dir.glob("*.h5"))
+                    + list(forecast_model_dir.glob("*.joblib"))
+                )
                 has_model_files = len(model_files) > 0
 
             if forecast_model_dir.exists() and (has_metadata or has_model_files):
                 print(f"STARTUP: Found trained forecast model at {forecast_model_dir}", flush=True)
                 print(f"STARTUP:   - has metadata.json: {has_metadata}", flush=True)
-                print(f"STARTUP:   - has model files: {has_model_files} ({len(model_files) if has_model_files else 0} files)", flush=True)
+                print(
+                    f"STARTUP:   - has model files: {has_model_files} ({len(model_files) if has_model_files else 0} files)",
+                    flush=True,
+                )
                 logger.info(f"STARTUP: Found trained forecast model at {forecast_model_dir}")
                 try:
                     success = start_prediction_job(
-                        model_id=forecast_model_id,
-                        model_type="ForecastModel",
-                        device_id=device_id
+                        model_id=forecast_model_id, model_type="ForecastModel", device_id=device_id
                     )
                     if success:
                         started_jobs.append(f"{forecast_model_id} (ForecastModel)")
-                        print(f"STARTUP: ✓ Started prediction job for {forecast_model_id}", flush=True)
+                        print(
+                            f"STARTUP: ✓ Started prediction job for {forecast_model_id}", flush=True
+                        )
                         logger.info(f"STARTUP: ✓ Started prediction job for {forecast_model_id}")
                         add_model_log(
                             forecast_model_id,
                             "info",
-                            "Prediction job auto-started on service restart"
+                            "Prediction job auto-started on service restart",
                         )
                     else:
                         skipped_jobs.append(f"{forecast_model_id} (already running)")
@@ -160,7 +177,7 @@ async def startup_event():
                         success = start_prediction_job(
                             model_id=anomaly_model_id,
                             model_type="AnomalyPredictor",
-                            device_id=device_id
+                            device_id=device_id,
                         )
                         if success:
                             started_jobs.append(f"{anomaly_model_id} (AnomalyPredictor)")
@@ -168,13 +185,15 @@ async def startup_event():
                             add_model_log(
                                 anomaly_model_id,
                                 "info",
-                                "Prediction job auto-started on service restart"
+                                "Prediction job auto-started on service restart",
                             )
                         else:
                             skipped_jobs.append(f"{anomaly_model_id} (already running)")
                             logger.warning(f"STARTUP: Job for {anomaly_model_id} already running")
                     except Exception as e:
-                        logger.error(f"STARTUP: Failed to start job for {anomaly_model_id}: {str(e)}")
+                        logger.error(
+                            f"STARTUP: Failed to start job for {anomaly_model_id}: {str(e)}"
+                        )
                         skipped_jobs.append(f"{anomaly_model_id} (error: {str(e)})")
                 else:
                     logger.info(f"STARTUP: No trained anomaly model files found for {config_id}")
@@ -196,27 +215,38 @@ async def startup_event():
                 forecast_model_id = f"{config_id}/forecast_model"
                 anomaly_model_id = f"{config_id}/anomaly_model"
 
-                if any(forecast_model_id in job or anomaly_model_id in job
-                       for job in started_jobs + skipped_jobs):
+                if any(
+                    forecast_model_id in job or anomaly_model_id in job
+                    for job in started_jobs + skipped_jobs
+                ):
                     continue
 
                 # Check for forecast model
                 forecast_model_dir = config_dir / "forecast_model"
                 if forecast_model_dir.exists() and (forecast_model_dir / "metadata.json").exists():
-                    print(f"STARTUP: Found orphaned forecast model at {forecast_model_dir}", flush=True)
+                    print(
+                        f"STARTUP: Found orphaned forecast model at {forecast_model_dir}",
+                        flush=True,
+                    )
                     try:
                         # Try to find device_id from config, otherwise use None
                         device_id = None
                         success = start_prediction_job(
                             model_id=forecast_model_id,
                             model_type="ForecastModel",
-                            device_id=device_id
+                            device_id=device_id,
                         )
                         if success:
                             started_jobs.append(f"{forecast_model_id} (ForecastModel, orphaned)")
-                            print(f"STARTUP: ✓ Started prediction job for orphaned model {forecast_model_id}", flush=True)
+                            print(
+                                f"STARTUP: ✓ Started prediction job for orphaned model {forecast_model_id}",
+                                flush=True,
+                            )
                     except Exception as e:
-                        print(f"STARTUP: Failed to start orphaned model {forecast_model_id}: {str(e)}", flush=True)
+                        print(
+                            f"STARTUP: Failed to start orphaned model {forecast_model_id}: {str(e)}",
+                            flush=True,
+                        )
                         skipped_jobs.append(f"{forecast_model_id} (error: {str(e)})")
 
                 # Check for anomaly model
@@ -224,19 +254,30 @@ async def startup_event():
                 if anomaly_model_dir.exists():
                     model_files = list(anomaly_model_dir.glob("hour_*.pkl"))
                     if model_files:
-                        print(f"STARTUP: Found orphaned anomaly model at {anomaly_model_dir}", flush=True)
+                        print(
+                            f"STARTUP: Found orphaned anomaly model at {anomaly_model_dir}",
+                            flush=True,
+                        )
                         try:
                             device_id = None
                             success = start_prediction_job(
                                 model_id=anomaly_model_id,
                                 model_type="AnomalyPredictor",
-                                device_id=device_id
+                                device_id=device_id,
                             )
                             if success:
-                                started_jobs.append(f"{anomaly_model_id} (AnomalyPredictor, orphaned)")
-                                print(f"STARTUP: ✓ Started prediction job for orphaned model {anomaly_model_id}", flush=True)
+                                started_jobs.append(
+                                    f"{anomaly_model_id} (AnomalyPredictor, orphaned)"
+                                )
+                                print(
+                                    f"STARTUP: ✓ Started prediction job for orphaned model {anomaly_model_id}",
+                                    flush=True,
+                                )
                         except Exception as e:
-                            print(f"STARTUP: Failed to start orphaned model {anomaly_model_id}: {str(e)}", flush=True)
+                            print(
+                                f"STARTUP: Failed to start orphaned model {anomaly_model_id}: {str(e)}",
+                                flush=True,
+                            )
                             skipped_jobs.append(f"{anomaly_model_id} (error: {str(e)})")
 
                 # Check for legacy anomaly_predictor directory
@@ -247,7 +288,10 @@ async def startup_event():
                     any_pkl_files = list(anomaly_predictor_dir.glob("*.pkl"))
                     if hour_model_files or any_pkl_files:
                         legacy_model_id = f"{config_id}/anomaly_predictor"
-                        print(f"STARTUP: Found legacy anomaly model at {anomaly_predictor_dir}", flush=True)
+                        print(
+                            f"STARTUP: Found legacy anomaly model at {anomaly_predictor_dir}",
+                            flush=True,
+                        )
                         print(f"STARTUP:   - hour_*.pkl files: {len(hour_model_files)}", flush=True)
                         print(f"STARTUP:   - total .pkl files: {len(any_pkl_files)}", flush=True)
                         try:
@@ -255,13 +299,19 @@ async def startup_event():
                             success = start_prediction_job(
                                 model_id=legacy_model_id,
                                 model_type="AnomalyPredictor",
-                                device_id=device_id
+                                device_id=device_id,
                             )
                             if success:
                                 started_jobs.append(f"{legacy_model_id} (AnomalyPredictor, legacy)")
-                                print(f"STARTUP: ✓ Started prediction job for legacy model {legacy_model_id}", flush=True)
+                                print(
+                                    f"STARTUP: ✓ Started prediction job for legacy model {legacy_model_id}",
+                                    flush=True,
+                                )
                         except Exception as e:
-                            print(f"STARTUP: Failed to start legacy model {legacy_model_id}: {str(e)}", flush=True)
+                            print(
+                                f"STARTUP: Failed to start legacy model {legacy_model_id}: {str(e)}",
+                                flush=True,
+                            )
                             skipped_jobs.append(f"{legacy_model_id} (error: {str(e)})")
 
         # Summary
@@ -290,6 +340,7 @@ async def startup_event():
     except Exception as e:
         print(f"STARTUP: Failed to auto-start prediction jobs: {str(e)}", flush=True)
         import traceback
+
         print(f"STARTUP: Traceback:\n{traceback.format_exc()}", flush=True)
         logger.error(f"STARTUP: Failed to auto-start prediction jobs: {str(e)}")
         logger.error(f"STARTUP: Traceback:\n{traceback.format_exc()}")
@@ -327,9 +378,9 @@ def health_check():
             status["database"]["error"] = str(e)
             status["status"] = "degraded"
     else:
-        status["database"][
-            "url"
-        ] = "postgresql://postgres:postgres@localhost:5432/thingsboard (default)"
+        status["database"]["url"] = (
+            "postgresql://postgres:postgres@localhost:5432/thingsboard (default)"
+        )
 
     return status
 

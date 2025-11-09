@@ -42,7 +42,12 @@
       </mat-form-field>
     </div>
     <span class="device-label">Device:</span>
-    <span class="device-name">{{ device }}</span>
+    <span
+      class="device-name clickable"
+      (click)="navigateToDevice()"
+      [attr.title]="'Click to view device details'"
+      >{{ device }}</span
+    >
     <!-- Status icons for all forecast statuses -->
     <mat-icon
       class="status-icon-option active"
@@ -149,6 +154,16 @@
           <mat-icon>delete</mat-icon>
         </button>
         <button
+          mat-stroked-button
+          (click)="activateModel()"
+          [disabled]="!trueId"
+          matTooltip="Rebuild model"
+          matTooltipPosition="below"
+          class="rebuild-button"
+        >
+          Rebuild
+        </button>
+        <button
           mat-raised-button
           color="primary"
           (click)="openCreateModelDialog()"
@@ -161,123 +176,153 @@
 </div>
 
 <div class="model-dashboard">
-  <!-- Time Series Telemetry Section with Collapse Button -->
-  <div class="chart-section" [class.collapsed]="timeSeriesChartCollapsed">
+  <!-- Charts Container - Side by Side -->
+  <div class="charts-container">
+    <!-- Time Series Telemetry Section with Collapse Button -->
     <div
-      class="section-header"
-      (click)="toggleTimeSeriesChart()"
-      role="button"
-      [attr.aria-expanded]="!timeSeriesChartCollapsed"
-      aria-label="Toggle time series chart section"
+      class="chart-section"
+      [class.collapsed]="timeSeriesChartCollapsed"
+      *ngIf="shouldShowForecastChart()"
     >
-      <button
-        mat-icon-button
-        class="collapse-btn"
-        (click)="$event.stopPropagation(); toggleTimeSeriesChart()"
-        [matTooltip]="
-          timeSeriesChartCollapsed
-            ? 'Expand time series chart'
-            : 'Collapse time series chart'
-        "
-        matTooltipPosition="right"
+      <div
+        class="section-header"
+        (click)="toggleTimeSeriesChart()"
+        role="button"
         [attr.aria-expanded]="!timeSeriesChartCollapsed"
-        aria-label="Toggle time series chart visibility"
+        aria-label="Toggle time series chart section"
       >
-        <mat-icon>{{
-          timeSeriesChartCollapsed ? "chevron_right" : "expand_more"
-        }}</mat-icon>
-      </button>
-      <h3 class="section-title">
-        <mat-icon class="section-icon">timeline</mat-icon>
-        Sensor Telemetry (Real-time)
-      </h3>
+        <button
+          mat-icon-button
+          class="collapse-btn"
+          (click)="$event.stopPropagation(); toggleTimeSeriesChart()"
+          [matTooltip]="
+            timeSeriesChartCollapsed
+              ? 'Expand time series chart'
+              : 'Collapse time series chart'
+          "
+          matTooltipPosition="right"
+          [attr.aria-expanded]="!timeSeriesChartCollapsed"
+          aria-label="Toggle time series chart visibility"
+        >
+          <mat-icon>{{
+            timeSeriesChartCollapsed ? "chevron_right" : "expand_more"
+          }}</mat-icon>
+        </button>
+        <h3 class="section-title">
+          <mat-icon class="section-icon">timeline</mat-icon>
+          Sensor Telemetry (Real-time)
+        </h3>
+      </div>
+      <div
+        class="chart-content"
+        [@slideCollapse]="timeSeriesChartCollapsed ? 'collapsed' : 'expanded'"
+      >
+        <tb-time-series-telemetry
+          [deviceId]="deviceId"
+          [selectedSensor]="selectedSensor"
+          [forecastData]="forecastData"
+          [forecastMaxSteps]="forecastMaxSteps"
+          [title]="'Live Sensor Data'"
+          (sensorChanged)="onSensorChanged($event)"
+        >
+        </tb-time-series-telemetry>
+      </div>
     </div>
-    <div
-      class="chart-content"
-      [@slideCollapse]="timeSeriesChartCollapsed ? 'collapsed' : 'expanded'"
-    >
-      <tb-time-series-telemetry
-        [deviceId]="deviceId"
-        [selectedSensor]="selectedSensor"
-        [forecastData]="forecastData"
-        [forecastMaxSteps]="forecastMaxSteps"
-        [title]="'Live Sensor Data'"
-        (sensorChanged)="onSensorChanged($event)">
-      </tb-time-series-telemetry>
-    </div>
-  </div>
 
-  <!-- Forecast Chart Section with Collapse Button -->
-  <div
-    class="chart-section"
-    [class.collapsed]="forecastChartCollapsed"
-    *ngIf="shouldShowForecastChart()"
-  >
+    <!-- Forecast Chart Section with Collapse Button -->
     <div
-      class="section-header"
-      (click)="toggleForecastChart()"
-      role="button"
-      [attr.aria-expanded]="!forecastChartCollapsed"
-      aria-label="Toggle forecast chart section"
+      class="chart-section"
+      [class.collapsed]="forecastChartCollapsed"
+      *ngIf="shouldShowForecastChart()"
     >
-      <button
-        mat-icon-button
-        class="collapse-btn"
-        (click)="$event.stopPropagation(); toggleForecastChart()"
-        [matTooltip]="
-          forecastChartCollapsed
-            ? 'Expand forecast chart'
-            : 'Collapse forecast chart'
-        "
-        matTooltipPosition="right"
+      <div
+        class="section-header"
+        (click)="toggleForecastChart()"
+        role="button"
         [attr.aria-expanded]="!forecastChartCollapsed"
-        aria-label="Toggle forecast chart visibility"
+        aria-label="Toggle forecast chart section"
       >
-        <mat-icon>{{
-          forecastChartCollapsed ? "chevron_right" : "expand_more"
-        }}</mat-icon>
-      </button>
-      <h3 class="section-title">
-        <mat-icon class="section-icon">trending_up</mat-icon>
-        Forecast
-        <span class="algorithm-label" *ngIf="forecastAlgorithm">{{
-          forecastAlgorithm
-        }}</span>
-      </h3>
-      <button
-        mat-icon-button
-        (click)="$event.stopPropagation(); openForecastLogsDialog()"
-        [disabled]="!trueId"
-        class="section-logs-button"
-        matTooltip="View forecast logs"
-        matTooltipPosition="left"
+        <button
+          mat-icon-button
+          class="collapse-btn"
+          (click)="$event.stopPropagation(); toggleForecastChart()"
+          [matTooltip]="
+            forecastChartCollapsed
+              ? 'Expand forecast chart'
+              : 'Collapse forecast chart'
+          "
+          matTooltipPosition="right"
+          [attr.aria-expanded]="!forecastChartCollapsed"
+          aria-label="Toggle forecast chart visibility"
+        >
+          <mat-icon>{{
+            forecastChartCollapsed ? "chevron_right" : "expand_more"
+          }}</mat-icon>
+        </button>
+        <h3 class="section-title">
+          <mat-icon class="section-icon">trending_up</mat-icon>
+          Forecast
+          <span class="algorithm-label" *ngIf="forecastAlgorithm">{{
+            forecastAlgorithm
+          }}</span>
+        </h3>
+        <button
+          mat-icon-button
+          (click)="pauseForecastJob(); $event.stopPropagation()"
+          [disabled]="!trueId"
+          class="section-pause-button"
+          matTooltip="Pause forecast predictions"
+          matTooltipPosition="left"
+          *ngIf="!forecastJobPaused"
+        >
+          <mat-icon>pause_circle</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          (click)="unpauseForecastJob(); $event.stopPropagation()"
+          [disabled]="!trueId"
+          class="section-unpause-button"
+          matTooltip="Resume forecast predictions"
+          matTooltipPosition="left"
+          *ngIf="forecastJobPaused"
+        >
+          <mat-icon>play_circle</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          (click)="$event.stopPropagation(); openForecastLogsDialog()"
+          [disabled]="!trueId"
+          class="section-logs-button"
+          matTooltip="View forecast logs"
+          matTooltipPosition="left"
+        >
+          <mat-icon>description</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          (click)="$event.stopPropagation(); openForecastStatsDialog()"
+          [disabled]="!trueId"
+          class="section-stats-button"
+          matTooltip="View forecast training stats"
+          matTooltipPosition="left"
+        >
+          <mat-icon>info_outline</mat-icon>
+        </button>
+      </div>
+      <div
+        class="chart-content"
+        [@slideCollapse]="forecastChartCollapsed ? 'collapsed' : 'expanded'"
       >
-        <mat-icon>description</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        (click)="$event.stopPropagation(); openForecastStatsDialog()"
-        [disabled]="!trueId"
-        class="section-stats-button"
-        matTooltip="View forecast training stats"
-        matTooltipPosition="left"
-      >
-        <mat-icon>info_outline</mat-icon>
-      </button>
-    </div>
-    <div
-      class="chart-content"
-      [@slideCollapse]="forecastChartCollapsed ? 'collapsed' : 'expanded'"
-    >
-      <tb-forecast-chart
-        [deviceId]="deviceId"
-        [Attributes]="Attributes"
-        [forecastId]="trueId"
-        [forecastData]="forecastData"
-        [forecastMaxSteps]="forecastMaxSteps"
-        [selectedSensor]="selectedSensor"
-        (sensorChanged)="onSensorChanged($event)"
-      ></tb-forecast-chart>
+        <tb-forecast-chart
+          [deviceId]="deviceId"
+          [Attributes]="Attributes"
+          [forecastId]="trueId"
+          [forecastData]="forecastData"
+          [forecastMaxSteps]="forecastMaxSteps"
+          [selectedSensor]="selectedSensor"
+          (sensorChanged)="onSensorChanged($event)"
+        ></tb-forecast-chart>
+      </div>
     </div>
   </div>
 
@@ -343,7 +388,14 @@
       class="chart-content"
       [@slideCollapse]="anomaliesCollapsed ? 'collapsed' : 'expanded'"
     >
-      <tb-anomalies [deviceId]="deviceId" [forecastId]="trueId"></tb-anomalies>
+      <tb-anomalies
+        [deviceId]="deviceId"
+        [forecastId]="trueId"
+        [modelId]="trueId"
+        [predictionType]="'Anomaly'"
+        [predictiveModelsService]="predictiveModelsService"
+      >
+      </tb-anomalies>
     </div>
   </div>
 </div>

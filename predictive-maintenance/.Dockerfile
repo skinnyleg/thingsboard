@@ -15,11 +15,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 EXPOSE 8000
 
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "debug"]
-CMD ["fastapi", "run"]
-# CMD ["tail", "-f"]
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-
-# run fastapi in debug mode - watch file changes
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]
+# Use entrypoint script to conditionally enable file watching
+ENTRYPOINT ["/docker-entrypoint.sh"]

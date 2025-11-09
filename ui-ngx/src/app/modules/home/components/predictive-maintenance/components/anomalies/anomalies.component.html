@@ -1,339 +1,613 @@
 <div class="anomalies-container" [class.expanded]="isExpanded">
-    <!-- Data Table -->
-    <div class="table-container">
-        <mat-card>
-            <!-- Table Header Toolbar -->
-            <div style="display: flex;">
-                <mat-toolbar class="mat-mdc-table-toolbar">
-                    <div
-                        style="padding: 16px; font-size: 20px; font-weight: 500; color: white; display: flex; align-items: center; gap: 8px;">
-                        <mat-icon class="title-icon">bug_report</mat-icon>
-                        Anomalies
-                        <!-- Live stream indicator -->
-                        <span *ngIf="forecastId && isStreamConnected || streamError" class="stream-indicator" [class.connected]="isStreamConnected"
-                            [class.error]="streamError"
-                            [matTooltip]="streamError || (isStreamConnected ? 'Live stream connected' : 'Connecting to stream...')"
-                            matTooltipPosition="right">
-                            <span class="stream-text">
-                                {{ isStreamConnected ? 'LIVE' : (streamError ? 'ERROR' : '') }}
-                            </span>
-                        </span>
-                    </div>
-                    <span fxFlex></span>
-                    <!-- Date Filter Icon -->
-                    <button mat-icon-button [matMenuTriggerFor]="dateFilterMenu" #dateFilterTrigger="matMenuTrigger"
-                        [matTooltip]="filterStartDate ? 'Filtering from: ' + formatDate(getFilterDateTime() || filterStartDate) : 'Filter by date and time'"
-                        matTooltipPosition="above" [class.filter-active]="filterStartDate">
-                        <mat-icon [color]="filterStartDate ? 'accent' : ''">schedule</mat-icon>
-                    </button>
-                    <mat-menu #dateFilterMenu="matMenu" class="date-filter-menu">
-                        <div class="date-filter-popup" (click)="$event.stopPropagation()">
-                            <div class="filter-header">
-                                <mat-icon>schedule</mat-icon>
-                                <span>Filter by Start Date & Time</span>
-                            </div>
-                            <mat-form-field appearance="outline" class="date-picker-field">
-                                <mat-label>Start Date</mat-label>
-                                <input matInput [matDatepicker]="picker" [(ngModel)]="filterStartDate"
-                                    placeholder="Select start date">
-                                <mat-datepicker-toggle matSuffix [for]="picker">
-                                    <mat-icon matDatepickerToggleIcon>event</mat-icon>
-                                </mat-datepicker-toggle>
-                                <mat-datepicker #picker></mat-datepicker>
-                            </mat-form-field>
-                            <div class="time-inputs">
-                                <mat-form-field appearance="outline" class="time-field">
-                                    <mat-label>Hour</mat-label>
-                                    <input matInput type="number" [(ngModel)]="filterHour" min="0" max="23"
-                                        placeholder="HH">
-                                </mat-form-field>
-                                <span class="time-separator">:</span>
-                                <mat-form-field appearance="outline" class="time-field">
-                                    <mat-label>Minute</mat-label>
-                                    <input matInput type="number" [(ngModel)]="filterMinute" min="0" max="59"
-                                        placeholder="MM">
-                                </mat-form-field>
-                                <span class="time-separator">:</span>
-                                <mat-form-field appearance="outline" class="time-field">
-                                    <mat-label>Second</mat-label>
-                                    <input matInput type="number" [(ngModel)]="filterSecond" min="0" max="59"
-                                        placeholder="SS">
-                                </mat-form-field>
-                            </div>
-                            <div class="filter-actions">
-                                <button mat-raised-button color="primary"
-                                    (click)="applyDateFilter(); dateFilterTrigger.closeMenu()"
-                                    [disabled]="!filterStartDate">
-                                    <mat-icon>check</mat-icon>
-                                    Apply
-                                </button>
-                                <button mat-button (click)="clearDateFilter(); dateFilterTrigger.closeMenu()">
-                                    <mat-icon>refresh</mat-icon>
-                                    Reset
-                                </button>
-                            </div>
-                        </div>
-                    </mat-menu>
-                    <mat-divider vertical class="toolbar-divider"></mat-divider>
-                    <button mat-icon-button matTooltip="Refresh table" matTooltipPosition="above"
-                        (click)="refreshTable()" [disabled]="isRefreshing">
-                        <mat-icon [class.rotating]="isRefreshing">refresh</mat-icon>
-                    </button>
-                    <mat-divider vertical class="toolbar-divider"></mat-divider>
-                    <button mat-icon-button matTooltip="Select columns to display" matTooltipPosition="above"
-                        (click)="editColumnsToDisplay($event)">
-                        <mat-icon>view_column</mat-icon>
-                    </button>
-                    <mat-divider vertical class="toolbar-divider"></mat-divider>
-                    <button mat-icon-button (click)="toggleExpanded()"
-                        [matTooltip]="isExpanded ? 'Collapse table' : 'Expand table'" matTooltipPosition="above">
-                        <mat-icon>{{ isExpanded ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
-                    </button>
-                </mat-toolbar>
+  <!-- Data Table -->
+  <div class="table-container">
+    <mat-card>
+      <!-- Table Header Toolbar -->
+      <div style="display: flex">
+        <mat-toolbar class="mat-mdc-table-toolbar">
+          <div
+            style="
+              padding: 16px;
+              font-size: 20px;
+              font-weight: 500;
+              color: white;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            "
+          >
+            <mat-icon class="title-icon">bug_report</mat-icon>
+            Anomalies
+            <!-- Live stream indicator -->
+            <span
+              *ngIf="(forecastId && isStreamConnected) || streamError"
+              class="stream-indicator"
+              [class.connected]="isStreamConnected"
+              [class.error]="streamError"
+              [matTooltip]="
+                streamError ||
+                (isStreamConnected
+                  ? 'Live stream connected'
+                  : 'Connecting to stream...')
+              "
+              matTooltipPosition="right"
+            >
+              <span class="stream-text">
+                {{ isStreamConnected ? "LIVE" : streamError ? "ERROR" : "" }}
+              </span>
+            </span>
+          </div>
+          <span fxFlex></span>
+          <!-- Clear Predictions Button -->
+          <button
+            mat-icon-button
+            (click)="clearPredictions()"
+            matTooltip="Clear all predictions for this model"
+            matTooltipPosition="above"
+          >
+            <mat-icon>delete</mat-icon>
+          </button>
+          <mat-divider [vertical]="true" class="toolbar-divider"></mat-divider>
+          <!-- Date Filter Icon -->
+          <button
+            mat-icon-button
+            [matMenuTriggerFor]="dateFilterMenu"
+            #dateFilterTrigger="matMenuTrigger"
+            [matTooltip]="
+              filterStartDate
+                ? 'Filtering from: ' +
+                  formatDate(getFilterDateTime() || filterStartDate)
+                : 'Filter by date and time'
+            "
+            matTooltipPosition="above"
+            [class.filter-active]="filterStartDate"
+          >
+            <mat-icon [color]="filterStartDate ? 'accent' : ''"
+              >schedule</mat-icon
+            >
+          </button>
+          <mat-menu #dateFilterMenu="matMenu" class="date-filter-menu">
+            <div class="date-filter-popup" (click)="$event.stopPropagation()">
+              <div class="filter-header">
+                <mat-icon>schedule</mat-icon>
+                <span>Filter by Start Date & Time</span>
+              </div>
+              <mat-form-field appearance="outline" class="date-picker-field">
+                <mat-label>Start Date</mat-label>
+                <input
+                  matInput
+                  [matDatepicker]="picker"
+                  [(ngModel)]="filterStartDate"
+                  placeholder="Select start date"
+                />
+                <mat-datepicker-toggle matSuffix [for]="picker">
+                  <mat-icon matDatepickerToggleIcon>event</mat-icon>
+                </mat-datepicker-toggle>
+                <mat-datepicker #picker></mat-datepicker>
+              </mat-form-field>
+              <div class="time-inputs">
+                <mat-form-field appearance="outline" class="time-field">
+                  <mat-label>Hour</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    [(ngModel)]="filterHour"
+                    min="0"
+                    max="23"
+                    placeholder="HH"
+                  />
+                </mat-form-field>
+                <span class="time-separator">:</span>
+                <mat-form-field appearance="outline" class="time-field">
+                  <mat-label>Minute</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    [(ngModel)]="filterMinute"
+                    min="0"
+                    max="59"
+                    placeholder="MM"
+                  />
+                </mat-form-field>
+                <span class="time-separator">:</span>
+                <mat-form-field appearance="outline" class="time-field">
+                  <mat-label>Second</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    [(ngModel)]="filterSecond"
+                    min="0"
+                    max="59"
+                    placeholder="SS"
+                  />
+                </mat-form-field>
+              </div>
+              <div class="filter-actions">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  (click)="applyDateFilter(); dateFilterTrigger.closeMenu()"
+                  [disabled]="!filterStartDate"
+                >
+                  <mat-icon>check</mat-icon>
+                  Apply
+                </button>
+                <button
+                  mat-button
+                  (click)="clearDateFilter(); dateFilterTrigger.closeMenu()"
+                >
+                  <mat-icon>refresh</mat-icon>
+                  Reset
+                </button>
+              </div>
             </div>
+          </mat-menu>
+          <mat-divider vertical class="toolbar-divider"></mat-divider>
+          <button
+            mat-icon-button
+            matTooltip="Refresh table"
+            matTooltipPosition="above"
+            (click)="refreshTable()"
+            [disabled]="isRefreshing"
+          >
+            <mat-icon [class.rotating]="isRefreshing">refresh</mat-icon>
+          </button>
+          <mat-divider vertical class="toolbar-divider"></mat-divider>
+          <button
+            mat-icon-button
+            matTooltip="Select columns to display"
+            matTooltipPosition="above"
+            (click)="editColumnsToDisplay($event)"
+          >
+            <mat-icon>view_column</mat-icon>
+          </button>
+          <mat-divider vertical class="toolbar-divider"></mat-divider>
+          <button
+            mat-icon-button
+            (click)="toggleExpanded()"
+            [matTooltip]="isExpanded ? 'Collapse table' : 'Expand table'"
+            matTooltipPosition="above"
+          >
+            <mat-icon>{{
+              isExpanded ? "fullscreen_exit" : "fullscreen"
+            }}</mat-icon>
+          </button>
+        </mat-toolbar>
+      </div>
 
-            <mat-card-content class="table-content">
-                <!-- Scrollable table container -->
-                <div class="table-scroll-container">
-                    <table mat-table [dataSource]="dataSource" matSort class="anomalies-table">
-
-                        <!-- Confidence Column -->
-                        <ng-container matColumnDef="confidence" [sticky]="isColumnSticky('confidence')">
-                            <th mat-header-cell *matHeaderCellDef mat-sort-header
-                                [class.sticky-column]="isColumnSticky('confidence')">
-                                <div class="header-content">
-                                    <span>Confidence</span>
-                                    <button mat-icon-button class="pin-button"
-                                        (click)="toggleColumnSticky('confidence')"
-                                        [matTooltip]="getPinTooltip('confidence')"
-                                        [class.pinned]="isColumnSticky('confidence')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('confidence') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('confidence')">
-                                <div class="confidence-cell">
-                                    <span class="confidence-value" [ngClass]="getConfidenceClass(element.confidence)">
-                                        {{ element.confidence }}%
-                                    </span>
-                                    <mat-icon class="confidence-icon"
-                                        [matTooltip]="'Confidence: ' + element.confidence + '%'">
-                                        {{ getConfidenceIcon(element.confidence) }}
-                                    </mat-icon>
-                                </div>
-                            </td>
-                        </ng-container>
-
-
-                        <!-- Failure TimeRange Column -->
-                        <ng-container matColumnDef="timeRange" [sticky]="isColumnSticky('timeRange')">
-                            <th mat-header-cell *matHeaderCellDef mat-sort-header
-                                [class.sticky-column]="isColumnSticky('timeRange')">
-                                <div class="header-content">
-                                    <span>Failure Time Range</span>
-                                    <button mat-icon-button class="pin-button" (click)="toggleColumnSticky('timeRange')"
-                                        [matTooltip]="getPinTooltip('timeRange')"
-                                        [class.pinned]="isColumnSticky('timeRange')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('timeRange') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('timeRange')">
-                                <div class="time-range-cell">
-                                    <mat-icon class="time-range-icon">timeline</mat-icon>
-                                    <div class="time-range-info">
-                                        <span class="start-time">{{ formatDate(element.startTime) }}</span>
-                                        <span class="to-text">to</span>
-                                        <span class="end-time">{{ formatDate(element.endTime) }}</span>
-                                    </div>
-                                </div>
-                            </td>
-                        </ng-container>
-
-                        <!-- Severity Column -->
-                        <ng-container matColumnDef="severity" [sticky]="isColumnSticky('severity')">
-                            <th mat-header-cell *matHeaderCellDef mat-sort-header
-                                [class.sticky-column]="isColumnSticky('severity')">
-                                <div class="header-content">
-                                    <span>Severity</span>
-                                    <button mat-icon-button class="pin-button" (click)="toggleColumnSticky('severity')"
-                                        [matTooltip]="getPinTooltip('severity')"
-                                        [class.pinned]="isColumnSticky('severity')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('severity') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('severity')">
-                                <div class="severity-cell">
-                                    <mat-icon [color]="getSeverityColor(element.severity)"
-                                        [matTooltip]="element.severity + ' - ' + element.description"
-                                        class="severity-icon">
-                                        {{ getSeverityIcon(element.severity) }}
-                                    </mat-icon>
-                                    <span class="severity-text" [ngClass]="getSeverityClass(element.severity)">
-                                        {{ element.severity }}
-                                    </span>
-                                </div>
-                            </td>
-                        </ng-container>
-
-                        <!-- Component Type Column -->
-                        <ng-container matColumnDef="componentType" [sticky]="isColumnSticky('componentType')">
-                            <th mat-header-cell *matHeaderCellDef mat-sort-header
-                                [class.sticky-column]="isColumnSticky('componentType')">
-                                <div class="header-content">
-                                    <span>Component Type</span>
-                                    <button mat-icon-button class="pin-button"
-                                        (click)="toggleColumnSticky('componentType')"
-                                        [matTooltip]="getPinTooltip('componentType')"
-                                        [class.pinned]="isColumnSticky('componentType')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('componentType') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element"
-                                [class.sticky-column]="isColumnSticky('componentType')">
-                                <div class="component-cell">
-                                    <mat-icon class="component-icon">developer_board</mat-icon>
-                                    <div class="component-info">
-                                        <span class="component-name">{{ element.componentType }}</span>
-                                        <span class="device-type">{{ element.deviceType }}</span>
-                                    </div>
-                                </div>
-                            </td>
-                        </ng-container>
-
-                        <!-- Creation Date Column -->
-                        <ng-container matColumnDef="creationDate" [sticky]="isColumnSticky('creationDate')">
-                            <th mat-header-cell *matHeaderCellDef mat-sort-header
-                                [class.sticky-column]="isColumnSticky('creationDate')">
-                                <div class="header-content">
-                                    <span>Prediction Time</span>
-                                    <button mat-icon-button class="pin-button"
-                                        (click)="toggleColumnSticky('creationDate')"
-                                        [matTooltip]="getPinTooltip('creationDate')"
-                                        [class.pinned]="isColumnSticky('creationDate')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('creationDate') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element"
-                                [class.sticky-column]="isColumnSticky('creationDate')">
-                                <div class="date-cell">
-                                    <mat-icon class="date-icon">schedule</mat-icon>
-                                    <span>{{ formatDate(element.creationDate) }}</span>
-                                </div>
-                            </td>
-                        </ng-container>
-
-                        <!-- Device Type Column -->
-                        <ng-container matColumnDef="deviceType" [sticky]="isColumnSticky('deviceType')">
-                            <th mat-header-cell *matHeaderCellDef mat-sort-header
-                                [class.sticky-column]="isColumnSticky('deviceType')">
-                                <div class="header-content">
-                                    <span>Device Type</span>
-                                    <button mat-icon-button class="pin-button"
-                                        (click)="toggleColumnSticky('deviceType')"
-                                        [matTooltip]="getPinTooltip('deviceType')"
-                                        [class.pinned]="isColumnSticky('deviceType')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('deviceType') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('deviceType')">
-                                <div class="device-type-cell">
-                                    <mat-icon class="device-type-icon">memory</mat-icon>
-                                    <span>{{ element.deviceType }}</span>
-                                </div>
-                            </td>
-                        </ng-container>
-
-                        <!-- Location Column -->
-                        <ng-container matColumnDef="location" [sticky]="isColumnSticky('location')">
-                            <th mat-header-cell *matHeaderCellDef mat-sort-header
-                                [class.sticky-column]="isColumnSticky('location')">
-                                <div class="header-content">
-                                    <span>Location</span>
-                                    <button mat-icon-button class="pin-button" (click)="toggleColumnSticky('location')"
-                                        [matTooltip]="getPinTooltip('location')"
-                                        [class.pinned]="isColumnSticky('location')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('location') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('location')">
-                                <div class="location-cell">
-                                    <mat-icon class="location-icon">location_on</mat-icon>
-                                    <span>{{ element.location }}</span>
-                                </div>
-                            </td>
-                        </ng-container>
-
-                        <!-- Status Column -->
-                        <ng-container matColumnDef="status" [sticky]="isColumnSticky('status')">
-                            <th mat-header-cell *matHeaderCellDef mat-sort-header
-                                [class.sticky-column]="isColumnSticky('status')">
-                                <div class="header-content">
-                                    <span>Status</span>
-                                    <button mat-icon-button class="pin-button" (click)="toggleColumnSticky('status')"
-                                        [matTooltip]="getPinTooltip('status')"
-                                        [class.pinned]="isColumnSticky('status')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('status') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('status')">
-                                <div class="status-cell">
-                                    <mat-icon [color]="getStatusColor(element.status)" class="status-icon">
-                                        {{ getStatusIcon(element.status) }}
-                                    </mat-icon>
-                                    <span class="status-text" [ngClass]="getStatusClass(element.status)">
-                                        {{ element.status }}
-                                    </span>
-                                </div>
-                            </td>
-                        </ng-container>
-
-                        
-
-                        <!-- Actions Column -->
-                        <ng-container matColumnDef="actions" [stickyEnd]="isColumnSticky('actions')">
-                            <th mat-header-cell *matHeaderCellDef [class.sticky-column]="isColumnSticky('actions')">
-                                <div class="header-content">
-                                    <span>Actions</span>
-                                    <button mat-icon-button class="pin-button" (click)="toggleColumnSticky('actions')"
-                                        [matTooltip]="getPinTooltip('actions')"
-                                        [class.pinned]="isColumnSticky('actions')">
-                                        <mat-icon class="pin-icon">{{ getPinIcon('actions') }}</mat-icon>
-                                    </button>
-                                </div>
-                            </th>
-                            <td mat-cell *matCellDef="let element" [class.sticky-column]="isColumnSticky('actions')">
-                                <div class="actions-cell">
-                                    <button mat-icon-button color="primary" (click)="viewDetails(element)"
-                                        matTooltip="View Details">
-                                        <mat-icon>visibility</mat-icon>
-                                    </button>
-                                    <button mat-icon-button color="accent" (click)="resolveAnomaly(element)"
-                                        [disabled]="isResolved(element.status)" matTooltip="Mark as Resolved">
-                                        <mat-icon>check</mat-icon>
-                                    </button>
-                                </div>
-                            </td>
-                        </ng-container>
-
-                        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-                        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
-                    </table>
+      <mat-card-content class="table-content">
+        <!-- Scrollable table container -->
+        <div class="table-scroll-container">
+          <table
+            mat-table
+            [dataSource]="dataSource"
+            matSort
+            class="anomalies-table"
+          >
+            <!-- Confidence Column -->
+            <ng-container
+              matColumnDef="confidence"
+              [sticky]="isColumnSticky('confidence')"
+            >
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [class.sticky-column]="isColumnSticky('confidence')"
+              >
+                <div class="header-content">
+                  <span>Confidence</span>
+                  <button
+                    mat-icon-button
+                    class="pin-button"
+                    (click)="toggleColumnSticky('confidence')"
+                    [matTooltip]="getPinTooltip('confidence')"
+                    [class.pinned]="isColumnSticky('confidence')"
+                  >
+                    <mat-icon class="pin-icon">{{
+                      getPinIcon("confidence")
+                    }}</mat-icon>
+                  </button>
                 </div>
-
-                <!-- Sticky Footer Paginator -->
-                <div class="table-footer">
-                    <mat-paginator [pageSizeOptions]="[5, 10, 20, 50]" showFirstLastButtons
-                        aria-label="Select page of anomaly reports">
-                    </mat-paginator>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let element"
+                [class.sticky-column]="isColumnSticky('confidence')"
+              >
+                <div class="confidence-cell">
+                  <span
+                    class="confidence-value"
+                    [ngClass]="getConfidenceClass(element.confidence)"
+                  >
+                    {{ element.confidence }}%
+                  </span>
                 </div>
-            </mat-card-content>
-        </mat-card>
-    </div>
+              </td>
+            </ng-container>
+
+            <!-- Failure TimeRange Column -->
+            <ng-container
+              matColumnDef="timeRange"
+              [sticky]="isColumnSticky('timeRange')"
+            >
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [class.sticky-column]="isColumnSticky('timeRange')"
+              >
+                <div class="header-content">
+                  <span>Failure Time Range</span>
+                  <button
+                    mat-icon-button
+                    class="pin-button"
+                    (click)="toggleColumnSticky('timeRange')"
+                    [matTooltip]="getPinTooltip('timeRange')"
+                    [class.pinned]="isColumnSticky('timeRange')"
+                  >
+                    <mat-icon class="pin-icon">{{
+                      getPinIcon("timeRange")
+                    }}</mat-icon>
+                  </button>
+                </div>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let element"
+                [class.sticky-column]="isColumnSticky('timeRange')"
+              >
+                <div class="component-cell">
+                  <mat-icon class="component-icon">timeline</mat-icon>
+                  <div class="component-info">
+                    <span class="component-name">{{
+                      formatEndTime(element.endTime)
+                    }}</span>
+                    <span class="device-type">{{
+                      formatTimeRangeDate(element.startTime)
+                    }}</span>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Severity Column -->
+            <ng-container
+              matColumnDef="severity"
+              [sticky]="isColumnSticky('severity')"
+            >
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [class.sticky-column]="isColumnSticky('severity')"
+              >
+                <div class="header-content">
+                  <span>Severity</span>
+                  <button
+                    mat-icon-button
+                    class="pin-button"
+                    (click)="toggleColumnSticky('severity')"
+                    [matTooltip]="getPinTooltip('severity')"
+                    [class.pinned]="isColumnSticky('severity')"
+                  >
+                    <mat-icon class="pin-icon">{{
+                      getPinIcon("severity")
+                    }}</mat-icon>
+                  </button>
+                </div>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let element"
+                [class.sticky-column]="isColumnSticky('severity')"
+              >
+                <div class="severity-cell">
+                  <mat-icon
+                    [color]="getSeverityColor(element.severity)"
+                    [matTooltip]="
+                      element.severity + ' - ' + element.description
+                    "
+                    class="severity-icon"
+                  >
+                    {{ getSeverityIcon(element.severity) }}
+                  </mat-icon>
+                  <span
+                    class="severity-text"
+                    [ngClass]="getSeverityClass(element.severity)"
+                  >
+                    {{ element.severity }}
+                  </span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Component Type Column -->
+            <ng-container
+              matColumnDef="componentType"
+              [sticky]="isColumnSticky('componentType')"
+            >
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [class.sticky-column]="isColumnSticky('componentType')"
+              >
+                <div class="header-content">
+                  <span>Component Type</span>
+                  <button
+                    mat-icon-button
+                    class="pin-button"
+                    (click)="toggleColumnSticky('componentType')"
+                    [matTooltip]="getPinTooltip('componentType')"
+                    [class.pinned]="isColumnSticky('componentType')"
+                  >
+                    <mat-icon class="pin-icon">{{
+                      getPinIcon("componentType")
+                    }}</mat-icon>
+                  </button>
+                </div>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let element"
+                [class.sticky-column]="isColumnSticky('componentType')"
+              >
+                <div class="component-cell">
+                  <mat-icon class="component-icon">developer_board</mat-icon>
+                  <div class="component-info">
+                    <span class="component-name">{{
+                      element.componentType
+                    }}</span>
+                    <span class="device-type">{{ element.deviceType }}</span>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Creation Date Column -->
+            <ng-container
+              matColumnDef="creationDate"
+              [sticky]="isColumnSticky('creationDate')"
+            >
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [class.sticky-column]="isColumnSticky('creationDate')"
+              >
+                <div class="header-content">
+                  <span>Prediction Time</span>
+                  <button
+                    mat-icon-button
+                    class="pin-button"
+                    (click)="toggleColumnSticky('creationDate')"
+                    [matTooltip]="getPinTooltip('creationDate')"
+                    [class.pinned]="isColumnSticky('creationDate')"
+                  >
+                    <mat-icon class="pin-icon">{{
+                      getPinIcon("creationDate")
+                    }}</mat-icon>
+                  </button>
+                </div>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let element"
+                [class.sticky-column]="isColumnSticky('creationDate')"
+              >
+                <div class="component-cell">
+                  <mat-icon class="component-icon">schedule</mat-icon>
+                  <div class="component-info">
+                    <span class="component-name">{{
+                      formatPredictionTime(element.creationDate)
+                    }}</span>
+                    <span class="device-type">{{
+                      formatPredictionDate(element.creationDate)
+                    }}</span>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Device Type Column -->
+            <ng-container
+              matColumnDef="deviceType"
+              [sticky]="isColumnSticky('deviceType')"
+            >
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [class.sticky-column]="isColumnSticky('deviceType')"
+              >
+                <div class="header-content">
+                  <span>Device Type</span>
+                  <button
+                    mat-icon-button
+                    class="pin-button"
+                    (click)="toggleColumnSticky('deviceType')"
+                    [matTooltip]="getPinTooltip('deviceType')"
+                    [class.pinned]="isColumnSticky('deviceType')"
+                  >
+                    <mat-icon class="pin-icon">{{
+                      getPinIcon("deviceType")
+                    }}</mat-icon>
+                  </button>
+                </div>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let element"
+                [class.sticky-column]="isColumnSticky('deviceType')"
+              >
+                <div class="device-type-cell">
+                  <mat-icon class="device-type-icon">memory</mat-icon>
+                  <span>{{ element.deviceType }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Location Column -->
+            <ng-container
+              matColumnDef="location"
+              [sticky]="isColumnSticky('location')"
+            >
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [class.sticky-column]="isColumnSticky('location')"
+              >
+                <div class="header-content">
+                  <span>Location</span>
+                  <button
+                    mat-icon-button
+                    class="pin-button"
+                    (click)="toggleColumnSticky('location')"
+                    [matTooltip]="getPinTooltip('location')"
+                    [class.pinned]="isColumnSticky('location')"
+                  >
+                    <mat-icon class="pin-icon">{{
+                      getPinIcon("location")
+                    }}</mat-icon>
+                  </button>
+                </div>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let element"
+                [class.sticky-column]="isColumnSticky('location')"
+              >
+                <div class="location-cell">
+                  <mat-icon class="location-icon">location_on</mat-icon>
+                  <span>{{ element.location }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container
+              matColumnDef="status"
+              [sticky]="isColumnSticky('status')"
+            >
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [class.sticky-column]="isColumnSticky('status')"
+              >
+                <div class="header-content">
+                  <span>Status</span>
+                  <button
+                    mat-icon-button
+                    class="pin-button"
+                    (click)="toggleColumnSticky('status')"
+                    [matTooltip]="getPinTooltip('status')"
+                    [class.pinned]="isColumnSticky('status')"
+                  >
+                    <mat-icon class="pin-icon">{{
+                      getPinIcon("status")
+                    }}</mat-icon>
+                  </button>
+                </div>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let element"
+                [class.sticky-column]="isColumnSticky('status')"
+              >
+                <div class="status-cell">
+                  <mat-icon
+                    [color]="getStatusColor(element.status)"
+                    class="status-icon"
+                  >
+                    {{ getStatusIcon(element.status) }}
+                  </mat-icon>
+                  <span
+                    class="status-text"
+                    [ngClass]="getStatusClass(element.status)"
+                  >
+                    {{ element.status }}
+                  </span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container
+              matColumnDef="actions"
+              [stickyEnd]="isColumnSticky('actions')"
+            >
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                [class.sticky-column]="isColumnSticky('actions')"
+              >
+                <div class="header-content">
+                  <span>Actions</span>
+                  <button
+                    mat-icon-button
+                    class="pin-button"
+                    (click)="toggleColumnSticky('actions')"
+                    [matTooltip]="getPinTooltip('actions')"
+                    [class.pinned]="isColumnSticky('actions')"
+                  >
+                    <mat-icon class="pin-icon">{{
+                      getPinIcon("actions")
+                    }}</mat-icon>
+                  </button>
+                </div>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let element"
+                [class.sticky-column]="isColumnSticky('actions')"
+              >
+                <div class="actions-cell">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="viewDetails(element)"
+                    matTooltip="View Details"
+                  >
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="accent"
+                    (click)="resolveAnomaly(element)"
+                    [disabled]="isResolved(element.status)"
+                    matTooltip="Mark as Resolved"
+                  >
+                    <mat-icon>check</mat-icon>
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+
+            <tr
+              mat-header-row
+              *matHeaderRowDef="displayedColumns; sticky: true"
+            ></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns"
+              class="table-row"
+            ></tr>
+          </table>
+        </div>
+
+        <!-- Sticky Footer Paginator -->
+        <div class="table-footer">
+          <mat-paginator
+            [pageSizeOptions]="[10, 20, 50, 100]"
+            showFirstLastButtons
+            aria-label="Select page of anomaly reports"
+          >
+          </mat-paginator>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
 </div>

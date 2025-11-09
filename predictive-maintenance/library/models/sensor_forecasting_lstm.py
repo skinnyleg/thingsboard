@@ -827,7 +827,8 @@ if __name__ == "__main__":
 
     # Configuration
     # DATA_PATH = 'PdM_telemetry.csv'
-    DATA_PATH = "../../data/PdM_telemetry.csv"  # Adjust path as needed
+    # DATA_PATH = "../../data/PdM_telemetry.csv"  # Adjust path as needed
+    DATA_PATH = "../../../application/src/main/resources/predictive-maintenance/data/PdM_telemetry.csv"
     MACHINE_ID = 1
     TRAIN_SIZE = 8041
     LOOKBACK = 40

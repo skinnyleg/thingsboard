@@ -63,6 +63,7 @@ import {
   AnomalyStreamMessage,
   AnomalyStreamSubscription,
 } from '@app/core/http/model-websocket.service';
+import { PredictiveModelsService } from '@app/core/http/forecast.service';
 
 export interface AnomalyReport {
   id: string;
@@ -111,8 +112,8 @@ export type AnomalyPredictionLogEntry = LogEntry & {
 };
 
 export interface ForecastSensorPrediction {
-    forecast: number[];
-    timestamp: number[];
+  forecast: number[];
+  timestamp: number[];
 };
 
 export interface ForecastPrediction {
@@ -121,7 +122,7 @@ export interface ForecastPrediction {
 }
 
 export interface ForecastSensorPredictions {
-    [sensor: string]: ForecastSensorPrediction;
+  [sensor: string]: ForecastSensorPrediction;
 }
 
 export interface ForecastPredictionLogEntryMessage {
@@ -174,6 +175,12 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
 
   @Input() isExpanded?: boolean;
 
+  @Input() modelId?: string;
+
+  @Input() predictionType?: string;
+
+  @Input() predictiveModelsService?: PredictiveModelsService;
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   @ViewChild(MatSort) sort!: MatSort;
@@ -200,11 +207,11 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
     'componentType',
     'confidence',
     'creationDate',
-    'severity',
-    'deviceType',
-    'location',
-    'status',
-    'actions',
+    // 'severity',
+    // 'deviceType',
+    // 'location',
+    // 'status',
+    // 'actions',
   ];
 
   // Track which columns are pinned/sticky
@@ -257,7 +264,7 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
     private overlay: Overlay,
     private viewContainerRef: ViewContainerRef,
     private translate: TranslateService,
-  ) {}
+  ) { }
 
   /**
    * Public method to add a new anomaly from outside (e.g., parent component)
@@ -416,7 +423,155 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
       return 'Invalid Date';
     }
 
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    // Format: Full time with DD/MM/YYYY (with line break)
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    const hour12 = hours % 12 || 12;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+
+    // Pad with zeros
+    const minutesStr = minutes.toString().padStart(2, '0');
+    const secondsStr = seconds.toString().padStart(2, '0');
+
+    // Format date as DD/MM/YYYY
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${hour12}:${minutesStr}:${secondsStr} ${ampm}\n${day}/${month}/${year}`;
+  }
+
+  formatTimeRange(startTime: string | Date | number, endTime: string | Date | number): string {
+    // Parse start time
+    let startDate: Date;
+    if (typeof startTime === 'string') {
+      startDate = new Date(startTime);
+    } else if (typeof startTime === 'number') {
+      startDate = new Date(startTime);
+    } else {
+      startDate = startTime;
+    }
+
+    // Parse end time
+    let endDate: Date;
+    if (typeof endTime === 'string') {
+      endDate = new Date(endTime);
+    } else if (typeof endTime === 'number') {
+      endDate = new Date(endTime);
+    } else {
+      endDate = endTime;
+    }
+
+    if (!startDate || isNaN(startDate.getTime()) || !endDate || isNaN(endDate.getTime())) {
+      return 'Invalid Date Range';
+    }
+
+    // Get hours
+    const startHour = startDate.getHours();
+    const startHour12 = startHour % 12 || 12;
+    const startAmpm = startHour >= 12 ? 'PM' : 'AM';
+
+    const endHour = endDate.getHours();
+    const endHour12 = endHour % 12 || 12;
+    const endAmpm = endHour >= 12 ? 'PM' : 'AM';
+
+    // Format: "10AM - 11AM"
+    return `${startHour12}${startAmpm} - ${endHour12}${endAmpm}`;
+  }
+
+  formatTimeRangeDate(startTime: string | Date | number): string {
+    // Parse start time
+    let startDate: Date;
+    if (typeof startTime === 'string') {
+      startDate = new Date(startTime);
+    } else if (typeof startTime === 'number') {
+      startDate = new Date(startTime);
+    } else {
+      startDate = startTime;
+    }
+
+    if (!startDate || isNaN(startDate.getTime())) {
+      return 'Invalid Date';
+    }
+
+    // Format date as M-D-YYYY
+    const month = startDate.getMonth() + 1;
+    const day = startDate.getDate();
+    const year = startDate.getFullYear();
+
+    return `${month}-${day}-${year}`;
+  }
+
+  formatEndTime(endTime: string | Date | number): string {
+    // Parse end time
+    let endDate: Date;
+    if (typeof endTime === 'string') {
+      endDate = new Date(endTime);
+    } else if (typeof endTime === 'number') {
+      endDate = new Date(endTime);
+    } else {
+      endDate = endTime;
+    }
+
+    if (!endDate || isNaN(endDate.getTime())) {
+      return 'Invalid Time';
+    }
+
+    // Get end hour
+    const endHour = endDate.getHours();
+    const endHour12 = endHour % 12 || 12;
+    const endAmpm = endHour >= 12 ? 'PM' : 'AM';
+
+    // Format: "11AM"
+    return `${endHour12}${endAmpm}`;
+  }
+
+  formatPredictionTime(dateString: string | Date | number): string {
+    let date: Date;
+    if (typeof dateString === 'string') {
+      date = new Date(dateString);
+    } else if (typeof dateString === 'number') {
+      date = new Date(dateString);
+    } else {
+      date = dateString;
+    }
+
+    if (!date || isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    const hour12 = hours % 12 || 12;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+
+    const minutesStr = minutes.toString().padStart(2, '0');
+    const secondsStr = seconds.toString().padStart(2, '0');
+
+    return `${hour12}:${minutesStr}:${secondsStr} ${ampm}`;
+  }
+
+  formatPredictionDate(dateString: string | Date | number): string {
+    let date: Date;
+    if (typeof dateString === 'string') {
+      date = new Date(dateString);
+    } else if (typeof dateString === 'number') {
+      date = new Date(dateString);
+    } else {
+      date = dateString;
+    }
+
+    if (!date || isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
   }
 
   viewDetails(anomaly: AnomalyReport): void {
@@ -434,6 +589,33 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
     // console.log("Resolve anomaly:", anomaly);
   }
 
+  clearPredictions(): void {
+    if (!this.predictiveModelsService || !this.modelId) {
+      // Fallback: just clear the table locally
+      this.anomalies.clear();
+      this.dataSource.data = [];
+      return;
+    }
+
+    // Call API to delete predictions from database
+    this.predictiveModelsService
+      .deleteAnomalyHistoryPredictions(this.modelId, this.predictionType)
+      .subscribe({
+        next: (response: { deletedCount: number; message: string }) => {
+          console.log('Deleted predictions:', response);
+          // Clear the table
+          this.anomalies.clear();
+          this.dataSource.data = [];
+        },
+        error: (error: any) => {
+          console.error('Failed to delete predictions:', error);
+          // Still clear the table locally on error
+          this.anomalies.clear();
+          this.dataSource.data = [];
+        }
+      });
+  }
+
   getSeverityClass(severity: string): string {
     return `severity-${severity.toLowerCase()}`;
   }
@@ -443,14 +625,14 @@ export class AnomaliesComponent implements OnInit, OnDestroy {
   }
 
   getConfidenceClass(confidence: number): string {
-    if (confidence >= 90) {return 'high-confidence';}
-    if (confidence >= 75) {return 'medium-confidence';}
+    if (confidence >= 90) { return 'high-confidence'; }
+    if (confidence >= 75) { return 'medium-confidence'; }
     return 'low-confidence';
   }
 
   getConfidenceIcon(confidence: number): string {
-    if (confidence >= 90) {return 'trending_up';}
-    if (confidence >= 75) {return 'trending_flat';}
+    if (confidence >= 90) { return 'trending_up'; }
+    if (confidence >= 75) { return 'trending_flat'; }
     return 'trending_down';
   }
 

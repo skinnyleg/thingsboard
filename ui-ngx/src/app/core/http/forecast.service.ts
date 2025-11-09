@@ -44,6 +44,57 @@ export class PredictiveModelsService {
     );
   }
 
+  /**
+   * Fetch anomaly history predictions from the database.
+   *
+   * @param modelId - Model ID (predictive_maintenance_config UUID)
+   * @param predictionType - Prediction type: 'Anomaly', 'Forecast', or 'Failure'
+   * @param startTs - Optional start timestamp in milliseconds
+   * @param endTs - Optional end timestamp in milliseconds
+   * @param limit - Maximum number of records (default: 100)
+   * @param config - Optional HTTP request config
+   * @returns Observable with predictions array and totalCount
+   */
+  fetchANomalyHistoryPredictions(
+    modelId: string,
+    predictionType: string,
+    startTs?: number,
+    endTs?: number,
+    limit: number = 100,
+    config?: RequestConfig
+  ): Observable<{ predictions: any[]; totalCount: number; limit: number }> {
+    // Build query parameters
+    let params = `limit=${limit}`;
+    if (startTs) {
+      params += `&startTs=${startTs}`;
+    }
+    if (endTs) {
+      params += `&endTs=${endTs}`;
+    }
+
+    return this.http.get<{ predictions: any[]; totalCount: number; limit: number }>(
+      `${this.baseUrlModels}/anomaly-history-predictions/${modelId}/${predictionType}?${params}`,
+      defaultHttpOptionsFromConfig(config)
+    );
+  }
+
+  deleteAnomalyHistoryPredictions(
+    modelId: string,
+    predictionType?: string,
+    config?: RequestConfig
+  ): Observable<{ deletedCount: number; message: string }> {
+    // Build query parameters
+    let params = '';
+    if (predictionType) {
+      params = `?predictionType=${predictionType}`;
+    }
+
+    return this.http.delete<{ deletedCount: number; message: string }>(
+      `${this.baseUrlModels}/anomaly-history-predictions/${modelId}${params}`,
+      defaultHttpOptionsFromConfig(config)
+    );
+  }
+
   // Fetch a specific predictive model by its ID
   getPredictiveModel(
     forecastId: string,

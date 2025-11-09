@@ -14,6 +14,8 @@ from src.model.job import (
     add_model_log,
     start_prediction_job,
     stop_prediction_job,
+    pause_prediction_job,
+    unpause_prediction_job,
     get_job_status,
     get_model_logs,
     subscribe_to_logs,
@@ -101,12 +103,35 @@ async def unified_model_stream(websocket: WebSocket):
     {
         "commandId": 130,
         "type": "stop_job",
-        "forecastId": "uuid"
+        "forecastId": "uuid",
+        "data": {
+            "modelType": "anomaly" | "forecast"  // optional, defaults to both
+        }
     }
 
-    9. ping - Health check
+    9. pause_job - Pause a running job
     {
         "commandId": 131,
+        "type": "pause_job",
+        "forecastId": "uuid",
+        "data": {
+            "modelType": "anomaly" | "forecast"
+        }
+    }
+
+    10. unpause_job - Resume a paused job
+    {
+        "commandId": 132,
+        "type": "unpause_job",
+        "forecastId": "uuid",
+        "data": {
+            "modelType": "anomaly" | "forecast"
+        }
+    }
+
+    11. ping - Health check
+    {
+        "commandId": 133,
         "type": "ping"
     }
     """
@@ -134,9 +159,7 @@ async def unified_model_stream(websocket: WebSocket):
         # Create task for subscription updates
         async def subscription_updater():
             """Background task to send prediction subscription updates (logs are now real-time)"""
-            print(
-                f"[SUBSCRIPTION UPDATER] Background task started for prediction updates"
-            )
+            print(f"[SUBSCRIPTION UPDATER] Background task started for prediction updates")
             while True:
                 try:
                     # Send prediction updates
@@ -166,8 +189,7 @@ async def unified_model_stream(websocket: WebSocket):
                                                 "status": job_status.get("status"),
                                                 "last_run": job_status.get("last_run"),
                                             },
-                                            "timestamp": datetime.now().isoformat()
-                                            + "Z",
+                                            "timestamp": datetime.now().isoformat() + "Z",
                                         }
                                     )
                                     last_iterations[model_id] = current_iteration
@@ -312,16 +334,12 @@ async def unified_model_stream(websocket: WebSocket):
                 log_subscriptions.add(forecast_id)
 
                 # send existing logs as initial batch for forecast model
-                await handle_job_logs(
-                    websocket, command_id, forecast_id, data, "forecast_model"
-                )
+                await handle_job_logs(websocket, command_id, forecast_id, data, "forecast_model")
                 # send existing logs as initial batch for anomaly model
-                await handle_job_logs(
-                    websocket, command_id, forecast_id, data, "anomaly_predictor"
-                )
+                await handle_job_logs(websocket, command_id, forecast_id, data, "anomaly_predictor")
 
                 # Create a real-time callback for this WebSocket connection
-                def create_log_callback(ws, fid, loop):
+                def create_log_callback(ws, fid, cmd_id, loop):
                     def log_callback(log_entry):
                         """Callback to send log immediately when it's created (thread-safe)"""
                         try:
@@ -329,6 +347,7 @@ async def unified_model_stream(websocket: WebSocket):
                             asyncio.run_coroutine_threadsafe(
                                 ws.send_json(
                                     {
+                                        "commandId": cmd_id,
                                         "type": "logs",
                                         "forecastId": fid,
                                         "data": {
@@ -351,10 +370,8 @@ async def unified_model_stream(websocket: WebSocket):
 
                     return log_callback
 
-                # Store the callback and subscribe (pass the event loop)
-                callback = create_log_callback(
-                    websocket, forecast_id, asyncio.get_event_loop()
-                )
+                # Store the callback and subscribe (pass the event loop and command_id)
+                callback = create_log_callback(websocket, forecast_id, command_id, asyncio.get_event_loop())
                 model_id = f"{forecast_id}/anomaly_predictor"
                 log_callbacks[model_id] = callback
                 subscribe_to_logs(model_id, callback)
@@ -362,9 +379,7 @@ async def unified_model_stream(websocket: WebSocket):
                 log_callbacks[model_id] = callback
                 subscribe_to_logs(model_id, callback)
 
-                logger.info(
-                    f"Client subscribed to real-time logs for forecast {forecast_id}"
-                )
+                logger.info(f"Client subscribed to real-time logs for forecast {forecast_id}")
                 print(
                     f"[LOG SUBSCRIBE] Client subscribed to real-time logs for forecast {forecast_id}"
                 )
@@ -401,19 +416,87 @@ async def unified_model_stream(websocket: WebSocket):
 
             # Handle stop_job command
             if msg_type == "stop_job":
-                model_id = f"{forecast_id}/anomaly_predictor"
-                success = stop_prediction_job(model_id)
+                model_type = data.get("modelType", "both")
+                success_list = []
+
+                if model_type in ["anomaly", "both"]:
+                    anomaly_model_id = f"{forecast_id}/anomaly_predictor"
+                    success = stop_prediction_job(anomaly_model_id)
+                    if success:
+                        success_list.append("anomaly")
+
+                if model_type in ["forecast", "both"]:
+                    forecast_model_id = f"{forecast_id}/forecast_model"
+                    success = stop_prediction_job(forecast_model_id)
+                    if success:
+                        success_list.append("forecast")
 
                 await websocket.send_json(
                     {
                         "commandId": command_id,
                         "type": "response",
                         "message": (
-                            f"Job stopped for {forecast_id}"
+                            f"Job(s) stopped: {', '.join(success_list)}"
+                            if success_list
+                            else f"No active jobs found for {forecast_id}"
+                        ),
+                        "success": len(success_list) > 0,
+                        "timestamp": datetime.now().isoformat() + "Z",
+                    }
+                )
+                continue
+
+            # Handle pause_job command
+            if msg_type == "pause_job":
+                model_type = data.get("modelType", "forecast")
+
+                if model_type == "anomaly":
+                    model_id = f"{forecast_id}/anomaly_predictor"
+                else:
+                    model_id = f"{forecast_id}/forecast_model"
+
+                success = pause_prediction_job(model_id)
+
+                await websocket.send_json(
+                    {
+                        "commandId": command_id,
+                        "type": "response",
+                        "message": (
+                            f"{model_type} job paused for {forecast_id}"
                             if success
-                            else f"No active job found for {forecast_id}"
+                            else f"Could not pause {model_type} job for {forecast_id}"
                         ),
                         "success": success,
+                        "forecastId": forecast_id,
+                        "modelType": model_type,
+                        "timestamp": datetime.now().isoformat() + "Z",
+                    }
+                )
+                continue
+
+            # Handle unpause_job (resume) command
+            if msg_type == "unpause_job":
+                model_type = data.get("modelType", "forecast")
+
+                if model_type == "anomaly":
+                    model_id = f"{forecast_id}/anomaly_predictor"
+                else:
+                    model_id = f"{forecast_id}/forecast_model"
+
+                success = unpause_prediction_job(model_id)
+
+                await websocket.send_json(
+                    {
+                        "commandId": command_id,
+                        "type": "response",
+                        "message": (
+                            f"{model_type} job resumed for {forecast_id}"
+                            if success
+                            else f"Could not resume {model_type} job for {forecast_id}"
+                        ),
+                        "success": success,
+                        "forecastId": forecast_id,
+                        "modelType": model_type,
                         "timestamp": datetime.now().isoformat() + "Z",
                     }
                 )
@@ -464,9 +547,7 @@ async def unified_model_stream(websocket: WebSocket):
         logger.info("Unified WebSocket connection closed")
 
 
-async def handle_activate(
-    websocket: WebSocket, command_id: int, forecast_id: str, data: dict
-):
+async def handle_activate(websocket: WebSocket, command_id: int, forecast_id: str, data: dict):
     """Handle model activation (training) command"""
     print(
         f"[ACTIVATE] Received activate command - commandId: {command_id}, forecastId: {forecast_id}, data: {data}",
@@ -522,9 +603,7 @@ async def handle_activate(
             device_id = model_config["device_id"]
             print(f"[ACTIVATE] Device ID from config: {device_id}", flush=True)
         except Exception as e:
-            print(
-                f"[ACTIVATE ERROR] Failed to fetch configuration: {str(e)}", flush=True
-            )
+            print(f"[ACTIVATE ERROR] Failed to fetch configuration: {str(e)}", flush=True)
 
             traceback.print_exc()
             await websocket.send_json(
@@ -537,87 +616,32 @@ async def handle_activate(
             )
             return
 
-        # # Train AnomalyPredictor
-        # await websocket.send_json(
-        #     {
-        #         "commandId": command_id,
-        #         "type": "progress",
-        #         "step": "training_anomaly",
-        #         "message": "Training AnomalyPredictor...",
-        #         "progress": 20,
-        #         "timestamp": datetime.now().isoformat() + "Z",
-        #     }
-        # )
-
-        # try:
-        #     algorithm = model_config.get("anomaly_algorithm", None)
-        #     print(f"[ACTIVATE] Starting anomaly predictor training...", flush=True)
-        #     anomaly_result = await asyncio.to_thread(
-        #         train_and_save_model,
-        #         model_id=f"{forecast_id}/anomaly_predictor",
-        #         model_type="AnomalyPredictor",
-        #         device_id=device_id,
-        #         data_registry=data_registry,
-        #         algorithm=algorithm,
-        #         days_back=90,
-        #     )
-        #     print(
-        #         f"[ACTIVATE] Anomaly predictor training completed: {anomaly_result}",
-        #         flush=True,
-        #     )
-
-        #     await websocket.send_json(
-        #         {
-        #             "commandId": command_id,
-        #             "type": "progress",
-        #             "step": "anomaly_complete",
-        #             "message": "AnomalyPredictor trained successfully",
-        #             "progress": 50,
-        #             "metrics": anomaly_result.get("training_results", {}),
-        #             "timestamp": datetime.now().isoformat() + "Z",
-        #         }
-        #     )
-        # except Exception as e:
-
-        #     error_trace = traceback.format_exc()
-        #     print(f"[ACTIVATE ERROR] Training failed: {str(e)}", flush=True)
-        #     print(f"[ACTIVATE ERROR] Traceback:\n{error_trace}", flush=True)
-        #     await websocket.send_json(
-        #         {
-        #             "commandId": command_id,
-        #             "type": "error",
-        #             "step": "anomaly_failed",
-        #             "message": f"AnomalyPredictor training failed: {str(e)}",
-        #             "progress": 50,
-        #             "timestamp": datetime.now().isoformat() + "Z",
-        #         }
-        #     )
-        #     return  # Stop activation on training failure
+        # Train AnomalyPredictor
+        await websocket.send_json(
+            {
+                "commandId": command_id,
+                "type": "progress",
+                "step": "training_anomaly",
+                "message": "Training AnomalyPredictor...",
+                "progress": 20,
+                "timestamp": datetime.now().isoformat() + "Z",
+            }
+        )
 
         try:
-            # Train ForecastModel
-            # algorithm = model_config.get("forecast_algorithm", None)
-            algorithm = None
-            sensors = model_config.get("attributes", [])
-            # map {'key': 'sensor'} to ['sensor']
-            sensors = [sensor["key"] for sensor in sensors if "key" in sensor]
-            print(f"[ACTIVATE] Sensors for ForecastModel: {sensors}", flush=True)
-            print(f"[ACTIVATE] Starting forecast model training...", flush=True)
-
-            forecast_result = await asyncio.to_thread(
+            algorithm = model_config.get("anomaly_algorithm", None)
+            print(f"[ACTIVATE] Starting anomaly predictor training...", flush=True)
+            anomaly_result = await asyncio.to_thread(
                 train_and_save_model,
-                model_id=f"{forecast_id}/forecast_model",
-                model_type="ForecastModel",
+                model_id=f"{forecast_id}/anomaly_predictor",
+                model_type="AnomalyPredictor",
                 device_id=device_id,
                 data_registry=data_registry,
                 algorithm=algorithm,
-                train_start_date=datetime(2014, 1, 1),
-                train_end_date=datetime(2016, 1, 1),
-                sensors=sensors,
-                lookback=20,
+                days_back=90,
             )
             print(
-                f"[ACTIVATE] Forecast model training completed: {forecast_result}",
+                f"[ACTIVATE] Anomaly predictor training completed: {anomaly_result}",
                 flush=True,
             )
 
@@ -625,14 +649,68 @@ async def handle_activate(
                 {
                     "commandId": command_id,
                     "type": "progress",
-                    "step": "forecast_complete",
-                    "message": "ForecastModel trained successfully",
-                    "progress": 90,
-                    "metrics": forecast_result.get("training_results", {}),
+                    "step": "anomaly_complete",
+                    "message": "AnomalyPredictor trained successfully",
+                    "progress": 50,
+                    "metrics": anomaly_result.get("training_results", {}),
                     "timestamp": datetime.now().isoformat() + "Z",
                 }
             )
         except Exception as e:
+            error_trace = traceback.format_exc()
+            print(f"[ACTIVATE ERROR] Training failed: {str(e)}", flush=True)
+            print(f"[ACTIVATE ERROR] Traceback:\n{error_trace}", flush=True)
+            await websocket.send_json(
+                {
+                    "commandId": command_id,
+                    "type": "error",
+                    "step": "anomaly_failed",
+                    "message": f"AnomalyPredictor training failed: {str(e)}",
+                    "progress": 50,
+                    "timestamp": datetime.now().isoformat() + "Z",
+                }
+            )
+            # return  # Stop activation on training failure
+
+            # try:
+            #     # Train ForecastModel
+            #     # algorithm = model_config.get("forecast_algorithm", None)
+            #     algorithm = None
+            #     sensors = model_config.get("attributes", [])
+            #     # map {'key': 'sensor'} to ['sensor']
+            #     sensors = [sensor["key"] for sensor in sensors if "key" in sensor]
+            #     print(f"[ACTIVATE] Sensors for ForecastModel: {sensors}", flush=True)
+            #     print(f"[ACTIVATE] Starting forecast model training...", flush=True)
+
+            #     forecast_result = await asyncio.to_thread(
+            #         train_and_save_model,
+            #         model_id=f"{forecast_id}/forecast_model",
+            #         model_type="ForecastModel",
+            #         device_id=device_id,
+            #         data_registry=data_registry,
+            #         algorithm=algorithm,
+            #         train_start_date=datetime(2014, 1, 1),
+            #         train_end_date=datetime(2016, 1, 1),
+            #         sensors=sensors,
+            #         lookback=20,
+            #     )
+            #     print(
+            #         f"[ACTIVATE] Forecast model training completed: {forecast_result}",
+            #         flush=True,
+            #     )
+
+            #     await websocket.send_json(
+            #         {
+            #             "commandId": command_id,
+            #             "type": "progress",
+            #             "step": "forecast_complete",
+            #             "message": "ForecastModel trained successfully",
+            #             "progress": 90,
+            #             "metrics": forecast_result.get("training_results", {}),
+            #             "timestamp": datetime.now().isoformat() + "Z",
+            #         }
+            #     )
+            # except Exception as e:
             error_trace = traceback.format_exc()
             print(f"[ACTIVATE ERROR] Training failed: {str(e)}", flush=True)
             print(f"[ACTIVATE ERROR] Traceback:\n{error_trace}", flush=True)
@@ -648,26 +726,26 @@ async def handle_activate(
             )
             return  # Stop activation on training failure
 
-        # # return
-        # # Start prediction job
-        # print(f"[ACTIVATE] Starting prediction job...")
-        # await asyncio.to_thread(
-        #     start_prediction_job,
-        #     f"{forecast_id}/anomaly_predictor",
-        #     "AnomalyPredictor",
-        #     device_id,
-        # )
-        # print(f"[ACTIVATE] Prediction job started")
-
-        # forecast predictions
+        # return
+        # Start prediction job
+        print(f"[ACTIVATE] Starting prediction job...")
         await asyncio.to_thread(
             start_prediction_job,
-            f"{forecast_id}/forecast_model",
-            "ForecastModel",
+            f"{forecast_id}/anomaly_predictor",
+            "AnomalyPredictor",
             device_id,
         )
+        print(f"[ACTIVATE] Prediction job started")
 
-        print(f"[ACTIVATE] Forecast prediction job started")
+        # # forecast predictions
+        # await asyncio.to_thread(
+        #     start_prediction_job,
+        #     f"{forecast_id}/forecast_model",
+        #     "ForecastModel",
+        #     device_id,
+        # )
+
+        # print(f"[ACTIVATE] Forecast prediction job started")
 
         # Send completion
         await websocket.send_json(

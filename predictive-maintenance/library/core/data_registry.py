@@ -69,7 +69,7 @@ class DataRegistry:
     def _connect(self) -> None:
         """Establish database connection."""
         try:
-            self.engine = create_engine(self.database_url)
+            self.engine = create_engine(self.database_url, echo=True)
             logger.info(f"Connected to database: {self.database_url.split('@')[-1]}")
             logger.info(f"Configured telemetry keys: {self.telemetry_keys}")
             logger.info(f"Configured error keys: {self.error_keys}")
@@ -118,7 +118,7 @@ class DataRegistry:
                         logger.warning(f"Key '{key_name}' not found in key_dictionary")
 
                 logger.info(
-                    f"Resolved {len(key_ids)} key IDs: {dict(zip(key_names[:len(key_ids)], key_ids))}"
+                    f"Resolved {len(key_ids)} key IDs: {dict(zip(key_names[: len(key_ids)], key_ids))}"
                 )
                 return key_ids
 
@@ -200,14 +200,10 @@ class DataRegistry:
                     "device_id": str(row.device_id),
                     "attributes": row.attributes if hasattr(row, "attributes") else {},
                     "forecast_algorithm": (
-                        row.forecast_algorithm
-                        if hasattr(row, "forecast_algorithm")
-                        else "ARIMA"
+                        row.forecast_algorithm if hasattr(row, "forecast_algorithm") else "ARIMA"
                     ),
                     "anomaly_algorithm": (
-                        row.anomaly_algorithm
-                        if hasattr(row, "anomaly_algorithm")
-                        else "THRESHOLD"
+                        row.anomaly_algorithm if hasattr(row, "anomaly_algorithm") else "THRESHOLD"
                     ),
                     "name": row.name if hasattr(row, "name") else "Unknown",
                 }
@@ -218,9 +214,7 @@ class DataRegistry:
                 return config
 
         except Exception as e:
-            logger.error(
-                f"Error fetching predictive maintenance config for {model_id}: {e}"
-            )
+            logger.error(f"Error fetching predictive maintenance config for {model_id}: {e}")
             raise
 
     def fetch_model_telemetry_keys(self, model_id: str) -> List[str]:
@@ -314,12 +308,19 @@ class DataRegistry:
     """
 
     def fetch_telemetry_data(
-        self, device_id: str, start_date: datetime = None, **kwargs
+        self, device_id: str, start_date: datetime = None, end_date: datetime = None, **kwargs
     ) -> pd.DataFrame:
         if start_date is None:
-            start_date = datetime.now()
+            # start_date = datetime.now()
+            start_date = datetime(1, 1, 1, 0, 0)
+        if end_date is None:
+            end_date = datetime.now()
         # cutoff_date = start_date - timedelta(days=days_back)
         cutoff_date = start_date
+        print(
+            f"[FETCH_TELEMETRY_DATA] fetching telemetry data from {cutoff_date} to {end_date}",
+            flush=True,
+        )
 
         # Fetch telemetry keys from model configuration
         telemetry_keys = self.fetch_model_telemetry_keys(device_id)
@@ -339,28 +340,47 @@ class DataRegistry:
             # Build dynamic SQL for telemetry key IDs (integers)
             telemetry_keys_sql = ", ".join([str(kid) for kid in telemetry_key_ids])
 
-            # Fetch raw telemetry data (dynamic based on configuration)
-            telemetry_query = text(
-                f"""
-                SELECT
-                    ts,
-                    key,
-                    COALESCE(dbl_v, long_v, str_v::float) as value
-                FROM ts_kv
-                WHERE entity_id = :device_id
-                AND ts >= :cutoff_ts
-                AND key IN ({telemetry_keys_sql})
-                ORDER BY ts
-            """
-            )
-
-            telemetry_result = conn.execute(
-                telemetry_query,
-                {
+            # Build query with optional end_date filter
+            if end_date is not None:
+                telemetry_query = text(
+                    f"""
+                    SELECT
+                        ts,
+                        key,
+                        COALESCE(dbl_v, long_v, str_v::float) as value
+                    FROM ts_kv
+                    WHERE entity_id = :device_id
+                    AND ts >= :cutoff_ts
+                    AND ts <= :end_ts
+                    AND key IN ({telemetry_keys_sql})
+                    ORDER BY ts
+                """
+                )
+                query_params = {
                     "device_id": device_id,
                     "cutoff_ts": int(cutoff_date.timestamp() * 1000),
-                },
-            )
+                    "end_ts": int(end_date.timestamp() * 1000),
+                }
+            else:
+                telemetry_query = text(
+                    f"""
+                    SELECT
+                        ts,
+                        key,
+                        COALESCE(dbl_v, long_v, str_v::float) as value
+                    FROM ts_kv
+                    WHERE entity_id = :device_id
+                    AND ts >= :cutoff_ts
+                    AND key IN ({telemetry_keys_sql})
+                    ORDER BY ts
+                """
+                )
+                query_params = {
+                    "device_id": device_id,
+                    "cutoff_ts": int(cutoff_date.timestamp() * 1000),
+                }
+
+            telemetry_result = conn.execute(telemetry_query, query_params)
 
             telemetry_data = []
             for row in telemetry_result:
@@ -372,13 +392,20 @@ class DataRegistry:
                     }
                 )
 
-            # Pivot telemetry data
-            telemetry_df = pd.DataFrame(telemetry_data)
-            telemetry_pivot = telemetry_df.pivot_table(
-                index="datetime", columns="key", values="value"
-            ).reset_index()
-            return telemetry_pivot
-        return pd.DataFrame()
+            if len(telemetry_data) > 1:
+                # Pivot telemetry data
+                telemetry_df = pd.DataFrame(telemetry_data)
+                telemetry_pivot = telemetry_df.pivot_table(
+                    index="datetime", columns="key", values="value"
+                ).reset_index()
+                return telemetry_pivot
+        return pd.DataFrame(
+            {
+                "datetime": [],
+                # add telemetry_keys as columns
+                **{key: [] for key in telemetry_keys},
+            }
+        )
         # Convert to dataframe
         # with columns datetime, volt, rotate, pressure, vibration
         # join by datetime
@@ -389,81 +416,136 @@ class DataRegistry:
     """
 
     def fetch_maintenance_data(
-        self, device_id: str, start_date: datetime = None, **kwargs
+        self, device_id: str, start_date: datetime = None, end_date: datetime = None, **kwargs
     ) -> pd.DataFrame:
         if start_date is None:
-            start_date = datetime.now()
+            # start_date = datetime.now()
+            start_date = datetime(1, 1, 1, 0, 0)
+        if end_date is None:
+            end_date = datetime.now()
+
         # cutoff_date = start_date - timedelta(days=days_back)
         cutoff_date = start_date
 
-        with self.engine.connect() as conn:
-            maint_query = text(
-                """
-                SELECT
-                    maintenance_date,
-                    description,
-                    parts_replaced
-                FROM device_maintenance
-                WHERE device_id = :device_id
-                AND maintenance_date >= :cutoff_time
-                ORDER BY maintenance_date
-            """
-            )
+        print(f"[FETCH_MAINTENANCE_DATA] fetch data from {cutoff_date} to {end_date}", flush=True)
 
-            maint_result = conn.execute(
-                maint_query,
-                {
+        with self.engine.connect() as conn:
+            if end_date is not None:
+                maint_query = text(
+                    """
+                    SELECT
+                        maintenance_date,
+                        description,
+                        parts_replaced
+                    FROM device_maintenance
+                    WHERE device_id = :device_id
+                    AND maintenance_date >= :cutoff_time
+                    AND maintenance_date <= :end_time
+                    ORDER BY maintenance_date
+                """
+                )
+                query_params = {
+                    "device_id": device_id,
+                    "cutoff_time": str(cutoff_date),
+                    "end_time": str(end_date),
+                }
+            else:
+                maint_query = text(
+                    """
+                    SELECT
+                        maintenance_date,
+                        description,
+                        parts_replaced
+                    FROM device_maintenance
+                    WHERE device_id = :device_id
+                    AND maintenance_date >= :cutoff_time
+                    ORDER BY maintenance_date
+                """
+                )
+                query_params = {
                     "device_id": device_id,
                     "cutoff_time": cutoff_date,
-                },
-            )
+                }
+
+            maint_result = conn.execute(maint_query, query_params)
+
+            print("Fetched maintenance records:", flush=True)
+            # print(maint_result.fetchall(), flush=True)
 
             # replace maintenance_date with datetime
             # and parts_replaced with comp
 
             maint_data = []
             for row in maint_result:
-                # Try to extract component from description first (e.g., "Maintenance of comp2")
-                comp = row.parts_replaced
+                maint_data.append(
+                    {
+                        "datetime": row.maintenance_date,
+                        "comp": row.parts_replaced,
+                    }
+                )
 
-                if comp:
-                    maint_data.append(
-                        {
-                            "datetime": pd.to_datetime(row.maintenance_date),
-                            "comp": comp,
-                        }
-                    )
+            if len(maint_data) == 0:
+                print(f"Returning empty dataframe", flush=True)
+                return pd.DataFrame(
+                    {
+                        "datetime": [],
+                        "comp": [],
+                    }
+                )
 
             return pd.DataFrame(maint_data)
 
     def fetch_error_data(
-        self, device_id: str, start_date: datetime = None, **kwargs
+        self, device_id: str, start_date: datetime = None, end_date: datetime = None, **kwargs
     ) -> pd.DataFrame:
         if start_date is None:
-            start_date = datetime.now()
+            # start_date = datetime.now()
+            start_date = datetime(1, 1, 1, 0, 0)
+        if end_date is None:
+            end_date = datetime.now()
+
         # cutoff_date = start_date - timedelta(days=days_back)
         cutoff_date = start_date
 
-        with self.engine.connect() as conn:
-            error_query = text(
-                """
-                SELECT
-                    error_time,
-                    error_code
-                FROM device_errors
-                WHERE device_id = :device_id
-                AND error_time >= :cutoff_time
-                ORDER BY error_time
-            """
-            )
+        print(f"[FETCH_ERROR_DATA] fetch error data from {cutoff_date} to {end_date}", flush=True)
 
-            error_result = conn.execute(
-                error_query,
-                {
+        with self.engine.connect() as conn:
+            if end_date is not None:
+                error_query = text(
+                    """
+                    SELECT
+                        error_time,
+                        error_code
+                    FROM device_errors
+                    WHERE device_id = :device_id
+                    AND error_time >= :cutoff_time
+                    AND error_time <= :end_time
+                    ORDER BY error_time
+                """
+                )
+                query_params = {
+                    "device_id": device_id,
+                    "cutoff_time": str(cutoff_date),
+                    "end_time": str(end_date),
+                }
+            else:
+                error_query = text(
+                    """
+                    SELECT
+                        error_time,
+                        error_code
+                    FROM device_errors
+                    WHERE device_id = :device_id
+                    AND error_time >= :cutoff_time
+                    ORDER BY error_time
+                """
+                )
+                query_params = {
                     "device_id": device_id,
                     "cutoff_time": cutoff_date,
-                },
-            )
+                }
+
+            error_result = conn.execute(error_query, query_params)
 
             # replace error_time with datetime
             # and error_code with errorID
@@ -476,15 +558,30 @@ class DataRegistry:
                     }
                 )
 
+            if len(error_data) == 0:
+                return pd.DataFrame(
+                    {
+                        "datetime": [],
+                        "errorID": [],
+                    }
+                )
+
             return pd.DataFrame(error_data)
 
     def fetch_failure_data(
-        self, device_id: str, start_date: datetime = None, **kwargs
+        self, device_id: str, start_date: datetime = None, end_date: datetime = None, **kwargs
     ) -> pd.DataFrame:
         if start_date is None:
-            start_date = datetime.now()
+            # start_date = datetime.now()
+            start_date = datetime(1, 1, 1, 0, 0)
+        if end_date is None:
+            end_date = datetime.now()
         # cutoff_date = start_date - timedelta(days=days_back)
         cutoff_date = start_date
+
+        print(
+            f"[FETCH_FAILURE_DATA] fetch failure data from {cutoff_date} to {end_date}", flush=True
+        )
 
         with self.engine.connect() as conn:
             failure_query = text(
@@ -495,17 +592,17 @@ class DataRegistry:
                 FROM device_failures
                 WHERE device_id = :device_id
                 AND failure_time >= :cutoff_time
+                AND failure_time <= :end_time
                 ORDER BY failure_time
             """
             )
+            query_params = {
+                "device_id": device_id,
+                "cutoff_time": str(cutoff_date),
+                "end_time": str(end_date),
+            }
 
-            failure_result = conn.execute(
-                failure_query,
-                {
-                    "device_id": device_id,
-                    "cutoff_time": cutoff_date,
-                },
-            )
+            failure_result = conn.execute(failure_query, query_params)
 
             # replace failure_time with datetime
             # and root_cause with failureID
@@ -518,16 +615,26 @@ class DataRegistry:
                     }
                 )
 
+            if len(failure_data) == 0:
+                return pd.DataFrame(
+                    {
+                        "datetime": [],
+                        "failure": [],
+                    }
+                )
+
             return pd.DataFrame(failure_data)
 
     """
     should return a dataframe with columns:
-    age
+    age, model
     """
 
     def fetch_machines_data(self, device_id: str) -> pd.DataFrame:
         age_key_id = self._get_key_id("age")
+        model_key_id = self._get_key_id("model")
         machine_age = 10
+        machine_model = "model3"  # default value
 
         if age_key_id:
             age_query = text(
@@ -548,7 +655,26 @@ class DataRegistry:
                 for row in age_result:
                     machine_age = int(row.age)
 
-        return pd.DataFrame({"age": [machine_age]})
+        if model_key_id:
+            model_query = text(
+                """
+                    SELECT
+                        str_v as model
+                    FROM attribute_kv
+                    WHERE entity_id = :device_id
+                    AND attribute_key = :model_key_id
+                    LIMIT 1
+                """
+            )
+
+            with self.engine.connect() as conn:
+                model_result = conn.execute(
+                    model_query, {"device_id": device_id, "model_key_id": model_key_id}
+                )
+                for row in model_result:
+                    machine_model = str(row.model)
+
+        return pd.DataFrame({"age": [machine_age], "model": [machine_model]})
 
     def fetch_anomaly_training_data(
         self,
@@ -591,9 +717,7 @@ class DataRegistry:
             # Convert telemetry keys to key IDs
             telemetry_key_ids = self._get_key_ids(telemetry_keys)
             if not telemetry_key_ids:
-                logger.error(
-                    f"No valid key IDs found for telemetry keys: {telemetry_keys}"
-                )
+                logger.error(f"No valid key IDs found for telemetry keys: {telemetry_keys}")
                 return pd.DataFrame(), None
 
             # Create key_id to key_name mapping for later use
@@ -639,7 +763,7 @@ class DataRegistry:
                         }
                     )
 
-                if not telemetry_data:
+                if len(telemetry_data) == 0:
                     logger.warning(f"No telemetry data found for device {device_id}")
                     print(
                         f"[FETCH] No telemetry data found for device {device_id}",
@@ -665,9 +789,7 @@ class DataRegistry:
 
                 # Resample to 3-hour intervals
                 telemetry_pivot.set_index("datetime", inplace=True)
-                telemetry_3h = (
-                    telemetry_pivot.resample("3h").agg(["mean", "std"]).reset_index()
-                )
+                telemetry_3h = telemetry_pivot.resample("3h").agg(["mean", "std"]).reset_index()
 
                 print(f"[FETCH] After 3h resample: {telemetry_3h.shape}", flush=True)
 
@@ -687,14 +809,10 @@ class DataRegistry:
                         mean_col = (col, "mean")
                         # Apply 24h rolling window (8 periods of 3h each)
                         rolling_mean = (
-                            telemetry_3h_temp[mean_col]
-                            .rolling(window=8, center=False)
-                            .mean()
+                            telemetry_3h_temp[mean_col].rolling(window=8, center=False).mean()
                         )
                         rolling_std = (
-                            telemetry_3h_temp[mean_col]
-                            .rolling(window=8, center=False)
-                            .std()
+                            telemetry_3h_temp[mean_col].rolling(window=8, center=False).std()
                         )
                         telemetry_24h_list.append(rolling_mean.rename(f"{col}mean_24h"))
                         telemetry_24h_list.append(rolling_std.rename(f"{col}sd_24h"))
@@ -715,9 +833,7 @@ class DataRegistry:
                     f"[FETCH] telemetry_3h shape: {telemetry_3h.shape}, telemetry_24h shape: {telemetry_24h.shape}",
                     flush=True,
                 )
-                features_df = telemetry_3h.merge(
-                    telemetry_24h, on="datetime", how="left"
-                )
+                features_df = telemetry_3h.merge(telemetry_24h, on="datetime", how="left")
                 print(
                     f"[FETCH] After merge, features_df shape: {features_df.shape}",
                     flush=True,
@@ -785,9 +901,7 @@ class DataRegistry:
                     ]
 
                     # Merge with features
-                    features_df = features_df.merge(
-                        error_24h, on="datetime", how="left"
-                    )
+                    features_df = features_df.merge(error_24h, on="datetime", how="left")
 
                     # Fill missing error counts with 0
                     for i in range(1, 6):
@@ -848,9 +962,7 @@ class DataRegistry:
 
                     # Rename columns to match notebook pattern
                     comp_rep.columns = ["datetime"] + [
-                        col.replace("comp_", "")
-                        for col in comp_rep.columns
-                        if col != "datetime"
+                        col.replace("comp_", "") for col in comp_rep.columns if col != "datetime"
                     ]
 
                     # Merge with telemetry grid to get all timestamps
@@ -957,9 +1069,7 @@ class DataRegistry:
                         failure_data.append(
                             {
                                 "datetime": failure_dt_floored,
-                                "failure_component": (
-                                    row.root_cause if row.root_cause else "none"
-                                ),
+                                "failure_component": (row.root_cause if row.root_cause else "none"),
                             }
                         )
 
@@ -981,17 +1091,13 @@ class DataRegistry:
                         features_with_labels = features_df.merge(
                             failure_df, on="datetime", how="left"
                         )
-                        labels = features_with_labels["failure_component"].fillna(
-                            "none"
-                        )
+                        labels = features_with_labels["failure_component"].fillna("none")
                         print(
                             f"[FETCH] Labels value counts: {labels.value_counts().to_dict()}",
                             flush=True,
                         )
 
-                        features_df = features_with_labels.drop(
-                            "failure_component", axis=1
-                        )
+                        features_df = features_with_labels.drop("failure_component", axis=1)
                     else:
                         print(
                             f"[FETCH] No failure data found for device {device_id}",
@@ -1099,9 +1205,7 @@ class DataRegistry:
                 )
                 return forecast_df
 
-            logger.info(
-                f"Fetched {len(forecast_df)} time series points of {sensor_key}"
-            )
+            logger.info(f"Fetched {len(forecast_df)} time series points of {sensor_key}")
             return forecast_df
 
         except Exception as e:
@@ -1162,9 +1266,7 @@ class DataRegistry:
 
             with self.engine.connect() as conn:
                 result = conn.execute(query)
-                devices = [
-                    {"id": row[0], "name": row[1], "type": row[2]} for row in result
-                ]
+                devices = [{"id": row[0], "name": row[1], "type": row[2]} for row in result]
 
             logger.info(f"Found {len(devices)} devices")
             return devices
@@ -1256,24 +1358,18 @@ class DataRegistry:
 
             failures = []
             for row in result:
-                failures.append(
-                    {"timestamp": pd.to_datetime(row[0], unit="ms"), "failure": row[1]}
-                )
+                failures.append({"timestamp": pd.to_datetime(row[0], unit="ms"), "failure": row[1]})
 
-        if not failures:
+        if len(failures) == 0:
             # No failure data found, create synthetic labels
             logger.warning("No failure labels found, creating synthetic labels")
-            return pd.Series(
-                np.zeros(len(index)), index=index, name="failure_within_24h"
-            )
+            return pd.Series(np.zeros(len(index)), index=index, name="failure_within_24h")
 
         # Align with features index
         failure_df = pd.DataFrame(failures).set_index("timestamp")
 
         # Resample to match features frequency
-        failure_series = failure_df["failure"].reindex(
-            index, method="ffill", fill_value=0
-        )
+        failure_series = failure_df["failure"].reindex(index, method="ffill", fill_value=0)
         failure_series.name = "failure_within_24h"
 
         return failure_series

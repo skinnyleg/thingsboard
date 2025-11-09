@@ -3,6 +3,8 @@ services:
     image: postgres:16
     container_name: database
     restart: on-failure:3
+    mem_limit: 1g
+    cpus: 1.0
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -16,64 +18,84 @@ services:
       - thingsboard
     env_file:
       - ./.env
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "work_mem=16MB"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "${POSTGRES_DB}", "-U", "${POSTGRES_USER}"]
-      interval: 30s
-      timeout: 60s
-      retries: 5
+      test: [ "CMD-SHELL", "pg_isready", "-d", "${POSTGRES_DB}", "-U", "${POSTGRES_USER}" ]
+      interval: 2m
+      timeout: 30s
+      retries: 3
       start_period: 80s
 
-  anomalies-script:
-    build:
-      context: ./send-telemetry/
-      dockerfile: anomalies-script.Dockerfile
-    container_name: anomalies-script
-    depends_on:
-      thingsboard:
-        condition: service_healthy
-    networks:
-      - thingsboard
+  # Commented out - uncomment only when needed
+  # anomalies-script:
+  #   build:
+  #     context: ./send-telemetry/
+  #     dockerfile: anomalies-script.Dockerfile
+  #   container_name: anomalies-script
+  #   mem_limit: 512m
+  #   cpus: 0.5
+  #   depends_on:
+  #     thingsboard:
+  #       condition: service_healthy
+  #   networks:
+  #     - thingsboard
 
-  forecast-script:
-    build:
-      context: ./send-telemetry/
-      dockerfile: forecast-script.Dockerfile
-    container_name: forecast-script
-    depends_on:
-      thingsboard:
-        condition: service_healthy
-    networks:
-      - thingsboard
+  # forecast-script:
+  #   build:
+  #     context: ./send-telemetry/
+  #     dockerfile: forecast-script.Dockerfile
+  #   container_name: forecast-script
+  #   mem_limit: 512m
+  #   cpus: 0.5
+  #   depends_on:
+  #     thingsboard:
+  #       condition: service_healthy
+  #   networks:
+  #     - thingsboard
 
-  ws-events:
-    build:
-      context: ./send-telemetry/
-      dockerfile: ws-events.Dockerfile
-    container_name: ws-events
-    depends_on:
-      thingsboard:
-        condition: service_healthy
-    networks:
-      - thingsboard
-    volumes:
-      - application_source_code:/app
+  # ws-events:
+  #   build:
+  #     context: ./send-telemetry/
+  #     dockerfile: ws-events.Dockerfile
+  #   container_name: ws-events
+  #   mem_limit: 512m
+  #   cpus: 0.5
+  #   depends_on:
+  #     thingsboard:
+  #       condition: service_healthy
+  #   networks:
+  #     - thingsboard
+  #   volumes:
+  #     - application_source_code:/app
 
-  dashboard-script:
-    build:
-      context: ./send-telemetry/
-      dockerfile: dashboard-script.Dockerfile
-    container_name: dashboard-script
-    depends_on:
-      thingsboard:
-        condition: service_healthy
-    networks:
-      - thingsboard
+  # dashboard-script:
+  #   build:
+  #     context: ./send-telemetry/
+  #     dockerfile: dashboard-script.Dockerfile
+  #   container_name: dashboard-script
+  #   mem_limit: 512m
+  #   cpus: 0.5
+  #   depends_on:
+  #     thingsboard:
+  #       condition: service_healthy
+  #   networks:
+  #     - thingsboard
 
   model:
     build:
       context: ./predictive-maintenance
       dockerfile: .Dockerfile
     container_name: model
+    mem_limit: 4g
+    mem_reservation: 1g
+    cpus: 2.0
     volumes:
       - application_source_code:/app
       - application_pip_cache:/root/.cache/pip
@@ -82,15 +104,14 @@ services:
       - database
     ports:
       - "8000:8000"
-    # network_mode: host
     networks:
       - thingsboard
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 30s
+      test: [ "CMD-SHELL", "curl -f http://localhost:8000/health || exit 1" ]
+      interval: 2m
       timeout: 10s
-      retries: 5
-      start_period: 30s
+      retries: 3
+      start_period: 60s
     environment:
       - WAIT_HOSTS=database:5432
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
@@ -102,18 +123,22 @@ services:
       - EMAIL_ADDRESS=${EMAIL_ADDRESS:-test@example.com}
       - APP_PASSWORD=${APP_PASSWORD:-defaultPassword}
       - MODELS_PATH=/models
+      - AUTO_START_PREDICTION_JOBS=${AUTO_START_PREDICTION_JOBS:-false}
+      - ENABLE_FILE_WATCH=false
 
   thingsboard:
     container_name: thingsboard
     build:
       context: .
       dockerfile: .Dockerfile
+    mem_limit: 3g
+    mem_reservation: 512m
+    cpus: 2.0
     volumes:
       - application_source_code:/app
       - application_m2_cache:/root/.m2
       - application_npm_cache:/root/.npm
       - application_gradle_cache:/root/.gradle
-    # network_mode: host
     ports:
       - "8080:8080"
       - "1883:1883"
@@ -127,16 +152,19 @@ services:
       model:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
-      interval: 30s
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080 || exit 1" ]
+      interval: 2m
       timeout: 10s
-      retries: 5
+      retries: 3
       start_period: 120s
     environment:
       - WAIT_HOSTS=database:5432,model:8000
       - FASTAPI_BASE_URL=http://model:8000/api/v1/
       - FASTAPI_WS_URL=ws://model:8000/models/ws/unified
-      - PM_LOAD_SAMPLE_DATA=true
+      # Java heap size: 2GB as recommended by ThingsBoard docs
+      - JAVA_OPTS=-Xms2G -Xmx2G -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+      # Changed to false - only load once, not on every startup
+      - PM_LOAD_SAMPLE_DATA=false
       - PM_LOAD_SAMPLE_DATA_UPDATE_TO_CURRENT_TIME=false
       - PM_AUTO_LOAD_ON_STARTUP=false
       - PM_TENANT_EMAIL=${PM_TENANT_EMAIL:-tenant@thingsboard.org}
@@ -144,16 +172,20 @@ services:
       - PM_MAX_MACHINES=${PM_MAX_MACHINES:-10}
       - PM_ROLLBACK_ON_FAILURE=${PM_ROLLBACK_ON_FAILURE:-true}
       - PM_EXIT_ON_FAILURE=${PM_EXIT_ON_FAILURE:-true}
+      - PM_END_DATE_MACHINES=${PM_END_DATE_MACHINES:-2025-04-20 02:00:00,2024-12-31 00:00:00}
+      - PM_DATA_PATH=${PM_DATA_PATH:-predictive-maintenance/data}
 
   ui-ngx:
     build:
       context: ui-ngx
       dockerfile: .Dockerfile
     container_name: thingsboard-dev
+    mem_limit: 10g
+    mem_reservation: 2g
+    cpus: 2.0
     volumes:
       - application_source_code:/app
       - application_npm_cache:/root/.npm
-    # network_mode: host
     ports:
       - "4200:4200"
     networks:
@@ -163,12 +195,22 @@ services:
         condition: service_healthy
     environment:
       - WAIT_HOSTS=thingsboard:8080
+      # Keep 8GB for stability
+      - NODE_OPTIONS=--max-old-space-size=8192
+      # Disable polling to reduce CPU usage
+      - CHOKIDAR_USEPOLLING=false
+      # Increase debounce interval to reduce file watch overhead
+      - CHOKIDAR_INTERVAL=3000
+      # Disable analytics
+      - NG_CLI_ANALYTICS=false
+      # Reduce TypeScript compilation overhead
+      - NG_BUILD_CACHE=.angular/cache
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:4200 || exit 1"]
-      interval: 1m30s
+      test: [ "CMD-SHELL", "curl -f http://localhost:4200 || exit 1" ]
+      interval: 3m
       timeout: 30s
-      retries: 5
-      start_period: 30s
+      retries: 3
+      start_period: 90s
 
 volumes:
   postgres_data:
@@ -207,7 +249,6 @@ volumes:
       type: none
       o: bind
       device: ../thingsboard_pip_cache/
-
   application_models_cache:
     driver: local
     driver_opts:

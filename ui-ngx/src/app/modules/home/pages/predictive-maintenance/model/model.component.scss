@@ -22,6 +22,10 @@
 
 .chart-section {
   padding-bottom: 3rem;
+
+  &.collapsed {
+    padding-bottom: 0; // Remove padding when collapsed
+  }
 }
 
 .tb-default {
@@ -93,6 +97,42 @@
             &:hover {
               color: #4caf50;
               background-color: rgba(76, 175, 80, 0.08);
+              opacity: 1;
+            }
+
+            &:disabled {
+              opacity: 0.3;
+            }
+
+            mat-icon {
+              font-size: 20px;
+              width: 20px;
+              height: 20px;
+              line-height: 20px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+          }
+
+          .section-pause-button,
+          .section-unpause-button {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            min-height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 0, 0, 0.54);
+            opacity: 0.7;
+            margin-left: 8px;
+            margin-right: 0;
+
+            &:hover {
+              color: #ff9800;
+              background-color: rgba(255, 152, 0, 0.08);
               opacity: 1;
             }
 
@@ -273,6 +313,13 @@
       }
     }
 
+    .device-name.clickable {
+      &:hover {
+        color: #64b5f6;
+        text-decoration-color: #64b5f6;
+      }
+    }
+
     // Dark mode styling for section headers
     .model-dashboard {
       .chart-section,
@@ -390,6 +437,18 @@
     font-size: 1.2rem;
     font-weight: 500;
     color: inherit;
+
+    &.clickable {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      transition: all 0.2s ease;
+
+      &:hover {
+        color: #3f51b5;
+        text-decoration-color: #3f51b5;
+      }
+    }
   }
 
   .forecast-info-container {
@@ -514,6 +573,25 @@
 
             &:disabled {
               opacity: 0.3;
+            }
+          }
+
+          // Rebuild button styling
+          .rebuild-button {
+            background-color: transparent;
+            color: rgba(255, 255, 255, 0.9);
+            border: none;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+
+            &:hover:not(:disabled) {
+              background-color: rgba(255, 255, 255, 0.1);
+            }
+
+            &:disabled {
+              opacity: 0.3;
+              color: rgba(255, 255, 255, 0.3);
             }
           }
 
@@ -881,6 +959,52 @@
     overflow-y: auto;
     min-height: 0; // Allow flex shrinking
 
+    // Charts Container - Side by Side with Wrapping
+    .charts-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: flex-start; // Don't stretch, align to top
+
+      // Make both charts take equal space when side-by-side
+      > .chart-section {
+        flex: 1 1 calc(50% - 0.5rem); // Each takes 50% minus half the gap
+        min-width: 0; // Allow shrinking below 500px if needed
+      }
+
+      // When one chart is collapsed, maintain the same width but minimal height
+      > .chart-section.collapsed {
+        flex: 1 1 calc(50% - 0.5rem); // Keep the same flex basis as expanded
+        min-width: 0;
+      }
+
+      // When screens are wide enough, enforce minimum width
+      @media (min-width: 1101px) {
+        > .chart-section:not(.collapsed) {
+          min-width: 500px; // Enforce minimum width on wide screens
+        }
+      }
+
+      // When screens are too small, stack vertically
+      @media (max-width: 1100px) {
+        flex-direction: column;
+
+        > .chart-section {
+          flex: 1 1 auto;
+          width: 100%;
+          max-width: 100%;
+        }
+
+        > .chart-section.collapsed {
+          flex: 0 0 auto;
+          width: 100%;
+          max-width: 100%;
+          align-self: stretch;
+        }
+      }
+    }
+
     // Chart Section (Forecast Chart) styling
     .chart-section {
       background: var(--tb-dark-app-bar);
@@ -892,13 +1016,25 @@
       border-radius: 10px;
       border: 1px solid var(--tb-dark-mat-800);
       overflow: hidden;
-      transition: all 0.3s ease;
+      transition: min-height 0.3s ease, height 0.3s ease;
 
       &.collapsed {
-        min-height: auto;
+        min-height: 0;
+        height: auto;
+        max-height: fit-content; // Only as tall as the header
 
         .chart-content {
-          display: none;
+          display: none !important;
+          height: 0 !important;
+          min-height: 0 !important;
+          flex: 0 0 0 !important; // Remove from flex calculation
+          overflow: hidden;
+          padding: 0;
+          margin: 0;
+        }
+
+        .section-header {
+          border-bottom: none; // Remove border when collapsed
         }
       }
 
@@ -1011,6 +1147,44 @@
           }
         }
 
+        .section-pause-button,
+        .section-unpause-button {
+          width: 32px;
+          height: 32px;
+          min-width: 32px;
+          min-height: 32px;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: rgba(255, 255, 255, 0.6);
+          transition: all 0.2s ease;
+          margin-left: 8px;
+          margin-right: 0;
+          opacity: 0.7;
+
+          &:hover {
+            color: #ffa726;
+            background-color: rgba(255, 167, 38, 0.1);
+            opacity: 1;
+          }
+
+          &:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+          }
+
+          mat-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+        }
+
         .section-logs-button {
           width: 32px;
           height: 32px;
@@ -1054,7 +1228,8 @@
         overflow: hidden;
         transition: all 0.3s ease;
 
-        tb-forecast-chart {
+        tb-forecast-chart,
+        tb-time-series-telemetry {
           overflow: hidden;
           height: 100%;
           display: block;

@@ -299,6 +299,8 @@ public class ModelManagementServiceImpl implements ModelManagementService {
             log.error("Failed to get model logs", e);
             throw new RuntimeException("Failed to get model logs: " + e.getMessage(), e);
         }
+
+        return null;
     }
 
     /**
@@ -451,5 +453,165 @@ public class ModelManagementServiceImpl implements ModelManagementService {
             log.warn("No predictive maintenance config found for device: {}", deviceId);
             return null;
         }, deviceId.getId());
+    }
+
+    @Override
+    public JsonNode fetchPredictions(UUID modelId, Long startTs, Long endTs, String predictionType, int limit) {
+        log.info("Fetching predictions for modelId: {}, startTs: {}, endTs: {}, type: {}, limit: {}",
+                modelId, startTs, endTs, predictionType, limit);
+
+        try {
+            // Build dynamic SQL query based on optional parameters
+            StringBuilder sql = new StringBuilder(
+                    "SELECT id, model_id, created_time, created_at, prediction_time, prediction_type, prediction_value "
+                            +
+                            "FROM predictions WHERE model_id = ?");
+
+            // Add timestamp filters if provided
+            if (startTs != null) {
+                sql.append(" AND created_time >= ?");
+            }
+            if (endTs != null) {
+                sql.append(" AND created_time <= ?");
+            }
+
+            // Add prediction type filter if provided
+            if (predictionType != null && !predictionType.isEmpty()) {
+                sql.append(" AND prediction_type = ?");
+            }
+
+            // Add ordering and limit
+            sql.append(" ORDER BY prediction_time DESC, created_time DESC LIMIT ?");
+
+            // Prepare parameters
+            Object[] params;
+            int paramIndex = 0;
+            int paramCount = 1 + (startTs != null ? 1 : 0) + (endTs != null ? 1 : 0)
+                    + (predictionType != null && !predictionType.isEmpty() ? 1 : 0) + 1;
+            params = new Object[paramCount];
+
+            params[paramIndex++] = modelId;
+
+            if (startTs != null) {
+                params[paramIndex++] = startTs;
+            }
+            if (endTs != null) {
+                params[paramIndex++] = endTs;
+            }
+            if (predictionType != null && !predictionType.isEmpty()) {
+                params[paramIndex++] = predictionType;
+            }
+            params[paramIndex++] = limit;
+
+            log.debug("Executing SQL: {} with params: {}", sql, params);
+
+            // Execute query and build JSON response
+            ObjectNode response = mapper.createObjectNode();
+            var predictions = mapper.createArrayNode();
+
+            jdbcTemplate.query(sql.toString(), rs -> {
+                ObjectNode prediction = mapper.createObjectNode();
+                prediction.put("id", rs.getString("id"));
+                prediction.put("modelId", rs.getString("model_id"));
+                prediction.put("createdTime", rs.getLong("created_time"));
+
+                // Handle created_at timestamp
+                Timestamp createdAt = rs.getTimestamp("created_at");
+                if (createdAt != null) {
+                    prediction.put("createdAt", createdAt.toString());
+                }
+
+                // Handle prediction_time timestamp
+                Timestamp predictionTime = rs.getTimestamp("prediction_time");
+                if (predictionTime != null) {
+                    prediction.put("predictionTime", predictionTime.toString());
+                }
+
+                prediction.put("predictionType", rs.getString("prediction_type"));
+
+                // Parse prediction_value JSONB
+                String predictionValueJson = rs.getString("prediction_value");
+                if (predictionValueJson != null) {
+                    try {
+                        prediction.set("predictionValue", mapper.readTree(predictionValueJson));
+                    } catch (Exception e) {
+                        log.warn("Failed to parse prediction_value JSON for id: {}", rs.getString("id"), e);
+                        prediction.put("predictionValue", predictionValueJson);
+                    }
+                }
+
+                predictions.add(prediction);
+            }, params);
+
+            // Get total count for the query (without limit)
+            StringBuilder countSql = new StringBuilder(
+                    "SELECT COUNT(*) FROM predictions WHERE model_id = ?");
+
+            if (startTs != null) {
+                countSql.append(" AND created_time >= ?");
+            }
+            if (endTs != null) {
+                countSql.append(" AND created_time <= ?");
+            }
+            if (predictionType != null && !predictionType.isEmpty()) {
+                countSql.append(" AND prediction_type = ?");
+            }
+
+            // Prepare count query parameters (same as above but without limit)
+            Object[] countParams = new Object[paramCount - 1];
+            System.arraycopy(params, 0, countParams, 0, paramCount - 1);
+
+            Long totalCount = jdbcTemplate.queryForObject(countSql.toString(), Long.class, countParams);
+
+            response.set("predictions", predictions);
+            response.put("totalCount", totalCount != null ? totalCount : 0);
+            response.put("limit", limit);
+
+            log.info("Found {} predictions (total: {}) for modelId: {}", predictions.size(), totalCount, modelId);
+            return response;
+
+        } catch (Exception e) {
+            log.error("Failed to fetch predictions for modelId: {}", modelId, e);
+            ObjectNode errorResponse = mapper.createObjectNode();
+            errorResponse.put("error", e.getMessage());
+            errorResponse.set("predictions", mapper.createArrayNode());
+            errorResponse.put("totalCount", 0);
+            return errorResponse;
+        }
+    }
+
+    @Override
+    public int deletePredictions(UUID modelId, String predictionType) {
+        log.info("Deleting predictions for modelId: {}, type: {}", modelId, predictionType);
+
+        try {
+            // Build dynamic SQL query based on optional predictionType parameter
+            StringBuilder sql = new StringBuilder("DELETE FROM predictions WHERE model_id = ?");
+
+            // Add prediction type filter if provided
+            if (predictionType != null && !predictionType.isEmpty()) {
+                sql.append(" AND prediction_type = ?");
+            }
+
+            // Prepare parameters
+            Object[] params;
+            if (predictionType != null && !predictionType.isEmpty()) {
+                params = new Object[] { modelId, predictionType };
+            } else {
+                params = new Object[] { modelId };
+            }
+
+            log.debug("Executing SQL: {} with params: {}", sql, params);
+
+            // Execute delete and return count of deleted rows
+            int deletedCount = jdbcTemplate.update(sql.toString(), params);
+
+            log.info("Deleted {} predictions for modelId: {}", deletedCount, modelId);
+            return deletedCount;
+
+        } catch (Exception e) {
+            log.error("Failed to delete predictions for modelId: {}", modelId, e);
+            throw new RuntimeException("Failed to delete predictions: " + e.getMessage(), e);
+        }
     }
 }

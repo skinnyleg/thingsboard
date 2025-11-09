@@ -122,26 +122,33 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     @Value("${predictive-maintenance.machine-filter.max-machines:100}")
     private int maxMachines;
 
+    @Value("${predictive-maintenance.machine-filter.end-dates-machines:}")
+    private String endDatesMachinesConfig;
+
     @Value("${predictive-maintenance.rollback-on-failure:true}")
     private boolean rollbackOnFailure;
 
     @Value("${predictive-maintenance.exit-on-failure:true}")
     private boolean exitOnFailure;
 
-    @Value("${predictive-maintenance.load-sample-data-update-to-current-time:true}")
-    private boolean updateDataToCurrentTime;
+    @Value("${predictive-maintenance.machine-filter.end-date-machines:}")
+    private String endDateMachinesConfig;
+
+    @Value("${predictive-maintenance.load-sample-data-update-to-current-time:false}")
+    private boolean updateToCurrentTime;
 
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
-    // Time adjustment: shift dates to be recent (within last year)
-    private long timeAdjustmentMillis = 0;
 
     // Track if loading is complete
     private volatile boolean loadingComplete = false;
     private volatile boolean loadingInProgress = false;
 
     // Filtered machine IDs to load
-    private Set<Integer> allowedMachineIds = null;
+    private Set<Integer> allowedMachineIds = new HashSet<>();
+
+    private Map<Integer, Date> machineEndDatesMap = new HashMap<>();
+
+    private Map<Integer, Date> machineMaxDatesMap = new HashMap<>();
 
     @Override
     public void run(String... args) {
@@ -163,8 +170,11 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
             log.info("Starting predictive maintenance sample data loading...");
             log.info("Rollback on failure: {}, Exit on failure: {}", rollbackOnFailure, exitOnFailure);
 
-            // Parse and validate machine filter configuration
+            // Parse allowed machine ids and their end dates
             parseMachineFilter();
+
+            // Should update end dates if updateToCurrentTime is set
+            updateToCurrentTimestamp();
 
             // Check if data already exists
             if (isDataAlreadyLoaded()) {
@@ -181,10 +191,6 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
             log.info("Found tenant with ID: {}", tenant.get().toString());
 
             TenantId tenantId = tenant.get();
-
-            // Calculate time adjustment to make data recent (30 days ago max)
-            calculateTimeAdjustment(30);
-
             if (rollbackOnFailure) {
                 // Load data with transaction support and automatic rollback on failure
                 TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
@@ -240,19 +246,45 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     private void parseMachineFilter() {
         if (machineIdsConfig == null || machineIdsConfig.trim().isEmpty()) {
             log.info("No machine ID list configured. Will load first {} machines (max-machines limit).", maxMachines);
-            allowedMachineIds = null; // null means use max-machines limit
             return;
         }
 
-        allowedMachineIds = new HashSet<>();
         String[] machineIdStrings = machineIdsConfig.split(",");
+        String[] endDatesMachineStrings = null;
 
-        for (String machineIdStr : machineIdStrings) {
+        // Only split end dates if config is not empty
+        if (endDatesMachinesConfig != null && !endDatesMachinesConfig.trim().isEmpty()) {
+            endDatesMachineStrings = endDatesMachinesConfig.split(",");
+        }
+
+        // Validate that both arrays have the same length if end dates are provided
+        if (endDatesMachineStrings != null && machineIdStrings.length != endDatesMachineStrings.length) {
+            String errorMsg = String.format(
+                    "Machine IDs list length (%d) does not match end dates list length (%d). " +
+                            "Please ensure both lists have the same number of comma-separated values.",
+                    machineIdStrings.length, endDatesMachineStrings.length);
+            log.error(errorMsg);
+            throw new IllegalArgumentException(errorMsg);
+        }
+
+        for (int i = 0; i < machineIdStrings.length; i++) {
+            String machineIdStr = machineIdStrings[i].trim();
+
             try {
-                Integer machineId = Integer.parseInt(machineIdStr.trim());
+                Integer machineId = Integer.parseInt(machineIdStr);
                 allowedMachineIds.add(machineId);
-            } catch (NumberFormatException e) {
-                String errorMsg = "Invalid machine ID in configuration: " + machineIdStr;
+
+                // Only parse end date if end dates config is provided
+                if (endDatesMachineStrings != null) {
+                    String endDateStr = endDatesMachineStrings[i].trim();
+                    Date endDate = DATE_FORMAT.parse(endDateStr);
+                    machineEndDatesMap.put(machineId, endDate);
+                }
+            } catch (NumberFormatException | ParseException e) {
+                String errorMsg = "Invalid machine ID or end date in configuration: " + machineIdStr;
+                if (endDatesMachineStrings != null && i < endDatesMachineStrings.length) {
+                    errorMsg += ", " + endDatesMachineStrings[i].trim();
+                }
                 log.error(errorMsg);
                 throw new IllegalArgumentException(errorMsg, e);
             }
@@ -297,6 +329,85 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
         return loadingInProgress;
     }
 
+    private void updateToCurrentTimestamp() throws IOException, CsvException, ParseException {
+        if (!updateToCurrentTime) {
+            return;
+        }
+
+        log.info("Scanning CSV files to determine max dates for machines...");
+
+        // Check errors file using streaming
+        scanFileForMaxDates(dataPath + "/PdM_errors.csv", "errors");
+
+        // Check failures file using streaming
+        scanFileForMaxDates(dataPath + "/PdM_failures.csv", "failures");
+
+        // Check maintenance file using streaming
+        scanFileForMaxDates(dataPath + "/PdM_maint.csv", "maintenance");
+
+        // Check telemetry file using streaming (memory-efficient for large file)
+        scanFileForMaxDates(dataPath + "/PdM_telemetry.csv", "telemetry");
+
+        log.info("Max dates scan complete. Found dates for {} machines", machineMaxDatesMap.size());
+    }
+
+    /**
+     * Scan a CSV file for max dates using memory-efficient streaming (like loadTelemetryData)
+     * Only processes rows for machines that need date updates
+     */
+    private void scanFileForMaxDates(String filePath, String fileType) throws IOException, CsvException {
+        ClassPathResource resource = new ClassPathResource(filePath);
+
+        try (CSVReader csvReader = new CSVReader(new InputStreamReader(
+                resource.getInputStream(), StandardCharsets.UTF_8))) {
+
+            // Skip header
+            csvReader.readNext();
+
+            int processedRows = 0;
+            int skippedRows = 0;
+
+            // Use iterator for memory-efficient streaming - processes one row at a time
+            Iterator<String[]> iterator = csvReader.iterator();
+
+            while (iterator.hasNext()) {
+                String[] row = iterator.next();
+                processedRows++;
+
+                try {
+                    Date date = DATE_FORMAT.parse(row[0]);
+                    Integer machineId = Integer.parseInt(row[1]);
+
+                    // Skip if machineId is not in allowedMachines
+                    if (!allowedMachineIds.contains(machineId)) {
+                        skippedRows++;
+                        continue;
+                    }
+
+                    // Get configured end date if exists
+                    Date configuredEndDate = machineEndDatesMap.get(machineId);
+
+                    // Skip rows that are after the configured end date (filtering)
+                    if (configuredEndDate != null && date.after(configuredEndDate)) {
+                        skippedRows++;
+                        continue;
+                    }
+
+                    // Store max date in machineMaxDatesMap (within the configured range)
+                    if (date.after(machineMaxDatesMap.getOrDefault(machineId, new Date(0)))) {
+                        machineMaxDatesMap.put(machineId, date);
+                    }
+                } catch (ParseException | NumberFormatException e) {
+                    log.warn("Failed to parse {} row {}: {}", fileType, processedRows, e.getMessage());
+                    skippedRows++;
+                }
+            }
+
+            log.info("Scanned {} file: {} rows processed, {} rows skipped",
+                    fileType, processedRows, skippedRows);
+        }
+    }
+
     /**
      * Wait for initial loading to complete
      */
@@ -318,16 +429,29 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
             throws IOException, CsvException, ParseException, ExecutionException, InterruptedException {
         log.info("Loading all data...");
 
+        // Calculate time difference ONCE at the start to ensure consistent timestamps across all data types
+        Map<Integer, Long> machineTimeDiffMap = new HashMap<>();
+        if (updateToCurrentTime) {
+            long currentTimeMs = System.currentTimeMillis();
+            for (Map.Entry<Integer, Date> entry : machineMaxDatesMap.entrySet()) {
+                Integer machineId = entry.getKey();
+                Date maxDate = entry.getValue();
+                long timeDiff = currentTimeMs - maxDate.getTime();
+                machineTimeDiffMap.put(machineId, timeDiff);
+                log.debug("Machine {}: time difference = {} ms", machineId, timeDiff);
+            }
+        }
+
         // Map from deviceId to list of telemetry entries (only actual sensor readings)
         Map<UUID, List<TsKvEntry>> deviceTelemetryMap = new HashMap<>();
 
         // Load telemetry data (sensor readings only)
-        loadTelemetryData(machineToDeviceMap, deviceTelemetryMap);
+        loadTelemetryData(machineToDeviceMap, deviceTelemetryMap, machineTimeDiffMap);
 
         // Load errors, failures, and maintenance as separate entities (not timeseries)
-        loadErrorsAsEntities(machineToDeviceMap);
-        loadFailuresAsEntities(machineToDeviceMap);
-        loadMaintenanceAsEntities(machineToDeviceMap);
+        loadErrorsAsEntities(machineToDeviceMap, machineTimeDiffMap);
+        loadFailuresAsEntities(machineToDeviceMap, machineTimeDiffMap);
+        loadMaintenanceAsEntities(machineToDeviceMap, machineTimeDiffMap);
 
         // Save all telemetry for each device concurrently
         log.info("Saving timeseries data for {} devices concurrently...", deviceTelemetryMap.size());
@@ -358,7 +482,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
      * Load telemetry data from PdM_telemetry.csv using OpenCSV iterator for
      * memory-efficient streaming
      */
-    private void loadTelemetryData(Map<Integer, UUID> machineToDeviceMap, Map<UUID, List<TsKvEntry>> deviceTelemetryMap)
+    private void loadTelemetryData(Map<Integer, UUID> machineToDeviceMap, Map<UUID, List<TsKvEntry>> deviceTelemetryMap, Map<Integer, Long> machineTimeDiffMap)
             throws IOException, ParseException, CsvValidationException {
         log.info("Loading telemetry records...");
 
@@ -387,10 +511,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
 
                 try {
                     Date originalDate = DATE_FORMAT.parse(row[0]);
-                    if (!updateDataToCurrentTime) {
-                        timeAdjustmentMillis = 0; // No adjustment if updating is disabled
-                    }
-                    long timestamp = originalDate.getTime() + timeAdjustmentMillis;
+                    long timestamp = originalDate.getTime();
                     Integer machineId = Integer.parseInt(row[1]);
                     UUID deviceId = machineToDeviceMap.get(machineId);
 
@@ -400,6 +521,22 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
                         continue;
                     }
 
+                    // Get the configured end date for filtering
+                    Date configuredEndDate = machineEndDatesMap.get(machineId);
+
+                    // Skip rows where original date is AFTER the configured end date
+                    if (configuredEndDate != null && originalDate.after(configuredEndDate)) {
+                        skippedRows++;
+                        continue;
+                    }
+
+                    if (updateToCurrentTime) {
+                        // Use the pre-calculated time difference for consistent timestamps
+                        Long timeDiff = machineTimeDiffMap.get(machineId);
+                        if (timeDiff != null) {
+                            timestamp += timeDiff;
+                        }
+                    }
                     // Build telemetry entries for this row
                     List<TsKvEntry> telemetryEntries = deviceTelemetryMap.computeIfAbsent(deviceId,
                             k -> new ArrayList<>());
@@ -422,7 +559,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     /**
      * Load errors data from PdM_errors.csv as DeviceError entities
      */
-    private void loadErrorsAsEntities(Map<Integer, UUID> machineToDeviceMap)
+    private void loadErrorsAsEntities(Map<Integer, UUID> machineToDeviceMap, Map<Integer, Long> machineTimeDiffMap)
             throws IOException, CsvException, ParseException {
         log.info("Loading errors as entities...");
 
@@ -432,10 +569,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
         for (int i = 1; i < rows.size(); i++) {
             String[] row = rows.get(i);
             Date originalDate = DATE_FORMAT.parse(row[0]);
-            if (!updateDataToCurrentTime) {
-                timeAdjustmentMillis = 0; // No adjustment if updating is disabled
-            }
-            Timestamp timestamp = new Timestamp(originalDate.getTime() + timeAdjustmentMillis);
+            Timestamp timestamp = new Timestamp(originalDate.getTime());
 
             Integer machineId = Integer.parseInt(row[1]);
             String errorCode = row[2]; // error1, error2, error3, error4, error5
@@ -444,6 +578,21 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
             if (deviceId == null)
                 continue;
 
+            // Get the configured end date for filtering
+            Date configuredEndDate = machineEndDatesMap.get(machineId);
+
+            // Skip rows where original date is AFTER the configured end date
+            if (configuredEndDate != null && originalDate.after(configuredEndDate)) {
+                continue;
+            }
+
+            if (updateToCurrentTime) {
+                // Use the pre-calculated time difference for consistent timestamps
+                Long timeDiff = machineTimeDiffMap.get(machineId);
+                if (timeDiff != null) {
+                    timestamp = new Timestamp(timestamp.getTime() + timeDiff);
+                }
+            }
             // Create DeviceError entity
             DeviceError deviceError = new DeviceError();
             deviceError.setDeviceId(new DeviceId(deviceId));
@@ -466,7 +615,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     /**
      * Load failures data from PdM_failures.csv as DeviceFailure entities
      */
-    private void loadFailuresAsEntities(Map<Integer, UUID> machineToDeviceMap)
+    private void loadFailuresAsEntities(Map<Integer, UUID> machineToDeviceMap, Map<Integer, Long> machineTimeDiffMap)
             throws IOException, CsvException, ParseException {
         log.info("Loading failures as entities...");
 
@@ -476,10 +625,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
         for (int i = 1; i < rows.size(); i++) {
             String[] row = rows.get(i);
             Date originalDate = DATE_FORMAT.parse(row[0]);
-            if (!updateDataToCurrentTime) {
-                timeAdjustmentMillis = 0; // No adjustment if updating is disabled
-            }
-            Timestamp timestamp = new Timestamp(originalDate.getTime() + timeAdjustmentMillis);
+            Timestamp timestamp = new Timestamp(originalDate.getTime());
 
             Integer machineId = Integer.parseInt(row[1]);
             String failureComp = row[2]; // comp1, comp2, comp3, comp4
@@ -488,6 +634,21 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
             if (deviceId == null)
                 continue;
 
+            // Get the configured end date for filtering
+            Date configuredEndDate = machineEndDatesMap.get(machineId);
+
+            // Skip rows where original date is AFTER the configured end date
+            if (configuredEndDate != null && originalDate.after(configuredEndDate)) {
+                continue;
+            }
+
+            if (updateToCurrentTime) {
+                // Use the pre-calculated time difference for consistent timestamps
+                Long timeDiff = machineTimeDiffMap.get(machineId);
+                if (timeDiff != null) {
+                    timestamp = new Timestamp(timestamp.getTime() + timeDiff);
+                }
+            }
             // Create DeviceFailure entity
             DeviceFailure deviceFailure = new DeviceFailure();
             deviceFailure.setDeviceId(new DeviceId(deviceId));
@@ -510,7 +671,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
     /**
      * Load maintenance data from PdM_maint.csv as DeviceMaintenance entities
      */
-    private void loadMaintenanceAsEntities(Map<Integer, UUID> machineToDeviceMap)
+    private void loadMaintenanceAsEntities(Map<Integer, UUID> machineToDeviceMap, Map<Integer, Long> machineTimeDiffMap)
             throws IOException, CsvException, ParseException {
         log.info("Loading maintenance records as entities...");
 
@@ -520,10 +681,7 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
         for (int i = 1; i < rows.size(); i++) {
             String[] row = rows.get(i);
             Date originalDate = DATE_FORMAT.parse(row[0]);
-            if (!updateDataToCurrentTime) {
-                timeAdjustmentMillis = 0; // No adjustment if updating is disabled
-            }
-            Timestamp timestamp = new Timestamp(originalDate.getTime() + timeAdjustmentMillis);
+            Timestamp timestamp = new Timestamp(originalDate.getTime());
 
             Integer machineId = Integer.parseInt(row[1]);
             String component = row[2]; // comp1, comp2, comp3, comp4
@@ -532,6 +690,21 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
             if (deviceId == null)
                 continue;
 
+            // Get the configured end date for filtering
+            Date configuredEndDate = machineEndDatesMap.get(machineId);
+
+            // Skip rows where original date is AFTER the configured end date
+            if (configuredEndDate != null && originalDate.after(configuredEndDate)) {
+                continue;
+            }
+
+            if (updateToCurrentTime) {
+                // Use the pre-calculated time difference for consistent timestamps
+                Long timeDiff = machineTimeDiffMap.get(machineId);
+                if (timeDiff != null) {
+                    timestamp = new Timestamp(timestamp.getTime() + timeDiff);
+                }
+            }
             // Create DeviceMaintenance entity
             DeviceMaintenance deviceMaintenance = new DeviceMaintenance();
             deviceMaintenance.setDeviceId(new DeviceId(deviceId));
@@ -555,59 +728,6 @@ public class PredictiveMaintenanceDataLoader implements CommandLineRunner {
         String sql = "SELECT COUNT(*) FROM device WHERE name LIKE 'PdM-Machine-%'";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
         return count != null && count > 0;
-    }
-
-    /**
-     * Calculate time adjustment to shift old dates to recent dates
-     * 
-     * @param daysAgo number of days ago for the max date to be set
-     */
-    private void calculateTimeAdjustment(int daysAgo) throws IOException, CsvException, ParseException {
-        // Find the max date in the datasets
-        Date maxDate = findMaxDateInDatasets();
-
-        // Calculate offset to make max date = current date - daysAgo
-        long currentTimeMillis = System.currentTimeMillis();
-        long targetMaxTimeMillis = currentTimeMillis - (daysAgo * 24L * 60 * 60 * 1000);
-
-        timeAdjustmentMillis = targetMaxTimeMillis - maxDate.getTime();
-
-        log.info("Original max date: {}", DATE_FORMAT.format(maxDate));
-        log.info("Target max date: {}", DATE_FORMAT.format(new Date(targetMaxTimeMillis)));
-        log.info("Time adjustment: {} days", timeAdjustmentMillis / (24 * 60 * 60 * 1000));
-    }
-
-    /**
-     * Find the maximum date across all CSV files
-     */
-    private Date findMaxDateInDatasets() throws IOException, CsvException, ParseException {
-        Date maxDate = new Date(0);
-
-        // Check errors file
-        List<String[]> errorRows = readCsv(dataPath + "/PdM_errors.csv");
-        for (int i = 1; i < errorRows.size(); i++) {
-            Date date = DATE_FORMAT.parse(errorRows.get(i)[0]);
-            if (date.after(maxDate))
-                maxDate = date;
-        }
-
-        // Check failures file
-        List<String[]> failureRows = readCsv(dataPath + "/PdM_failures.csv");
-        for (int i = 1; i < failureRows.size(); i++) {
-            Date date = DATE_FORMAT.parse(failureRows.get(i)[0]);
-            if (date.after(maxDate))
-                maxDate = date;
-        }
-
-        // Check maintenance file
-        List<String[]> maintRows = readCsv(dataPath + "/PdM_maint.csv");
-        for (int i = 1; i < maintRows.size(); i++) {
-            Date date = DATE_FORMAT.parse(maintRows.get(i)[0]);
-            if (date.after(maxDate))
-                maxDate = date;
-        }
-
-        return maxDate;
     }
 
     /**

@@ -347,22 +347,14 @@ CREATE INDEX IF NOT EXISTS idx_ml_models_is_active ON ml_models (is_active);
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS predictions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
-    model_id UUID NOT NULL REFERENCES ml_models (id) ON DELETE CASCADE,
-    device_id UUID NOT NULL, -- References device(id) from ThingsBoard
+    model_id UUID NOT NULL REFERENCES predictive_maintenance_config (id) ON DELETE CASCADE,
+    created_time BIGINT NOT NULL, -- ThingsBoard standard created_time in epoch milliseconds
+    created_at TIMESTAMP DEFAULT NOW(),
+
     prediction_time TIMESTAMP NOT NULL DEFAULT NOW(),
     prediction_type VARCHAR(100) NOT NULL, -- Anomaly, Forecast, Failure
-    prediction_horizon_hours FLOAT, -- How far ahead is the prediction
-    predicted_value DOUBLE PRECISION,
-    confidence_score FLOAT,
-    will_fail BOOLEAN,
-    failure_probability FLOAT,
-    predicted_failure_time TIMESTAMP,
-    sensor_contributions JSONB, -- Which sensors contributed most
-    was_correct BOOLEAN, -- Verified after the fact
-    actual_outcome TEXT,
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT NOW(),
-    CONSTRAINT fk_predictions_device FOREIGN KEY (device_id) REFERENCES device (id) ON DELETE CASCADE
+
+    prediction_value JSONB
 );
 
 -- Indexes

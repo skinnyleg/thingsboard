@@ -12,6 +12,8 @@ from datetime import datetime
 from collections import deque
 import pandas as pd
 from typing import Dict, Callable, Set, Union
+
+from scipy.sparse import data
 from library import AnomalyPredictor, ForecastModel
 from src.settings import settings
 import numpy as np
@@ -83,7 +85,9 @@ def add_model_log(model_id: str, level: str, message: JSONValue) -> None:
         "type": (
             "forecast"
             if "forecast" in model_id
-            else "anomaly" if "anomaly" in model_id else "system"
+            else "anomaly"
+            if "anomaly" in model_id
+            else "system"
         ),
         "source": source,
     }
@@ -119,42 +123,19 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
         flush=True,
     )
     add_model_log(model_id, "info", f"Prediction job started for {model_type}")
-
     data_registry = get_data_registry()
-
     try:
-        # Load model
         print(f"[PREDICTION JOB] {model_id} - Initializing model worker", flush=True)
         add_model_log(model_id, "info", f"Initializing model worker for {model_type}")
         path = settings.models_path
         model_dir = Path(path) / model_id
         add_model_log(model_id, "info", f"Model directory: {model_dir}")
-
         if model_type == "AnomalyPredictor":
             add_model_log(model_id, "info", "Getting data registry...")
-            # Get data registry for fetching real-time data
-            # from src.model.shared import get_data_registry
-            # data_registry = get_data_registry()
-            # add_model_log(model_id, "info", f"Data registry obtained: {data_registry is not None}")
-
-            # add_model_log(model_id, "info", "Creating AnomalyPredictor instance...")
-            # model = AnomalyPredictor(
-            #     name=model_id,
-            #     algorithm_name="xgboost",
-            #     data_registry=data_registry
-            # )
-            # add_model_log(model_id, "info", "AnomalyPredictor created successfully")
-
             add_model_log(model_id, "info", f"Loading model from {model_dir}...")
-            # model.load(model_dir)
-
             hourly_models = load_models(model_dir)
-
             add_model_log(model_id, "info", "Model loaded successfully from disk")
-
-            # interval = 300  # 5 minutes
             interval = 20  # 20 seconds for testing
-
             print(
                 f"[PREDICTION JOB] {model_id} - AnomalyPredictor model loaded",
                 flush=True,
@@ -164,26 +145,17 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                     f"[PREDICTION JOB] {model_id} - Hour {hour} model: {mdl}",
                     flush=True,
                 )
-
         elif model_type == "ForecastModel":
-            # Fetch model config to get sensors
             data_registry = get_data_registry()
-
-            # Extract forecast_id from model_id (format: forecast_id/forecast_model)
             forecast_id = model_id.rsplit("/", 1)[0]
             model_config = data_registry.fetch_predictive_model_config(forecast_id)
-
-            # Extract sensors from config
             sensors = model_config.get("attributes", [])
             sensors = [sensor["key"] for sensor in sensors if "key" in sensor]
             device_id = device_id or model_config.get("device_id")
-
             print(
                 f"[PREDICTION JOB] {model_id} - Using sensors: {sensors}, device_id: {device_id}",
                 flush=True,
             )
-
-            # Initialize model
             model = ForecastModel(
                 sensors=sensors,
                 name=model_id,
@@ -193,11 +165,10 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                 data_registry=data_registry,
             )
             model.load(model_dir)
-            interval = 2  # 2 seconds for testing
+            interval = 5  # 2 seconds for testing
         else:
             add_model_log(model_id, "error", f"Unknown model type: {model_type}")
             return
-
         add_model_log(
             model_id,
             "info",
@@ -207,274 +178,20 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
             f"[PREDICTION JOB] {model_id} - Model loaded successfully, starting prediction loop with {interval}s interval",
             flush=True,
         )
-
-        # Prediction loop
         iteration = 0
         print(f"[PREDICTION JOB] {model_id} - Entering prediction loop", flush=True)
         while True:
-            with job_lock:
-                if (
-                    model_id not in active_jobs
-                    or active_jobs[model_id]["status"] != "running"
-                ):
-                    print(
-                        f"[PREDICTION JOB] {model_id} - Job stopped by user", flush=True
-                    )
-                    add_model_log(model_id, "info", "Job stopped by user")
-                    break
-
-            result = {}
-
-            try:
-                iteration += 1
-                print(
-                    f"[PREDICTION JOB] {model_id} - Starting iteration #{iteration}",
-                    flush=True,
-                )
-                add_model_log(
-                    model_id, "info", f"Running prediction iteration #{iteration}"
-                )
-
-                if model_type == "AnomalyPredictor":
-                    # Fetch latest sensor data and predict
-                    print(
-                        f"[PREDICTION JOB] {model_id} - Iteration {iteration}: Fetching latest data for device {device_id}",
-                        flush=True,
-                    )
-                    add_model_log(
-                        model_id, "info", f"Fetching latest data for device {device_id}"
-                    )
-
-                    anomalyModel = AnomalyPredictor(data_registry=get_data_registry())
-
-                    (
-                        telemetry_df,
-                        failures_df,
-                        maintenance_df,
-                        machines_df,
-                        errors_df,
-                    ) = anomalyModel.fetch_raw_data(
-                        device_id, start_date=datetime(2014, 1, 4, 2, 0, 0)
-                    )
-
-                    # latest_data = model.fetch_latest(device_id)
-
-                    print(
-                        f"[PREDICTION JOB] {model_id} - Fetched {len(telemetry_df)} rows of data",
-                        flush=True,
-                    )
-                    add_model_log(
-                        model_id, "info", f"Fetched {len(telemetry_df)} rows of data"
-                    )
-
-                    if telemetry_df.empty:
-                        print(
-                            f"[PREDICTION JOB] {model_id} - No data available for prediction",
-                            flush=True,
-                        )
-                        add_model_log(
-                            model_id, "warn", "No data available for prediction"
-                        )
-                        continue
-
-                    print(
-                        f"[PREDICTION JOB] {model_id} - Running prediction on data with columns: {list(telemetry_df.columns)}",
-                        flush=True,
-                    )
-                    add_model_log(
-                        model_id,
-                        "info",
-                        f"Running prediction on data with columns: {list(telemetry_df.columns)}",
-                    )
-
-                    print(f"[PREDICTION JOB] {model_id} - latest data", flush=True)
-                    pd.set_option("display.max_columns", None)
-
-                    print(telemetry_df.head(), flush=True)
-
-                    predictions = predict_failure(
-                        "2015-01-05 02:00:00",
-                        {},
-                        telemetry_df,
-                        errors_df,
-                        maintenance_df,
-                        failures_df,
-                        machines_df,
-                        feature_cols,
-                        hourly_models,
-                    )
-
-                    # result = model.predict(latest_data)
-
-                    # print(f"[PREDICTION JOB] {model_id} - Prediction result: {result}", flush=True)
-                    # add_model_log(
-                    #     model_id,
-                    #     "prediction",
-                    #     f"Anomaly prediction result: {result}",
-                    # )
-
-                    # ... after you build predictions:
-                    hourly_records = list(predictions["hourly_predictions"].values())
-                    predictions_json_str = json.dumps(hourly_records, default=to_native)
-                    predictions_json = json.loads(predictions_json_str)
-
-                    print(
-                        f"[PREDICTION JOB] {model_id} - Predictions: {predictions_json}",
-                        flush=True,
-                    )
-
-                    add_model_log(
-                        model_id,
-                        "prediction",
-                        {
-                            "iteration": iteration,
-                            "device_id": device_id,
-                            "result": predictions_json,
-                        },
-                    )
-
-                    add_model_log(
-                        model_id,
-                        "info",
-                        f"Anomaly check completed (iteration {iteration})",
-                    )
-
-                elif model_type == "ForecastModel":
-                    # Generate forecast for next 24 hours
-
-                    # get latest
-                    # save last data point timestamp
-                    # predict
-                    # sleep until next interval
-                    result = model.forecast(predict_for=24)
-
-                    print(
-                        f"[PREDICTION JOB] {model_id} - Forecast result: {result}",
-                        flush=True,
-                    )
-
-                    # make a copy of result to log
-                    result_copy = json.loads(json.dumps(result, default=to_native))
-
-                    add_model_log(
-                        model_id,
-                        "prediction",
-                        {
-                            "iteration": iteration,
-                            "device_id": device_id,
-                            "result": result_copy,
-                        },
-                    )
-                    # save prediction
-
-                    # DEBUG: Log sensors BEFORE truncating
-                    print(f"[DEBUG] {model_id} - BEFORE truncating:", flush=True)
-                    print(f"[DEBUG] model.sensors: {model.sensors}", flush=True)
-                    print(f"[DEBUG] result.keys(): {list(result.keys())}", flush=True)
-                    for sensor in result.keys():
-                        if sensor != "forecast_max_steps":
-                            print(
-                                f"[DEBUG] {sensor}: {len(result[sensor].get('forecast', []))} forecast points, {len(result[sensor].get('timestamp', []))} timestamps",
-                                flush=True,
-                            )
-
-                    sensors = model.sensors
-                    for sensor in model.sensors:
-                        if sensor in result:
-                            if len(result[sensor].get("forecast", [])) > 1:
-                                result[sensor]["timestamp"] = [
-                                    result[sensor]["timestamp"][0]
-                                ]
-                                result[sensor]["forecast"] = [result[sensor]["forecast"][0]]
-
-                    # DEBUG: Log sensors AFTER truncating
-                    print(f"[DEBUG] {model_id} - AFTER truncating:", flush=True)
-                    for sensor in result.keys():
-                        if sensor != "forecast_max_steps":
-                            print(
-                                f"[DEBUG] {sensor}: {len(result[sensor].get('forecast', []))} forecast points, {len(result[sensor].get('timestamp', []))} timestamps",
-                                flush=True,
-                            )
-
-                    _model_id = model_id.split("/")[0]
-
-                    save_prediction(
-                        data_registry,
-                        _model_id,
-                        device_id,
-                        "prediction",
-                        f"Forecast result (iteration {iteration})",
-                        result,
-                        "ForecastModel",
-                    )
-
-                    # DEBUG: Fetch and log what was saved to database
-                    try:
-                        with data_registry.engine.connect() as conn:
-                            query = text(
-                                """
-                                SELECT message, created_at
-                                FROM model_logs
-                                WHERE model_id = :model_id
-                                AND log_level = 'prediction'
-                                ORDER BY created_time DESC
-                                LIMIT 1
-                                """
-                            )
-                            db_result = conn.execute(query, {"model_id": _model_id})
-                            row = db_result.fetchone()
-                            if row:
-                                saved_data = json.loads(row[0])
-                                print(
-                                    f"[DEBUG] {model_id} - SAVED TO DATABASE:",
-                                    flush=True,
-                                )
-                                print(f"[DEBUG] Created at: {row[1]}", flush=True)
-                                print(
-                                    f"[DEBUG] Saved sensors: {list(saved_data.keys())}",
-                                    flush=True,
-                                )
-                                for sensor in saved_data.keys():
-                                    if sensor != "forecast_max_steps":
-                                        print(
-                                            f"[DEBUG] {sensor} in DB: {len(saved_data[sensor].get('forecast', []))} forecast points",
-                                            flush=True,
-                                        )
-                    except Exception as e:
-                        print(
-                            f"[DEBUG] {model_id} - Error fetching saved data: {e}",
-                            flush=True,
-                        )
-
-                # Update last run time
-                with job_lock:
-                    if model_id in active_jobs:
-                        active_jobs[model_id]["last_run"] = (
-                            datetime.now().isoformat() + "Z"
-                        )
-                        active_jobs[model_id]["iterations"] = iteration
-
-            except Exception as e:
-                error_details = traceback.format_exc()
-                print(
-                    f"[PREDICTION JOB] {model_id} - Prediction failed: {str(e)}",
-                    flush=True,
-                )
-                print(
-                    f"[PREDICTION JOB] {model_id} - Traceback:\n{error_details}",
-                    flush=True,
-                )
-                add_model_log(model_id, "error", f"Prediction failed: {str(e)}")
-                add_model_log(model_id, "error", f"Traceback: {error_details}")
-                break
-
-            # Sleep until next interval
-            print(
-                f"[PREDICTION JOB] {model_id} - Sleeping for {interval}s until next iteration",
-                flush=True,
+            inner_loop(
+                model_id,
+                model_type,
+                device_id,
+                hourly_models,
+                hourly_models,
+                iteration,
+                data_registry,
             )
             threading.Event().wait(interval)
-
+            break
     except Exception as e:
         error_details = traceback.format_exc()
         print(f"[PREDICTION JOB] {model_id} - Job worker crashed: {str(e)}", flush=True)
@@ -491,26 +208,291 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
         add_model_log(model_id, "info", "Job worker terminated")
 
 
-def save_prediction(
-    data_registry,
-    model_id: str,
-    device_id: str,
-    log_level: str,
-    title: str,
-    message: str,
-    source: str,
-    metadata: Dict[str, JSONValue] = {},
+def anomaly_predict_model(
+    model_id: str, iteration: int, device_id: str, hourly_models: dict, data_registry
 ):
+    # Fetch latest sensor data and predict
+    print(
+        f"[PREDICTION JOB] {model_id} - Iteration {iteration}: Fetching latest data for device {device_id}",
+        flush=True,
+    )
+    add_model_log(model_id, "info", f"Fetching latest data for device {device_id}")
+    anomalyModel = AnomalyPredictor(data_registry=get_data_registry())
+    (
+        telemetry_df,
+        failures_df,
+        maintenance_df,
+        machines_df,
+        errors_df,
+    ) = anomalyModel.fetch(
+        device_id,
+        start_date=datetime(2011, 1, 5, 2, 0, 0)
+        - pd.Timedelta(hours=24),  # start_date is 24 hours ago
+        # end_date=datetime(2015, 3, 6, 2, 0, 0), # end_date is where you when the next predictions to be
+    )
+    if (
+        telemetry_df.empty
+        and errors_df.empty
+        and maintenance_df.empty
+        and failures_df.empty
+        and machines_df.empty
+    ):
+        print(
+            f"[PREDICTION JOB] {model_id} - No data available for prediction",
+            flush=True,
+        )
+        add_model_log(model_id, "warn", "No data available for prediction")
+        return False
+    print(
+        f"[PREDICTION JOB] {model_id} - Fetched {len(telemetry_df)} rows of data",
+        flush=True,
+    )
+    add_model_log(model_id, "info", f"Fetched {len(telemetry_df)} rows of data")
+    if telemetry_df.empty:
+        print(
+            f"[PREDICTION JOB] {model_id} - No data available for prediction",
+            flush=True,
+        )
+        add_model_log(model_id, "warn", "No data available for prediction")
+        return False
+    print(
+        f"[PREDICTION JOB] {model_id} - Running prediction on data with columns: {list(telemetry_df.columns)}",
+        flush=True,
+    )
+    add_model_log(
+        model_id,
+        "info",
+        f"Running prediction on data with columns: {list(telemetry_df.columns)}",
+    )
+    print(f"[PREDICTION JOB] {model_id} - latest data", flush=True)
+    print(telemetry_df.head(), flush=True)
+    predictions = predict_failure(
+        "2015-04-20 02:00:00",
+        {},
+        telemetry_df,
+        errors_df,
+        maintenance_df,
+        failures_df,
+        machines_df,
+        feature_cols,
+        hourly_models,
+        components=[
+            "comp1",
+            "comp2",
+            "comp3",
+            "comp4",
+        ],
+        error_classes=[
+            "error1",
+            "error2",
+            "error3",
+            "error4",
+            "error5",
+        ],
+    )
+    hourly_records = list(predictions["hourly_predictions"].values())
+    predictions_json_str = json.dumps(hourly_records, default=to_native)
+    predictions_json = json.loads(predictions_json_str)
+    print(
+        f"[PREDICTION JOB] {model_id} - Predictions: {predictions_json}",
+        flush=True,
+    )
+    # Send each prediction individually to avoid WebSocket buffer overflow
+    # Instead of sending all 24 predictions in one message, send one at a time
+    for idx, prediction in enumerate(predictions_json):
+        add_model_log(
+            model_id,
+            "prediction",
+            {
+                "iteration": iteration,
+                "device_id": device_id,
+                "prediction_index": idx + 1,
+                "total_predictions": len(predictions_json),
+                "result": prediction,  # Send single prediction
+            },
+        )
+        save_prediction(data_registry, model_id, prediction, "Anomaly")
+    add_model_log(
+        model_id,
+        "info",
+        f"Anomaly check completed (iteration {iteration}): sent {len(predictions_json)} predictions",
+    )
+
+
+def forecast_predict_model(
+    model_id: str, iteration: int, device_id: str, model, data_registry
+):
+    result = model.forecast(predict_for=24)
+    print(
+        f"[PREDICTION JOB] {model_id} - Forecast result: {result}",
+        flush=True,
+    )
+    result_copy = json.loads(json.dumps(result, default=to_native))
+    sensor_count = 0
+    for sensor_name, sensor_data in result_copy.items():
+        if sensor_name != "forecast_max_steps" and isinstance(sensor_data, dict):
+            sensor_count += 1
+            add_model_log(
+                model_id,
+                "prediction",
+                {
+                    "iteration": iteration,
+                    "device_id": device_id,
+                    "sensor": sensor_name,
+                    "result": sensor_data,
+                },
+            )
+    add_model_log(
+        model_id,
+        "info",
+        f"Forecast completed (iteration {iteration}): sent predictions for {sensor_count} sensors",
+    )
+    print(f"[DEBUG] {model_id} - BEFORE truncating:", flush=True)
+    print(f"[DEBUG] model.sensors: {model.sensors}", flush=True)
+    print(f"[DEBUG] result.keys(): {list(result.keys())}", flush=True)
+    for sensor in result.keys():
+        if sensor != "forecast_max_steps":
+            print(
+                f"[DEBUG] {sensor}: {len(result[sensor].get('forecast', []))} forecast points, {len(result[sensor].get('timestamp', []))} timestamps",
+                flush=True,
+            )
+    sensors = model.sensors
+    for sensor in model.sensors:
+        if sensor in result:
+            if len(result[sensor].get("forecast", [])) > 1:
+                result[sensor]["timestamp"] = [result[sensor]["timestamp"][0]]
+                result[sensor]["forecast"] = [result[sensor]["forecast"][0]]
+
+    # DEBUG: Log sensors AFTER truncating
+    print(f"[DEBUG] {model_id} - AFTER truncating:", flush=True)
+    for sensor in result.keys():
+        if sensor != "forecast_max_steps":
+            print(
+                f"[DEBUG] {sensor}: {len(result[sensor].get('forecast', []))} forecast points, {len(result[sensor].get('timestamp', []))} timestamps",
+                flush=True,
+            )
+
+    _model_id = model_id.split("/")[0]
+
+    # save_prediction(
+    #     data_registry,
+    #     _model_id,
+    #     device_id,
+    #     "prediction",
+    #     f"Forecast result (iteration {iteration})",
+    #     result,
+    #     "ForecastModel",
+    # )
+
+    # DEBUG: Fetch and log what was saved to database
+    try:
+        with data_registry.engine.connect() as conn:
+            query = text(
+                """
+                SELECT message, created_at
+                FROM model_logs
+                WHERE model_id = :model_id
+                AND log_level = 'prediction'
+                ORDER BY created_time DESC
+                LIMIT 1
+                """
+            )
+            db_result = conn.execute(query, {"model_id": _model_id})
+            row = db_result.fetchone()
+            if row:
+                saved_data = json.loads(row[0])
+                print(
+                    f"[DEBUG] {model_id} - SAVED TO DATABASE:",
+                    flush=True,
+                )
+                print(f"[DEBUG] Created at: {row[1]}", flush=True)
+                print(
+                    f"[DEBUG] Saved sensors: {list(saved_data.keys())}",
+                    flush=True,
+                )
+                for sensor in saved_data.keys():
+                    if sensor != "forecast_max_steps":
+                        print(
+                            f"[DEBUG] {sensor} in DB: {len(saved_data[sensor].get('forecast', []))} forecast points",
+                            flush=True,
+                        )
+    except Exception as e:
+        print(
+            f"[DEBUG] {model_id} - Error fetching saved data: {e}",
+            flush=True,
+        )
+
+        # Update last run time
+        active_jobs[model_id]["last_run"] = datetime.now().isoformat() + "Z"
+        active_jobs[model_id]["iterations"] = iteration
+
+
+def inner_loop(
+    model_id: str,
+    model_type: str,
+    device_id: str,
+    model,
+    hourly_models: dict,
+    iteration: int,
+    data_registry,
+) -> bool:
+    # return if should break the loop
+    # Check if job is stopped or paused
+    with job_lock:
+        if model_id not in active_jobs or active_jobs[model_id]["status"] != "running":
+            print(f"[PREDICTION JOB] {model_id} - Job stopped by user", flush=True)
+            add_model_log(model_id, "info", "Job stopped by user")
+            return True
+
+        # If paused, wait and skip this iteration
+        if active_jobs[model_id].get("paused", False):
+            print(
+                f"[PREDICTION JOB] {model_id} - Job is paused, waiting...",
+                flush=True,
+            )
+            threading.Event().wait(1)  # Wait 1 second before checking again
+            return False
+    result = {}
+    try:
+        iteration += 1
+        print(
+            f"[PREDICTION JOB] {model_id} - Starting iteration #{iteration}",
+            flush=True,
+        )
+        add_model_log(model_id, "info", f"Running prediction iteration #{iteration}")
+
+        if model_type == "AnomalyPredictor":
+            anomaly_predict_model(
+                model_id, iteration, device_id, hourly_models, data_registry
+            )
+        elif model_type == "ForecastModel":
+            forecast_predict_model(model_id, iteration, device_id, model, data_registry)
+    except Exception as e:
+        error_details = traceback.format_exc()
+        print(
+            f"[PREDICTION JOB] {model_id} - Prediction failed: {str(e)}",
+            flush=True,
+        )
+        print(
+            f"[PREDICTION JOB] {model_id} - Traceback:\n{error_details}",
+            flush=True,
+        )
+        add_model_log(model_id, "error", f"Prediction failed: {str(e)}")
+        add_model_log(model_id, "error", f"Traceback: {error_details}")
+        return False
+    # Note: actual sleeping is performed by the outer worker loop which knows the interval.
+    # Avoid referencing `interval` here (not in scope) to prevent NameError.
+    print(
+        f"[PREDICTION JOB] {model_id} - Sleeping until next iteration",
+        flush=True,
+    )
+
+
+def save_prediction(data_registry, model_id: str, message, source):
     """Save the prediction result to the database or any persistent storage"""
     _id = uuid.uuid4().hex
-    _model_id = model_id
-    _device_id = device_id
-    _timestamp = int(time.time() * 1000)
-    _log_level = log_level
-    _title = title
-    _message = message
-    _source = source
-    _metadata = metadata
+    # Extract UUID from model_id (remove the '/anomaly_predictor' or '/forecast_model' suffix)
+    _model_id = model_id.split("/")[0] if "/" in model_id else model_id
     created_at = datetime.now().isoformat() + "Z"
     created_time = int(time.time() * 1000)
 
@@ -518,26 +500,21 @@ def save_prediction(
         with data_registry.engine.connect() as conn:
             query = text(
                 """
-                INSERT INTO model_logs
-                (id, model_id, device_id, timestamp, log_level, title, message, source, metadata, created_at, created_time)
-                VALUES (:id, :model_id, :device_id, :timestamp, :log_level, :title, :message, :source, :metadata, :created_at, :created_time)
+                INSERT INTO predictions
+                (model_id, created_at, created_time, prediction_time, prediction_type, prediction_value)
+                VALUES (:model_id, :created_at, :created_time, :prediction_time, :prediction_type, :prediction_value)
                 """
             )
 
             conn.execute(
                 query,
                 {
-                    "id": _id,
                     "model_id": _model_id,
-                    "device_id": _device_id,
-                    "timestamp": _timestamp,
-                    "log_level": _log_level,
-                    "title": _title,
-                    "message": json.dumps(_message, default=to_native),
-                    "source": _source,
-                    "metadata": json.dumps(_metadata, default=to_native),
                     "created_at": created_at,
                     "created_time": created_time,
+                    "prediction_time": created_at,
+                    "prediction_type": source,
+                    "prediction_value": json.dumps(message, default=to_native),
                 },
             )
             conn.commit()
@@ -554,6 +531,92 @@ def save_prediction(
         )
         add_model_log(model_id, "error", f"Failed to save prediction: {str(e)}")
         add_model_log(model_id, "error", f"Save traceback: {error_details}")
+
+
+# def save_prediction(
+#     data_registry,
+#     model_id: str,
+#     device_id: str,
+#     log_level: str,
+#     title: str,
+#     message: str,
+#     source: str,
+#     metadata: Dict[str, JSONValue] = {},
+# ):
+#     """Save the prediction result to the database or any persistent storage"""
+#     _id = uuid.uuid4().hex
+#     _model_id = model_id
+#     _device_id = device_id
+#     _timestamp = int(time.time() * 1000)
+#     _log_level = log_level
+#     _title = title
+#     _message = message
+#     _source = source
+#     _metadata = metadata
+#     created_at = datetime.now().isoformat() + "Z"
+#     created_time = int(time.time() * 1000)
+#
+#     try:
+#         with data_registry.engine.connect() as conn:
+#             query = text(
+#                 """
+#                 INSERT INTO model_logs
+#                 (id, model_id, device_id, timestamp, log_level, title, message, source, metadata, created_at, created_time)
+#                 VALUES (:id, :model_id, :device_id, :timestamp, :log_level, :title, :message, :source, :metadata, :created_at, :created_time)
+#                 """
+#             )
+#
+#             # query = text(
+#             #     """
+#             #     INSERT INTO predictions
+#             #     (model_id, timestamp, created_at, created_time, prediction_time, prediction_type, prediction_value)
+#             #     VALUES (:model_id, :timestamp, :created_at, :created_time, :prediction_time, :prediction_type, :prediction_value)
+#             #     """
+#             # )
+#
+#             # conn.execute(
+#             #     query,
+#             #     {
+#             #         "model_id": _model_id,
+#             #         "timestamp": _timestamp,
+#             #         "created_at": created_at,
+#             #         "created_time": created_time,
+#             #         "prediction_time": prediction_time,
+#             #         "prediction_type": prediction_type,
+#             #         "prediction_value": prediction_value,
+#             #     },
+#             # )
+#
+#             conn.execute(
+#                 query,
+#                 {
+#                     "id": _id,
+#                     "model_id": _model_id,
+#                     "device_id": _device_id,
+#                     "timestamp": _timestamp,
+#                     "log_level": _log_level,
+#                     "title": _title,
+#                     "message": json.dumps(_message, default=to_native),
+#                     "source": _source,
+#                     "metadata": json.dumps(_metadata, default=to_native),
+#                     "created_at": created_at,
+#                     "created_time": created_time,
+#                 },
+#             )
+#             conn.commit()
+#         print(f"[PREDICTION JOB] {model_id} - Prediction saved: {_id}", flush=True)
+#     except Exception as e:
+#         error_details = traceback.format_exc()
+#         print(
+#             f"[PREDICTION JOB] {model_id} - Failed to save prediction: {str(e)}",
+#             flush=True,
+#         )
+#         print(
+#             f"[PREDICTION JOB] {model_id} - Save traceback:\n{error_details}",
+#             flush=True,
+#         )
+#         add_model_log(model_id, "error", f"Failed to save prediction: {str(e)}")
+#         add_model_log(model_id, "error", f"Save traceback: {error_details}")
 
 
 def start_prediction_job(model_id: str, model_type: str, device_id: str = None) -> bool:
@@ -575,6 +638,7 @@ def start_prediction_job(model_id: str, model_type: str, device_id: str = None) 
             "model_type": model_type,
             "device_id": device_id,
             "status": "running",
+            "paused": False,
             "start_time": datetime.now().isoformat() + "Z",
             "last_run": None,
             "iterations": 0,
@@ -597,6 +661,36 @@ def stop_prediction_job(model_id: str) -> bool:
         return True
 
 
+def pause_prediction_job(model_id: str) -> bool:
+    """Pause a prediction job"""
+    with job_lock:
+        if model_id not in active_jobs:
+            return False
+
+        if active_jobs[model_id]["status"] != "running":
+            return False
+
+        active_jobs[model_id]["paused"] = True
+        add_model_log(model_id, "info", "Job paused")
+        print(f"[PREDICTION JOB] {model_id} - Job paused by user", flush=True)
+        return True
+
+
+def unpause_prediction_job(model_id: str) -> bool:
+    """Unpause (resume) a prediction job"""
+    with job_lock:
+        if model_id not in active_jobs:
+            return False
+
+        if active_jobs[model_id]["status"] != "running":
+            return False
+
+        active_jobs[model_id]["paused"] = False
+        add_model_log(model_id, "info", "Job resumed")
+        print(f"[PREDICTION JOB] {model_id} - Job resumed by user", flush=True)
+        return True
+
+
 def get_job_status(model_id: str = None) -> dict:
     """Get status of jobs"""
     with job_lock:
@@ -608,6 +702,7 @@ def get_job_status(model_id: str = None) -> dict:
                     "model_type": job_info["model_type"],
                     "device_id": job_info.get("device_id"),
                     "status": job_info["status"],
+                    "paused": job_info.get("paused", False),
                     "start_time": job_info["start_time"],
                     "last_run": job_info.get("last_run"),
                     "iterations": job_info.get("iterations", 0),
@@ -622,6 +717,7 @@ def get_job_status(model_id: str = None) -> dict:
                     "model_type": job_info["model_type"],
                     "device_id": job_info.get("device_id"),
                     "status": job_info["status"],
+                    "paused": job_info.get("paused", False),
                     "start_time": job_info["start_time"],
                     "last_run": job_info.get("last_run"),
                     "iterations": job_info.get("iterations", 0),

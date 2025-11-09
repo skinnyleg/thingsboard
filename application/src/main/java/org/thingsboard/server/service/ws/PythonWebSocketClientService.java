@@ -410,36 +410,51 @@ public class PythonWebSocketClientService {
                     new PageLink(limit, 0, null, new org.thingsboard.server.common.data.page.SortOrder("createdTime",
                             org.thingsboard.server.common.data.page.SortOrder.Direction.DESC)));
 
-            // Format logs for UI
-            ObjectNode response = objectMapper.createObjectNode();
-            response.put("type", "logs");
+            // Send logs in batches to avoid WebSocket buffer overflow
+            int batchSize = 10; // Send 10 logs per message
+            int totalLogs = logsPage.getData().size();
+            int sentLogs = 0;
 
-            ObjectNode data = objectMapper.createObjectNode();
-            ArrayNode logsArray = objectMapper.createArrayNode();
+            for (int i = 0; i < totalLogs; i += batchSize) {
+                int endIndex = Math.min(i + batchSize, totalLogs);
 
-            for (ModelLog modelLog : logsPage.getData()) {
-                ObjectNode logNode = objectMapper.createObjectNode();
-                logNode.put("timestamp", new java.util.Date(modelLog.getCreatedTime()).toInstant().toString());
-                logNode.put("level", modelLog.getLogLevel() != null ? modelLog.getLogLevel() : "INFO");
-                logNode.put("message", modelLog.getMessage() != null ? modelLog.getMessage() : "");
+                // Format logs for UI
+                ObjectNode response = objectMapper.createObjectNode();
+                response.put("type", "logs");
 
-                if (modelLog.getSource() != null) {
-                    logNode.put("source", modelLog.getSource());
-                } else if (modelLog.getMetadata() != null && modelLog.getMetadata().has("source")) {
-                    logNode.put("source", modelLog.getMetadata().get("source").asText());
+                ObjectNode data = objectMapper.createObjectNode();
+                ArrayNode logsArray = objectMapper.createArrayNode();
+
+                for (int j = i; j < endIndex; j++) {
+                    ModelLog modelLog = logsPage.getData().get(j);
+                    ObjectNode logNode = objectMapper.createObjectNode();
+                    logNode.put("timestamp", new java.util.Date(modelLog.getCreatedTime()).toInstant().toString());
+                    logNode.put("level", modelLog.getLogLevel() != null ? modelLog.getLogLevel() : "INFO");
+                    logNode.put("message", modelLog.getMessage() != null ? modelLog.getMessage() : "");
+
+                    if (modelLog.getSource() != null) {
+                        logNode.put("source", modelLog.getSource());
+                    } else if (modelLog.getMetadata() != null && modelLog.getMetadata().has("source")) {
+                        logNode.put("source", modelLog.getMetadata().get("source").asText());
+                    }
+
+                    logsArray.add(logNode);
                 }
 
-                logsArray.add(logNode);
+                data.set("logs", logsArray);
+                data.put("count", logsArray.size());
+                response.set("data", data);
+
+                // Send to UI (thread-safe)
+                sendMessageToUi(sessionId, response.toString());
+                sentLogs += logsArray.size();
+
+                log.debug("Sent batch of {} logs (total: {}/{}) for forecast {} to UI session {}",
+                        logsArray.size(), sentLogs, totalLogs, forecastId, sessionId);
             }
 
-            data.set("logs", logsArray);
-            data.put("count", logsArray.size());
-            response.set("data", data);
-
-            // Send to UI (thread-safe)
-            sendMessageToUi(sessionId, response.toString());
             log.info("Sent {} logs from past 7 days for forecast {} to UI session {}",
-                    logsArray.size(), forecastId, sessionId);
+                    sentLogs, forecastId, sessionId);
         } catch (Exception e) {
             log.error("Error retrieving logs from database for forecast {}", forecastId, e);
             sendErrorToUi(sessionId, "Error retrieving logs: " + e.getMessage());

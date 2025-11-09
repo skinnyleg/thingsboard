@@ -236,10 +236,12 @@ public class PredictiveMaintenanceWebSocketService {
         }
 
         try {
+            String type = "all";
             JsonNode result = modelManagementService.getModelLogs(
                     cmd.getModelId(),
                     cmd.getLogLevel(),
-                    cmd.getLogLimit());
+                    cmd.getLogLimit(),
+                    type);
 
             ObjectNode response = mapper.createObjectNode();
             response.put("cmdId", cmd.getCmdId());

@@ -103,5 +103,28 @@ public interface ModelManagementService {
      * @param limit   Maximum number of log entries
      * @return JSON with log entries
      */
-    JsonNode getModelLogs(String modelId, String level, int limit);
+    JsonNode getModelLogs(String modelId, String level, int limit, String type);
+
+    /**
+     * Fetch predictions from the predictions table.
+     * 
+     * @param modelId        Model ID (predictive_maintenance_config UUID)
+     * @param startTs        Start timestamp in milliseconds (optional)
+     * @param endTs          End timestamp in milliseconds (optional)
+     * @param predictionType Prediction type filter (Anomaly, Forecast, Failure -
+     *                       optional)
+     * @param limit          Maximum number of records to return
+     * @return JSON with predictions array and totalCount
+     */
+    JsonNode fetchPredictions(UUID modelId, Long startTs, Long endTs, String predictionType, int limit);
+
+    /**
+     * Delete predictions for a specific model
+     *
+     * @param modelId        Model ID (predictive_maintenance_config ID)
+     * @param predictionType Optional prediction type filter (Anomaly, Forecast,
+     *                       Failure)
+     * @return Number of deleted records
+     */
+    int deletePredictions(UUID modelId, String predictionType);
 }

@@ -1,6 +1,5 @@
 # Use docker-compose to build and manage services
 COMPOSE=docker compose
-MAVEN_RUN=$(COMPOSE) run --rm thingsboard mvn
 
 # Default: compile all modules (Java + rebuild all Docker images)
 all: compile-all
@@ -17,18 +16,40 @@ clean:
 	rm -rf ./ui-ngx/.angular
 
 clean-mvn:
-	$(MAVEN_RUN) clean
+	$(COMPOSE) run --rm thingsboard mvn clean
 
 fclean: clean
 	rm -rf ./ui-ngx/node_modules/
 
-# Compile Java code using Maven with docker run
+# Compile Java code using Maven with docker run (12GB memory for UI build)
 compile:
-	$(MAVEN_RUN) install -DskipTests -Dmaven.test.skip
+	docker run --rm \
+		--memory=12g --memory-swap=12g \
+		--cpus=4 \
+		-v $(PWD):/app \
+		-v $(PWD)/../thingsboard_m2_cache:/root/.m2 \
+		-v $(PWD)/../thingsboard_npm_cache:/root/.npm \
+		-v $(PWD)/../thingsboard_gradle_cache:/root/.gradle \
+		-w /app \
+		-e NODE_OPTIONS="--max-old-space-size=8192" \
+		--network thingsboard_thingsboard \
+		thingsboard-thingsboard \
+		mvn install -DskipTests -Dmaven.test.skip
 
 # Compile with debug output
 compile-debug:
-	$(MAVEN_RUN) -X install -DskipTests -Dmaven.test.skip
+	docker run --rm \
+		--memory=12g --memory-swap=12g \
+		--cpus=4 \
+		-v $(PWD):/app \
+		-v $(PWD)/../thingsboard_m2_cache:/root/.m2 \
+		-v $(PWD)/../thingsboard_npm_cache:/root/.npm \
+		-v $(PWD)/../thingsboard_gradle_cache:/root/.gradle \
+		-w /app \
+		-e NODE_OPTIONS="--max-old-space-size=8192" \
+		--network thingsboard_thingsboard \
+		thingsboard-thingsboard \
+		mvn -X install -DskipTests -Dmaven.test.skip
 
 # Build all Docker services
 build-all:

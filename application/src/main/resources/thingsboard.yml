@@ -144,10 +144,12 @@ predictive-maintenance:
   tenant-email: "${PM_TENANT_EMAIL:tenant@thingsboard.org}"
   # Enable/disable automatic rollback on failure
   rollback-on-failure: "${PM_ROLLBACK_ON_FAILURE:true}"
+  # End dates for the machines' data loading (comma-separated for each machine)
   # Exit application on data loading failure
   exit-on-failure: "${PM_EXIT_ON_FAILURE:true}"
   # Machine filtering configuration
   machine-filter:
+    end-dates-machines: "${PM_END_DATE_MACHINES:}"
     # Comma-separated list of specific machine IDs to load (e.g., "1,2,3,4,5")
     # If empty: loads the first N machines up to max-machines limit
     # If non-empty: loads only the specified machines (must not exceed max-machines)
