@@ -160,7 +160,7 @@ export class ModelWebSocketService {
    * Handle incoming WebSocket messages
    */
   private handleMessage(message: any): void {
-    console.log("[ModelComponent] [handleMessage()] Received message:", message);
+    // console.log("[ModelComponent] [handleMessage()] Received message:", message);
 
     switch (message.type) {
       case 'progress':

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     app_name: str = "predictive-maintenance"
     app_description: str = "Predictive Maintenance Service"
     app_version: str = "0.1.0"
-    app_debug: bool = True
+    app_debug: bool = False
     app_root_path: str = "/api/v1"
     cors_origins: Union[List[str], str] = os.getenv(
         "CORS_ORIGINS", "http://thingsboard:8080,http://thingsboard:4200"

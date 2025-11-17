@@ -97,8 +97,10 @@ export interface LogEntry {
   timestamp: string;
   type: 'forecast' | 'anomaly' | 'system' | 'other';
   level: string; // 'info', 'warn', 'error', etc.
-  message: string | {
-    result?: AnomalyPrediction[];
+  message: {
+    result?: AnomalyPrediction | ForecastSensorPrediction;
+    sensor?: string;
+    prediction_type?: any;
   };
   source?: 'ForecastModel' | 'AnomalyModel';
 }
@@ -108,6 +110,8 @@ export type AnomalyPredictionLogEntry = LogEntry & {
   level: 'PREDICTION';
   message: {
     result?: AnomalyPrediction[];
+    sensor?: string;
+    type?: any;
   };
 };
 
@@ -126,12 +130,17 @@ export interface ForecastSensorPredictions {
 }
 
 export interface ForecastPredictionLogEntryMessage {
-  result?: ForecastPrediction;
+  result?: ForecastPrediction | ForecastSensorPredictions;
+  sensor?: string;
+  iteration?: number;
+  prediction_type: 'forecast' | 'history';
+  device_id?: string;
+  recent_point_ts?: number; // Timestamp of the last real data point (in milliseconds)
 }
 
 export type ForecastPredictionLogEntry = LogEntry & {
   type: 'forecast';
-  level: 'PREDICTION';
+  level: 'PREDICTION' | 'FORECAST_HISTORY';
   message: string | ForecastPredictionLogEntryMessage;
 };
 

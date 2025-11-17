@@ -13,9 +13,7 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
-import logging
-
-logger = logging.getLogger(__name__)
+from src.logger import logger  # Global logger
 
 # Database configuration
 DB_NAME = os.getenv("POSTGRES_DB", "thingsboard")

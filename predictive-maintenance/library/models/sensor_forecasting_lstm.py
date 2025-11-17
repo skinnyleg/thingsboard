@@ -80,55 +80,29 @@ def configure_gpu(
             if memory_growth:
                 for gpu in gpus:
                     tf.config.experimental.set_memory_growth(gpu, True)
-                print(f"✓ GPU memory growth enabled for {len(gpus)} GPU(s)")
 
             # Set memory limit if specified
             if memory_limit_mb:
                 for gpu in gpus:
                     tf.config.set_logical_device_configuration(
                         gpu,
-                        [
-                            tf.config.LogicalDeviceConfiguration(
-                                memory_limit=memory_limit_mb
-                            )
-                        ],
+                        [tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit_mb)],
                     )
-                print(f"✓ GPU memory limit set to {memory_limit_mb} MB")
-
-            # Print GPU information
-            for i, gpu in enumerate(gpus):
-                print(f"✓ GPU {i}: {gpu.name}")
-
-            logical_gpus = tf.config.list_logical_devices("GPU")
-            print(f"✓ {len(gpus)} Physical GPU(s), {len(logical_gpus)} Logical GPU(s)")
 
             return True
 
         except RuntimeError as e:
-            print(f"✗ GPU configuration error: {e}")
             if required:
-                print("\n✗ FATAL: GPU is required but configuration failed.")
-                print("Please check your CUDA and cuDNN installation.")
                 import sys
 
                 sys.exit(1)
             return False
     else:
-        print("✗ No GPU found.")
         if required:
-            print("\n✗ FATAL: GPU is required but not found.")
-            print("To use GPU, ensure:")
-            print("  1. NVIDIA GPU drivers are installed (run: nvidia-smi)")
-            print("  2. CUDA toolkit is installed")
-            print("  3. cuDNN is installed")
-            print("  4. TensorFlow GPU version is installed")
-            print("\nSee GPU_SETUP.md for detailed installation instructions.")
             import sys
 
             sys.exit(1)
         else:
-            print("Running on CPU.")
-            print("To use GPU, ensure CUDA and cuDNN are properly installed.")
             return False
 
 
@@ -152,25 +126,7 @@ def get_device_info() -> dict:
 
 def print_device_info() -> None:
     """Print detailed information about available compute devices."""
-    info = get_device_info()
-
-    print("\n" + "=" * 60)
-    print("DEVICE INFORMATION")
-    print("=" * 60)
-    print(f"TensorFlow Version: {info['tensorflow_version']}")
-    print(f"Built with CUDA: {info['built_with_cuda']}")
-    print(f"GPU Available: {info['gpu_available']}")
-    print(f"GPU Count: {info['gpu_count']}")
-
-    if info["gpu_names"]:
-        print("\nGPU Devices:")
-        for i, name in enumerate(info["gpu_names"]):
-            print(f"  [{i}] {name}")
-    else:
-        print("\nNo GPU devices found.")
-
-    print(f"\nCPU Count: {info['cpu_count']}")
-    print("=" * 60 + "\n")
+    pass
 
 
 def enable_mixed_precision() -> None:
@@ -184,12 +140,6 @@ def enable_mixed_precision() -> None:
     if tf.config.list_physical_devices("GPU"):
         policy = mixed_precision.Policy("mixed_float16")
         mixed_precision.set_global_policy(policy)
-        print(f"✓ Mixed precision enabled: {policy.name}")
-        print(f"  - Compute dtype: {policy.compute_dtype}")
-        print(f"  - Variable dtype: {policy.variable_dtype}")
-        print(f"  - Expected speedup: 2-3x on modern GPUs")
-    else:
-        print("✗ Mixed precision not enabled (no GPU available)")
 
 
 def verify_gpu_usage() -> None:
@@ -199,32 +149,14 @@ def verify_gpu_usage() -> None:
     gpus = tf.config.list_physical_devices("GPU")
 
     if gpus:
-        print(f"\n{'='*60}")
-        print("GPU VERIFICATION")
-        print(f"{'='*60}")
-        print(f"✓ TensorFlow can see {len(gpus)} GPU(s)")
-
-        for i, gpu in enumerate(gpus):
-            print(f"  GPU {i}: {gpu.name}")
-
         # Check if GPU is actually being used
         try:
             with tf.device("/GPU:0"):
                 a = tf.constant([[1.0, 2.0], [3.0, 4.0]])
                 b = tf.constant([[1.0, 2.0], [3.0, 4.0]])
                 _ = tf.matmul(a, b)  # Test GPU compute capability
-            print(f"✓ GPU compute test passed - GPU is functional")
-            print(f"✓ All training operations will use GPU automatically")
-        except Exception as e:
-            print(f"✗ GPU compute test failed: {e}")
-
-        print(f"{'='*60}\n")
-    else:
-        print(f"\n{'='*60}")
-        print("GPU VERIFICATION")
-        print(f"{'='*60}")
-        print(f"✗ No GPU detected - training will use CPU")
-        print(f"{'='*60}\n")
+        except Exception:
+            pass
 
 
 def load_telemetry_data(filepath: str) -> pd.DataFrame:
@@ -329,7 +261,7 @@ def plot_sensor_timescales(sensor: pd.Series, save_path: str = None) -> None:
 
 
 def scale_and_split_data(
-    sensor: pd.DataFrame, sensor_name: str, train_size: int, lookback: int
+    sensor: pd.DataFrame, sensor_name: str, train_percentage: float, lookback: int
 ) -> Tuple[np.ndarray, np.ndarray, StandardScaler]:
     """
     Scale sensor data and split into train/test sets.
@@ -344,24 +276,45 @@ def scale_and_split_data(
     """
     scaler = StandardScaler()
     scaled_sensor = scaler.fit_transform(sensor)
-    # scaled_sensor = scaler.fit_transform(sensor.to_numpy().reshape(-1, 1))
 
-    # print(f"Sensor Range before scaling: {sensor[sensor_name].min()}, {sensor[sensor_name].max()}")
-    print(
-        f"Vibration Range after scaling: {scaled_sensor.min()}, {scaled_sensor.max()}"
-    )
+    train_size = int(train_percentage * len(scaled_sensor))
 
     train_sensor = scaled_sensor[0:train_size, :]
     test_sensor = scaled_sensor[train_size - lookback :, :]
 
-    print(f"\nShapes of train and test: {train_sensor.shape}, {test_sensor.shape}")
-
     return train_sensor, test_sensor, scaler
 
 
-def create_rnn_dataset(
-    data: np.ndarray, lookback: int
-) -> Tuple[np.ndarray, np.ndarray]:
+# def scale_and_split_data(
+#     sensor: pd.DataFrame, sensor_name: str, train_size: int, lookback: int
+# ) -> Tuple[np.ndarray, np.ndarray, StandardScaler]:
+#     """
+#     Scale sensor data and split into train/test sets.
+#
+#     Args:
+#         sensor: DataFrame with sensor data
+#         train_size: Number of samples for training
+#         lookback: Number of lookback steps for test data
+#
+#     Returns:
+#         Tuple of (train_data, test_data, scaler)
+#     """
+#     scaler = StandardScaler()
+#     scaled_sensor = scaler.fit_transform(sensor)
+#     # scaled_sensor = scaler.fit_transform(sensor.to_numpy().reshape(-1, 1))
+#
+#     # print(f"Sensor Range before scaling: {sensor[sensor_name].min()}, {sensor[sensor_name].max()}")
+#     print(f"Vibration Range after scaling: {scaled_sensor.min()}, {scaled_sensor.max()}")
+#
+#     train_sensor = scaled_sensor[0:train_size, :]
+#     test_sensor = scaled_sensor[train_size - lookback :, :]
+#
+#     print(f"\nShapes of train and test: {train_sensor.shape}, {test_sensor.shape}")
+#
+#     return train_sensor, test_sensor, scaler
+
+
+def create_rnn_dataset(data: np.ndarray, lookback: int) -> Tuple[np.ndarray, np.ndarray]:
     """
     Prepare dataset for RNN training with lookback windows.
 
@@ -372,28 +325,15 @@ def create_rnn_dataset(
     Returns:
         Tuple of (X, y) arrays for RNN
     """
-
-    print("$" * 60)
-    print("$" * 20)
-
-    print(data)
-
-    print("$" * 20)
-
     data_x, data_y = [], []
     for i in range(len(data) - lookback - 1):
         a = data[i : (i + lookback), 0]
-        print(
-            f"[Create RNN datasets] Sample {i}: Input shape: {a.shape}, Target: {data[i + lookback, 0]}"
-        )
         data_x.append(a)
         data_y.append(data[i + lookback, 0])
     return np.array(data_x), np.array(data_y)
 
 
-def build_lstm_model(
-    lookback: int, lstm_units: int = 256, use_gpu: bool = True
-) -> Sequential:
+def build_lstm_model(lookback: int, lstm_units: int = 256, use_gpu: bool = True) -> Sequential:
     """
     Build and compile LSTM model for time series forecasting.
 
@@ -408,9 +348,7 @@ def build_lstm_model(
     tf.random.set_seed(3)
 
     # Use GPU device if available and requested
-    device = (
-        "/GPU:0" if use_gpu and tf.config.list_physical_devices("GPU") else "/CPU:0"
-    )
+    device = "/GPU:0" if use_gpu and tf.config.list_physical_devices("GPU") else "/CPU:0"
 
     with tf.device(device):
         model = Sequential()
@@ -418,7 +356,6 @@ def build_lstm_model(
         model.add(Dense(1))
         model.compile(loss="mean_squared_error", optimizer="adam", metrics=["mse"])
 
-    print(f"Model built on device: {device}")
     return model
 
 
@@ -492,17 +429,7 @@ def train_lstm_model(
     Returns:
         Trained model
     """
-    model.summary()
-
     if use_optimized_pipeline:
-        print(f"\n{'='*60}")
-        print(f"OPTIMIZED TRAINING PIPELINE")
-        print(f"{'='*60}")
-        print(f"Batch Size: {batch_size}")
-        print(f"Optimizations: Caching + Prefetching + Shuffling")
-        print(f"Validation Split: {validation_split * 100}%")
-        print(f"{'='*60}\n")
-
         # Split data for validation manually since tf.data doesn't support validation_split
         split_idx = int(len(train_x) * (1 - validation_split))
         train_x_split = train_x[:split_idx]
@@ -530,30 +457,17 @@ def train_lstm_model(
             use_gpu=gpu_available,
         )
 
-        # Verify GPU usage
-        if gpu_available:
-            print(
-                f"✓ Training will use GPU: {tf.config.list_physical_devices('GPU')[0].name}"
-            )
-            print(f"✓ Data pipeline optimized for GPU with batch_size={batch_size}")
-        else:
-            print(f"⚠ No GPU detected - training on CPU (will be slow)")
-
         # Train with optimized pipeline on GPU
-        model.fit(train_dataset, validation_data=val_dataset, epochs=epochs, verbose=1)
-
-        if gpu_available:
-            print(f"\n✓ Training completed on GPU")
+        model.fit(train_dataset, validation_data=val_dataset, epochs=epochs, verbose=0)
     else:
         # Fallback to standard training (slower)
-        print("Using standard training pipeline (not optimized)")
         model.fit(
             train_x,
             train_y,
             epochs=epochs,
             batch_size=batch_size,
             validation_split=validation_split,
-            verbose=1,
+            verbose=0,
         )
 
     return model
@@ -680,9 +594,7 @@ def forecast_future(
         this_prediction = model.predict(this_input, verbose=0)
         curr_input = np.append(curr_input, this_prediction.flatten())
 
-    predict_on_future = np.reshape(
-        np.array(curr_input[-predict_for:]), (predict_for, 1)
-    )
+    predict_on_future = np.reshape(np.array(curr_input[-predict_for:]), (predict_for, 1))
     predict_on_future = scaler.inverse_transform(predict_on_future)
 
     return predict_on_future
@@ -713,16 +625,12 @@ def plot_forecast(
     # Setup test chart
     predict_test_plot = np.empty((total_size, 1))
     predict_test_plot[:, :] = np.nan
-    predict_test_plot[
-        len(predict_train) : len(predict_train) + len(predict_test), :
-    ] = predict_test
+    predict_test_plot[len(predict_train) : len(predict_train) + len(predict_test), :] = predict_test
 
     # Setup future forecast chart
     predict_future_plot = np.empty((total_size, 1))
     predict_future_plot[:, :] = np.nan
-    predict_future_plot[len(predict_train) + len(predict_test) : total_size, :] = (
-        predict_future
-    )
+    predict_future_plot[len(predict_train) + len(predict_test) : total_size, :] = predict_future
 
     plt.figure(figsize=(20, 10))
     plt.suptitle("Plot Predictions for Training, Test & Forecast Data", fontsize=20)
@@ -828,7 +736,9 @@ if __name__ == "__main__":
     # Configuration
     # DATA_PATH = 'PdM_telemetry.csv'
     # DATA_PATH = "../../data/PdM_telemetry.csv"  # Adjust path as needed
-    DATA_PATH = "../../../application/src/main/resources/predictive-maintenance/data/PdM_telemetry.csv"
+    DATA_PATH = (
+        "../../../application/src/main/resources/predictive-maintenance/data/PdM_telemetry.csv"
+    )
     MACHINE_ID = 1
     TRAIN_SIZE = 8041
     LOOKBACK = 40
@@ -866,9 +776,7 @@ if __name__ == "__main__":
 
     # Scale and split data
     print("\nScaling and splitting data...")
-    train_data, test_data, scaler = scale_and_split_data(
-        sensor, SENSOR, TRAIN_SIZE, LOOKBACK
-    )
+    train_data, test_data, scaler = scale_and_split_data(sensor, SENSOR, TRAIN_SIZE, LOOKBACK)
 
     print(
         f"[Scale and split] First 5 samples of test data:\n{test_data}",
@@ -879,33 +787,20 @@ if __name__ == "__main__":
     print("\n[Create RNN datasets] Creating RNN datasets...")
     train_x, train_y = create_rnn_dataset(train_data, LOOKBACK)
     print(f"[Create RNN datasets] Shape of train X before reshape: {train_x.shape}")
-    # print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x.head()}")
-    # print(f"[Create RNN datasets] Columns of train X before reshape:\n{train_x.columns.tolist()}")
-    # print first 5 rows of train_x
-    print(
-        f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x[:5]}"
-    )
+    print(f"[Create RNN datasets] First 5 samples of train X before reshape:\n{train_x[:5]}")
     print(f"[Create RNN datasets] Shape of train Y: {train_y[:5]}")
     train_x = np.reshape(train_x, (train_x.shape[0], 1, train_x.shape[1]))
     print(f"[Create RNN datasets] Shapes of X and Y: {train_x.shape}, {train_y.shape}")
-
     print(
         f"[PREDICT] First 5 samples of test data before RNN dataset creation:\n{test_data}",
         flush=True,
     )
-
     print(
         f"[PREDICT] Length of test data before RNN dataset creation: {len(test_data)} - shape: {test_data.shape}",
         flush=True,
     )
-
+    print("\n[Create RNN datasets] Creating RNN datasets...", flush=True)
     test_x, test_y = create_rnn_dataset(test_data, LOOKBACK)
-
-    print(
-        f"[PREDICT] Created RNN dataset, test_x shape: {test_x.shape}",
-        # flush=True,
-    )
-
     test_x = np.reshape(test_x, (test_x.shape[0], 1, test_x.shape[1]))
 
     # Build and train model
@@ -938,42 +833,42 @@ if __name__ == "__main__":
     # # Plot predictions
     # print("\nPlotting predictions...")
     # plot_predictions(sensor, predict_train, predict_test, LOOKBACK)
-
+    #
     # # Forecast future
     # print(f"\nForecasting next {PREDICT_HOURS} hours...")
     # predict_future = forecast_future(
     #     model, test_x, scaler, LOOKBACK, PREDICT_HOURS
     # )
     # print(f"First 5 future predictions:\n{predict_future[:5]}")
-
+    #
     # # Plot forecast
     # print("\nPlotting forecast...")
     # plot_forecast(predict_train, predict_test, predict_future)
-
+    #
     # # Plot forecast with dates
     # start_date = datetime(2016, 1, 1, 7, 0)
-
+    #
     # print("\nPlotting daily forecast...")
     # plot_forecast_with_dates(
     #     predict_future, start_date, 24,
     #     "Predicted Next Day Hourly Vibration",
     #     color='purple', tick_interval=1
     # )
-
+    #
     # print("\nPlotting weekly forecast...")
     # plot_forecast_with_dates(
     #     predict_future, start_date, 168,
     #     "Predicted Weekly Hourly Vibration",
     #     color='blue', tick_interval=12
     # )
-
+    #
     # print("\nPlotting monthly forecast...")
     # plot_forecast_with_dates(
     #     predict_future, start_date, 720,
     #     "Predicted Monthly Hourly Vibration",
     #     color='green', tick_interval=24
     # )
-
+    #
     # print("\nForecasting complete!")
     # print("\n" + "="*60)
     # print("EXECUTION SUMMARY")

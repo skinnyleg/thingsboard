@@ -962,10 +962,11 @@
     // Charts Container - Side by Side with Wrapping
     .charts-container {
       display: flex;
+      flex-direction: column;
       flex-wrap: wrap;
       gap: 1rem;
       margin-bottom: 1rem;
-      align-items: flex-start; // Don't stretch, align to top
+      align-items: stretch; // Don't stretch, align to top
 
       // Make both charts take equal space when side-by-side
       > .chart-section {

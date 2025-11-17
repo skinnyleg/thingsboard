@@ -38,14 +38,43 @@
       flex: 1;
       display: flex;
       justify-content: flex-start;
+      align-items: center;
+      gap: 8px;
+
+      .history-refresh-button {
+        color: rgba(255, 255, 255, 0.5);
+        transition: all 0.2s ease-in-out;
+        opacity: 0.7;
+
+        &:hover {
+          color: #2196f3;
+          background: rgba(33, 150, 243, 0.1);
+          opacity: 1;
+          transform: rotate(180deg);
+        }
+
+        ::ng-deep {
+          .mat-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+          }
+        }
+      }
 
       // Hide text in tb-timewindow on mobile
       @media (max-width: 768px) {
         ::ng-deep {
-          .tb-timewindow-panel .tb-timewindow-content .mat-mdc-button-base span:not(.mat-icon) {
+          .tb-timewindow-panel
+            .tb-timewindow-content
+            .mat-mdc-button-base
+            span:not(.mat-icon) {
             display: none !important;
           }
-          .tb-timewindow-panel .tb-timewindow-content .mat-mdc-button-base .tb-timewindow-value {
+          .tb-timewindow-panel
+            .tb-timewindow-content
+            .mat-mdc-button-base
+            .tb-timewindow-value {
             display: none !important;
           }
         }

@@ -27,4 +27,10 @@ public class PredictiveModelAttribute implements Serializable {
 
     @Schema(description = "String value representing the attribute key", example = "temperature")
     private String key;
+
+    @Schema(description = "Aggregation function for the sensor data", example = "average")
+    private String aggregation;
+
+    @Schema(description = "Grouping interval in milliseconds", example = "5000")
+    private Long groupByMs;
 }

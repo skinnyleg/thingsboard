@@ -21,6 +21,7 @@ from src.model.model import router as model_router
 from src.notify import router as notify_router
 from dotenv import load_dotenv
 from src.settings import settings
+from src.logger import logger  # Global logger
 import pandas as pd
 
 pd.set_option("display.max_columns", None)
@@ -36,7 +37,8 @@ os.makedirs(settings.models_path, exist_ok=True)
 
 app = FastAPI(
     root_path=settings.app_root_path,
-    debug=settings.app_debug,
+    # debug=settings.app_debug,
+    debug=False,
     title=settings.app_name,
     description=settings.app_description,
     version=settings.app_version,
@@ -57,9 +59,15 @@ app.include_router(forecast_router)
 app.include_router(model_router)
 app.include_router(notify_router)
 
+# Log startup with current log level
+import logging
+current_log_level = logging.getLevelName(logger.level)
+logger.info(f"Predictive Maintenance Service Starting (Log Level: {current_log_level})")
+
 
 @app.on_event("startup")
 async def startup_event():
+    return
     """
     Startup event handler: Auto-start prediction jobs for trained models
     """

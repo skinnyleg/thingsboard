@@ -33,9 +33,9 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score
 from typing import Dict, List, Any, Optional
 import joblib
-import logging
 import numpy as np
 import pandas as pd
+from src.logger import logger  # Global logger
 
 pd.set_option("display.max_columns", None)
 
@@ -213,10 +213,10 @@ class AnomalyPredictor(BaseModel):
         telemetry_df["machineID"] = 1  # from dataset
 
         # fetch telemetry_df
-        print(f"[PREDICITON JOB] telemetry_df DataFrame", flush=True)
-        print(telemetry_df, flush=True)
-        print("dataframe columns", flush=True)
-        print(telemetry_df.columns, flush=True)
+        # print(f"[PREDICITON JOB] telemetry_df DataFrame", flush=True)
+        # print(telemetry_df, flush=True)
+        # print("dataframe columns", flush=True)
+        # print(telemetry_df.columns, flush=True)
 
         failures_df = self.data_registry.fetch_failure_data(
             device_id=device_id,
@@ -226,10 +226,10 @@ class AnomalyPredictor(BaseModel):
         failures_df["machineID"] = 1  # from dataset
 
         # fetch failures_df
-        print(f"[PREDICITON JOB] failures_df DataFrame", flush=True)
-        print(failures_df, flush=True)
-        print("dataframe columns", flush=True)
-        print(failures_df.columns, flush=True)
+        # print(f"[PREDICITON JOB] failures_df DataFrame", flush=True)
+        # print(failures_df, flush=True)
+        # print("dataframe columns", flush=True)
+        # print(failures_df.columns, flush=True)
 
         maintenance_df = self.data_registry.fetch_maintenance_data(
             device_id=device_id,
@@ -240,10 +240,10 @@ class AnomalyPredictor(BaseModel):
         maintenance_df["machineID"] = 1  # from dataset
 
         # fetch failures_df
-        print(f"[PREDICITON JOB] maintenance_df DataFrame", flush=True)
-        print(maintenance_df, flush=True)
-        print("dataframe columns", flush=True)
-        print(maintenance_df.columns, flush=True)
+        # print(f"[PREDICITON JOB] maintenance_df DataFrame", flush=True)
+        # print(maintenance_df, flush=True)
+        # print("dataframe columns", flush=True)
+        # print(maintenance_df.columns, flush=True)
 
         machines_df = self.data_registry.fetch_machines_data(
             device_id=device_id,
@@ -260,10 +260,10 @@ class AnomalyPredictor(BaseModel):
         errors_df["machineID"] = 1  # from dataset
 
         # fetch failures_df
-        print(f"[PREDICITON JOB] errors_df DataFrame", flush=True)
-        print(errors_df, flush=True)
-        print("dataframe columns", flush=True)
-        print(errors_df.columns, flush=True)
+        # print(f"[PREDICITON JOB] errors_df DataFrame", flush=True)
+        # print(errors_df, flush=True)
+        # print("dataframe columns", flush=True)
+        # print(errors_df.columns, flush=True)
 
         return telemetry_df, failures_df, maintenance_df, machines_df, errors_df
 
@@ -342,7 +342,6 @@ class AnomalyPredictor(BaseModel):
         # Extract feature columns dynamically (all columns except target)
         self.feature_columns = [col for col in data.columns if col != "failure_component"]
 
-        logger = logging.getLogger(__name__)
         logger.info(f"Training with {len(self.feature_columns)} features: {self.feature_columns}")
 
         # Create algorithm with dynamic features if not already created
@@ -378,7 +377,7 @@ class AnomalyPredictor(BaseModel):
         # Store class mapping for later use
         self.class_labels = self.label_encoder.classes_
         logger.info(f"Class mapping: {dict(enumerate(self.class_labels))}")
-        print(f"[TRAIN] Class mapping: {dict(enumerate(self.class_labels))}", flush=True)
+        # print(f"[TRAIN] Class mapping: {dict(enumerate(self.class_labels))}", flush=True)
 
         # Train algorithm
         metrics = self.algorithm.train(X, y)
@@ -532,10 +531,10 @@ class AnomalyPredictor(BaseModel):
                 },
                 path / "label_encoder.pkl",
             )
-            print(
-                f"[SAVE] Saved label encoder with classes: {self.class_labels}",
-                flush=True,
-            )
+            # print(
+            #     f"[SAVE] Saved label encoder with classes: {self.class_labels}",
+            #     flush=True,
+            # )
 
     def load(self, path):
         """
@@ -584,12 +583,13 @@ class AnomalyPredictor(BaseModel):
             encoder_data = joblib.load(label_encoder_path)
             self.label_encoder = encoder_data["label_encoder"]
             self.class_labels = encoder_data["class_labels"]
-            print(
-                f"[LOAD] Loaded label encoder with classes: {self.class_labels}",
-                flush=True,
-            )
+            # print(
+            #     f"[LOAD] Loaded label encoder with classes: {self.class_labels}",
+            #     flush=True,
+            # )
         else:
-            print(f"[LOAD] No label encoder found, using default classes", flush=True)
+            # print(f"[LOAD] No label encoder found, using default classes", flush=True)
+            pass
 
 
 # Feature engineering functions (copied/adapted)
@@ -665,8 +665,8 @@ def create_telemetry_features(telemetry, fields=["volt", "rotate", "pressure", "
         ],
         axis=1,
     ).dropna()
-    print("[TRAIN_ANOMALY_MODEL] create_telemetry_features", flush=True)
-    print(telemetry_feat.head(), flush=True)
+    # print("[TRAIN_ANOMALY_MODEL] create_telemetry_features", flush=True)
+    # print(telemetry_feat.head(), flush=True)
     return telemetry_feat
 
 
@@ -738,7 +738,7 @@ def create_error_count_features(telemetry, errors, error_classes):
 
 
 def create_comp_replacement_features(telemetry, maint, components):
-    print("create_comp_replacement_features", flush=True)
+    # print("create_comp_replacement_features", flush=True)
     telemetry["datetime"] = pd.to_datetime(telemetry["datetime"])
     maint["datetime"] = pd.to_datetime(maint["datetime"])
 
@@ -747,11 +747,11 @@ def create_comp_replacement_features(telemetry, maint, components):
     comp_rep.columns = ["datetime", "machineID"] + components
 
     # print columns
-    print(f"Component replacement columns before adjustment: {comp_rep.columns}", flush=True)
+    # print(f"Component replacement columns before adjustment: {comp_rep.columns}", flush=True)
 
     # Dynamically determine component columns
     actual_cols = list(comp_rep.columns)
-    print(f"Actual columns after get_dummies: {actual_cols}", flush=True)
+    # print(f"Actual columns after get_dummies: {actual_cols}", flush=True)
 
     # Add missing component columns
     # for comp in expected_components:
@@ -940,13 +940,13 @@ def create_and_train_hourly_models(
 
     if algorithm not in ["random_forest", "xgboost"]:
         algorithm = "random_forest"
-        print(
-            f"Warning: Unsupported algorithm specified. Defaulting to 'random_forest'.",
-            flush=True,
-        )
+        # print(
+        #     f"Warning: Unsupported algorithm specified. Defaulting to 'random_forest'.",
+        #     flush=True,
+        # )
 
     for hour in key_hours:
-        print(f"\nTraining models for Hour {hour}...")
+        # print(f"\nTraining models for Hour {hour}...")
 
         multiclass_target = f"target_hour_{hour}_multiclass"
         binary_target = f"target_hour_{hour}_binary"
@@ -960,9 +960,9 @@ def create_and_train_hourly_models(
         y_test_bin = test[binary_target]
 
         # Debug: Print target distribution
-        print(f"[DEBUG] Hour {hour} - y_train_mc value counts:", flush=True)
-        print(y_train_mc.value_counts(), flush=True)
-        print(f"[DEBUG] Hour {hour} - Unique values: {len(y_train_mc.value_counts())}", flush=True)
+        # print(f"[DEBUG] Hour {hour} - y_train_mc value counts:", flush=True)
+        # print(y_train_mc.value_counts(), flush=True)
+        # print(f"[DEBUG] Hour {hour} - Unique values: {len(y_train_mc.value_counts())}", flush=True)
 
         if len(y_train_mc.value_counts()) > 1:
             if algorithm == "random_forest":
@@ -1022,7 +1022,7 @@ def create_and_train_hourly_models(
                 val_acc_mc = accuracy_score(y_val_mc, y_val_pred_mc)
                 test_acc_mc = accuracy_score(y_test_mc, y_test_pred_mc)
 
-            print(f"  Multi-class - Val Acc: {val_acc_mc:.4f}, Test Acc: {test_acc_mc:.4f}")
+            # print(f"  Multi-class - Val Acc: {val_acc_mc:.4f}, Test Acc: {test_acc_mc:.4f}")
 
         if len(y_train_bin.value_counts()) > 1:
             if algorithm == "random_forest":
@@ -1057,15 +1057,15 @@ def create_and_train_hourly_models(
             val_acc_bin = accuracy_score(y_val_bin, y_val_pred_bin)
             test_acc_bin = accuracy_score(y_test_bin, y_test_pred_bin)
 
-            print(
-                f"  Binary - Val Acc: {val_acc_bin:.4f}, Test Acc: {test_acc_bin:.4f}",
-                flush=True,
-            )
+            # print(
+            #     f"  Binary - Val Acc: {val_acc_bin:.4f}, Test Acc: {test_acc_bin:.4f}",
+            #     flush=True,
+            # )
 
-    print(
-        f"\nHourly models training completed! {len(hourly_models)} models trained.",
-        flush=True,
-    )
+    # print(
+    #     f"\nHourly models training completed! {len(hourly_models)} models trained.",
+    #     flush=True,
+    # )
     return hourly_models
 
 
@@ -1083,12 +1083,12 @@ def predict_next_24h_hourly_failures(
     # take the last row of labeled_features_clean
     latest_row = labeled_features_clean.iloc[-1]
 
-    print(f"[PREDICT] Latest row", flush=True)
-    print(latest_row, flush=True)
-
-    print(f"[PREDICT] Latest data datetime:", flush=True)
-
-    print(latest_row["datetime"], flush=True)
+    # print(f"[PREDICT] Latest row", flush=True)
+    # print(latest_row, flush=True)
+    #
+    # print(f"[PREDICT] Latest data datetime:", flush=True)
+    #
+    # print(latest_row["datetime"], flush=True)
 
     start_dt = latest_row["datetime"]
 
@@ -1143,7 +1143,7 @@ def predict_next_24h_hourly_failures(
                 class_names = list(getattr(multiclass_model, "classes_", []))
 
                 component_prob_dict = {}
-                print(f"[PREDICT] Hour {hour} - Class names: {class_names}", flush=True)
+                # print(f"[PREDICT] Hour {hour} - Class names: {class_names}", flush=True)
                 for i, class_name in enumerate(class_names):
                     component_prob_dict[str(class_name)] = round(float(component_probs[i]), 4)
 
@@ -1187,26 +1187,26 @@ def load_models(model_path):
 
 
 def preprocess_data(telemetry, errors, maint, failures, machines, components, error_classes):
-    print(
-        f"[PREPROCESS_DATA] telemetry.shape={telemetry.shape} errors.shape={errors.shape} maint.shape={maint.shape} failures.shape={failures.shape}",
-        flush=True,
-    )
+    # print(
+    #     f"[PREPROCESS_DATA] telemetry.shape={telemetry.shape} errors.shape={errors.shape} maint.shape={maint.shape} failures.shape={failures.shape}",
+    #     flush=True,
+    # )
     telemetry["datetime"] = pd.to_datetime(telemetry["datetime"])
     telemetry_feat = create_telemetry_features(telemetry)
     error_count = create_error_count_features(telemetry, errors, error_classes)
-    print("errors: \n", flush=True)
-    print(error_count, flush=True)
+    # print("errors: \n", flush=True)
+    # print(error_count, flush=True)
     comp_rep = create_comp_replacement_features(telemetry, maint, components)
     labeled_features = merge_features(telemetry_feat, error_count, comp_rep, machines, failures)
 
     # Debug: Check failure column after merge
-    print(f"\n[DEBUG] After merge_features, failure column value_counts:", flush=True)
-    print(labeled_features["failure"].value_counts(), flush=True)
-    print(f"\n[DEBUG] Sample of labeled_features with failures:", flush=True)
+    # print(f"\n[DEBUG] After merge_features, failure column value_counts:", flush=True)
+    # print(labeled_features["failure"].value_counts(), flush=True)
+    # print(f"\n[DEBUG] Sample of labeled_features with failures:", flush=True)
     failure_rows = labeled_features[labeled_features["failure"] != "none"]
-    print(f"  Found {len(failure_rows)} rows with failures", flush=True)
-    if len(failure_rows) > 0:
-        print(failure_rows[["datetime", "failure"]].head(10), flush=True)
+    # print(f"  Found {len(failure_rows)} rows with failures", flush=True)
+    # if len(failure_rows) > 0:
+    #     print(failure_rows[["datetime", "failure"]].head(10), flush=True)
 
     labeled_features = create_targets(labeled_features)
     labeled_features_clean, feature_cols = create_labeled_features_clean(labeled_features)
@@ -1226,22 +1226,22 @@ def train_model(
     labeled_features_clean, feature_cols = preprocess_data(
         telemetry, errors, maint, failures, machines, components, error_classes
     )
-    print(f"Labeled features cleaned: {labeled_features_clean.shape}", flush=True)
+    # print(f"Labeled features cleaned: {labeled_features_clean.shape}", flush=True)
 
     # Debug: Check target distribution BEFORE split
-    print("\n[DEBUG] Target distribution in FULL dataset (before split):", flush=True)
+    # print("\n[DEBUG] Target distribution in FULL dataset (before split):", flush=True)
     for hour in [1, 4, 8, 12, 16, 20, 24]:
         target_col = f"target_hour_{hour}_multiclass"
-        print(f"  {target_col}:", flush=True)
-        print(f"    {labeled_features_clean[target_col].value_counts().to_dict()}", flush=True)
+        # print(f"  {target_col}:", flush=True)
+        # print(f"    {labeled_features_clean[target_col].value_counts().to_dict()}", flush=True)
 
     train, val, test, X_train, X_val, X_test = split_data(labeled_features_clean, feature_cols)
 
     # Debug: Check split sizes
-    print(
-        f"\n[DEBUG] Split sizes - train: {len(train)}, val: {len(val)}, test: {len(test)}",
-        flush=True,
-    )
+    # print(
+    #     f"\n[DEBUG] Split sizes - train: {len(train)}, val: {len(val)}, test: {len(test)}",
+    #     flush=True,
+    # )
     hourly_models = create_and_train_hourly_models(
         train, val, test, X_train, X_val, X_test, feature_cols, components, algorithm=algorithm
     )
@@ -1311,8 +1311,8 @@ if __name__ == "__main__":
 
     telemetry["datetime"] = pd.to_datetime(telemetry["datetime"], errors="coerce")
     telemetry = telemetry.loc[telemetry["datetime"] > cutoff].reset_index(drop=True)
-    print("[SCRIPT_TELEMETRY_DATA] dataframe", flush=True)
-    print(telemetry.tail(), flush=True)
+    # print("[SCRIPT_TELEMETRY_DATA] dataframe", flush=True)
+    # print(telemetry.tail(), flush=True)
 
     errors["datetime"] = pd.to_datetime(errors["datetime"], errors="coerce")
     errors = errors.loc[errors["datetime"] > cutoff].reset_index(drop=True)
@@ -1327,23 +1327,23 @@ if __name__ == "__main__":
     #
     telemetry = telemetry[telemetry["machineID"] == 1]
     # telemetry = telemetry[telemetry["datetime"] <= end_date]
-    print("telemetry DataFrame:", telemetry.shape, flush=True)
-    print(telemetry.head(), flush=True)
+    # print("telemetry DataFrame:", telemetry.shape, flush=True)
+    # print(telemetry.head(), flush=True)
     #
     errors = errors[errors["machineID"] == 1]
     # errors = errors[errors["datetime"] <= end_date]
-    print("errors DataFrame:", errors.shape, flush=True)
-    print(errors.head(), flush=True)
+    # print("errors DataFrame:", errors.shape, flush=True)
+    # print(errors.head(), flush=True)
     #
     maint = maint[maint["machineID"] == 1]
     # maint = maint[maint["datetime"] <= end_date]
-    print("maint DataFrame:", maint.shape, flush=True)
-    print(maint.head(), flush=True)
+    # print("maint DataFrame:", maint.shape, flush=True)
+    # print(maint.head(), flush=True)
     #
     failures = failures[failures["machineID"] == 1]
     # failures = failures[failures["datetime"] <= end_date]
-    print("failures DataFrame:", failures.shape, flush=True)
-    print(failures.head(), flush=True)
+    # print("failures DataFrame:", failures.shape, flush=True)
+    # print(failures.head(), flush=True)
 
     machines = machines[machines["machineID"] == 1]
 
@@ -1361,9 +1361,9 @@ if __name__ == "__main__":
         algorithm="random_forest",
     )
 
-    print("\nlabeled_features_clean info:", flush=True)
-    print(f"Shape: {labeled_features_clean.shape}", flush=True)
-    print(f"Age column: {labeled_features_clean['age'].describe()}", flush=True)
+    # print("\nlabeled_features_clean info:", flush=True)
+    # print(f"Shape: {labeled_features_clean.shape}", flush=True)
+    # print(f"Age column: {labeled_features_clean['age'].describe()}", flush=True)
 
     # Predict failure
     # I take the last recent row
@@ -1385,15 +1385,15 @@ if __name__ == "__main__":
         error_classes,
     )
 
-    print(f"\nPredictions for Machine 1:")
+    # print(f"\nPredictions for Machine 1:")
     for hour in range(1, 25):
         hour_data = result1["hourly_predictions"][f"hour_{hour}"]
-        print(f"\nHour {hour} ({hour_data['datetime']}):")
-        print(f"  General failure probability: {hour_data['general_failure_probability']:.2%}")
-        print(f"  Failure predicted: {hour_data['failure_predicted']}")
-        print(f"  Most likely failing component: {hour_data['predicted_failing_component']}")
+        # print(f"\nHour {hour} ({hour_data['datetime']}):")
+        # print(f"  General failure probability: {hour_data['general_failure_probability']:.2%}")
+        # print(f"  Failure predicted: {hour_data['failure_predicted']}")
+        # print(f"  Most likely failing component: {hour_data['predicted_failing_component']}")
 
-        if hour_data["component_failure_probabilities"]:
-            print(f"  Component failure probabilities:")
-            for comp, prob in hour_data["component_failure_probabilities"].items():
-                print(f"    {comp}: {prob:.2%}")
+        # if hour_data["component_failure_probabilities"]:
+        #     # print(f"  Component failure probabilities:")
+        #     for comp, prob in hour_data["component_failure_probabilities"].items():
+        #         print(f"    {comp}: {prob:.2%}")

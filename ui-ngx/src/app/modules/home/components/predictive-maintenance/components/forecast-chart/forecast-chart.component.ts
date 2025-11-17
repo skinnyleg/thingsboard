@@ -88,8 +88,7 @@ echarts.use([
   ],
 })
 export class ForecastChartComponent
-  implements OnInit, OnChanges, OnDestroy, AfterViewInit
-{
+  implements OnInit, OnChanges, OnDestroy, AfterViewInit {
   @Input() deviceId: string;
 
   @Input() Attributes: string[];
@@ -169,10 +168,10 @@ export class ForecastChartComponent
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes.forecastData && changes.forecastData.currentValue) {
-      console.log('[FORECAST-CHART] ✓ Forecast data received from parent:', {
-        sensors: Object.keys(changes.forecastData.currentValue),
-        data: changes.forecastData.currentValue
-      });
+      // console.log('[FORECAST-CHART] ✓ Forecast data received from parent:', {
+      //   sensors: Object.keys(changes.forecastData.currentValue),
+      //   data: changes.forecastData.currentValue
+      // });
       this.processForecastData(changes.forecastData.currentValue);
       if (this.chart) {
         this.updateChartData();
@@ -180,7 +179,7 @@ export class ForecastChartComponent
     }
 
     if (changes.selectedSensor && !changes.selectedSensor.firstChange) {
-      console.log('[FORECAST-CHART] Selected sensor changed to:', changes.selectedSensor.currentValue);
+      // console.log('[FORECAST-CHART] Selected sensor changed to:', changes.selectedSensor.currentValue);
       // Resubscribe to telemetry for the new sensor
       if (this.telemetrySubscription) {
         this.telemetrySubscription.unsubscribe();
@@ -268,7 +267,7 @@ export class ForecastChartComponent
       return;
     }
 
-    console.log('[FORECAST-CHART] Checking job status for', this.forecastId);
+    // console.log('[FORECAST-CHART] Checking job status for', this.forecastId);
 
     const commandId = Date.now();
     const command = {
@@ -283,7 +282,7 @@ export class ForecastChartComponent
     // Subscribe to job status updates
     this.modelWebSocketService.subscribeToJobStatus(this.forecastId, 'forecast').subscribe({
       next: (response: any) => {
-        console.log('[FORECAST-CHART] Job status response:', response);
+        // console.log('[FORECAST-CHART] Job status response:', response);
         if (response.data) {
           const status = response.data.status || response.data.data?.status;
           const paused = response.data.paused || response.data.data?.paused || false;
@@ -292,14 +291,14 @@ export class ForecastChartComponent
           this.isPaused = paused;
           this.cdr.detectChanges();
 
-          console.log('[FORECAST-CHART] Updated job state:', {
-            running: this.jobRunning,
-            paused: this.isPaused
-          });
+          // console.log('[FORECAST-CHART] Updated job state:', {
+          //   running: this.jobRunning,
+          //   paused: this.isPaused
+          // });
         }
       },
       error: (error) => {
-        console.error('[FORECAST-CHART] Error checking job status:', error);
+        // console.error('[FORECAST-CHART] Error checking job status:', error);
       }
     });
   }
@@ -332,11 +331,11 @@ export class ForecastChartComponent
   // Pause prediction job
   pausePredictions(): void {
     if (!this.forecastId) {
-      console.error('[FORECAST-CHART] Cannot pause: No forecast ID');
+      // console.error('[FORECAST-CHART] Cannot pause: No forecast ID');
       return;
     }
 
-    console.log('[FORECAST-CHART] Pausing predictions for', this.forecastId);
+    // console.log('[FORECAST-CHART] Pausing predictions for', this.forecastId);
 
     // Send pause command via WebSocket
     const commandId = Date.now();
@@ -357,17 +356,17 @@ export class ForecastChartComponent
     this.isPaused = true;
     this.cdr.detectChanges();
 
-    console.log('[FORECAST-CHART] Pause command sent:', command);
+    // console.log('[FORECAST-CHART] Pause command sent:', command);
   }
 
   // Resume (unpause) prediction job
   unpausePredictions(): void {
     if (!this.forecastId) {
-      console.error('[FORECAST-CHART] Cannot unpause: No forecast ID');
+      // console.error('[FORECAST-CHART] Cannot unpause: No forecast ID');
       return;
     }
 
-    console.log('[FORECAST-CHART] Resuming predictions for', this.forecastId);
+    // console.log('[FORECAST-CHART] Resuming predictions for', this.forecastId);
 
     // Send unpause command via WebSocket
     const commandId = Date.now();
@@ -388,7 +387,7 @@ export class ForecastChartComponent
     this.isPaused = false;
     this.cdr.detectChanges();
 
-    console.log('[FORECAST-CHART] Unpause command sent:', command);
+    // console.log('[FORECAST-CHART] Unpause command sent:', command);
   }
 
   toggleMode(): void {
@@ -517,10 +516,10 @@ export class ForecastChartComponent
 
   private initializeChart(): void {
     if (!this.chartElement?.nativeElement) {
-      console.error('[FORECAST-CHART] Cannot initialize chart - element not found', {
-        chartElement: this.chartElement,
-        hasNativeElement: !!this.chartElement?.nativeElement
-      });
+      // console.error('[FORECAST-CHART] Cannot initialize chart - element not found', {
+      //   chartElement: this.chartElement,
+      //   hasNativeElement: !!this.chartElement?.nativeElement
+      // });
       return;
     }
 
@@ -533,9 +532,9 @@ export class ForecastChartComponent
         renderer: 'canvas'
       });
 
-      console.log('[FORECAST-CHART] ✓ Chart initialized successfully');
+      // console.log('[FORECAST-CHART] ✓ Chart initialized successfully');
     } catch (error) {
-      console.error('[FORECAST-CHART] Failed to initialize chart:', error);
+      // console.error('[FORECAST-CHART] Failed to initialize chart:', error);
       return;
     }
 
@@ -677,30 +676,30 @@ export class ForecastChartComponent
 
   private processForecastData(forecastData: any): void {
     if (!forecastData) {
-      console.log('[FORECAST-CHART] No forecast data provided');
+      // console.log('[FORECAST-CHART] No forecast data provided');
       return;
     }
 
-    console.log('[FORECAST-CHART] Processing forecast data:', {
-      selectedSensor: this.selectedSensor,
-      availableSensors: Object.keys(forecastData),
-      data: forecastData
-    });
+    // console.log('[FORECAST-CHART] Processing forecast data:', {
+    //   selectedSensor: this.selectedSensor,
+    //   availableSensors: Object.keys(forecastData),
+    //   data: forecastData
+    // });
 
     this.forecastDataPoints = [];
 
     // Check if we have sensor-specific forecast data (new structure)
     if (this.selectedSensor && forecastData[this.selectedSensor]) {
       const sensorForecast = forecastData[this.selectedSensor];
-      console.log('[FORECAST-CHART] Found forecast for sensor:', this.selectedSensor, sensorForecast);
+      // console.log('[FORECAST-CHART] Found forecast for sensor:', this.selectedSensor, sensorForecast);
 
       // Convert forecast data to [timestamp, value] format
       if (sensorForecast.forecast && sensorForecast.timestamp) {
         this.forecastDataPoints = sensorForecast.timestamp.map((ts: number, index: number) => [ts, sensorForecast.forecast[index]]);
-        console.log(`[FORECAST-CHART] ✓ Loaded ${this.forecastDataPoints.length} forecast points for sensor ${this.selectedSensor}`);
-        console.log('[FORECAST-CHART] Forecast points data:', this.forecastDataPoints);
+        // console.log(`[FORECAST-CHART] ✓ Loaded ${this.forecastDataPoints.length} forecast points for sensor ${this.selectedSensor}`);
+        // console.log('[FORECAST-CHART] Forecast points data:', this.forecastDataPoints);
       } else {
-        console.warn('[FORECAST-CHART] Sensor forecast missing forecast or timestamp fields:', sensorForecast);
+        // console.warn('[FORECAST-CHART] Sensor forecast missing forecast or timestamp fields:', sensorForecast);
       }
     }
     // Legacy support: Check for old structure with predictions array
@@ -710,7 +709,7 @@ export class ForecastChartComponent
         const value = item.value || item.prediction;
         return [timestamp, value];
       });
-      console.log('[FORECAST-CHART] Loaded from predictions array:', this.forecastDataPoints.length);
+      // console.log('[FORECAST-CHART] Loaded from predictions array:', this.forecastDataPoints.length);
     }
     // Legacy support: If forecastData is already an array
     else if (Array.isArray(forecastData)) {
@@ -722,27 +721,27 @@ export class ForecastChartComponent
         const value = item.value || item.prediction;
         return [timestamp, value];
       });
-      console.log('[FORECAST-CHART] Loaded from array:', this.forecastDataPoints.length);
+      // console.log('[FORECAST-CHART] Loaded from array:', this.forecastDataPoints.length);
     } else {
-      console.warn('[FORECAST-CHART] No forecast data found for sensor:', this.selectedSensor);
-      console.warn('[FORECAST-CHART] Available sensors in forecast data:', Object.keys(forecastData));
+      // console.warn('[FORECAST-CHART] No forecast data found for sensor:', this.selectedSensor);
+      // console.warn('[FORECAST-CHART] Available sensors in forecast data:', Object.keys(forecastData));
     }
 
-    console.log('[FORECAST-CHART] Processed forecast data points:', this.forecastDataPoints.length);
+    // console.log('[FORECAST-CHART] Processed forecast data points:', this.forecastDataPoints.length);
   }
 
   private updateChartData(): void {
     if (!this.chart) {
-      console.warn('[FORECAST-CHART] Cannot update chart - chart not initialized');
+      // console.warn('[FORECAST-CHART] Cannot update chart - chart not initialized');
       return;
     }
 
-    console.log('[FORECAST-CHART] Updating chart with:', {
-      historicalDataPoints: this.historicalData.length,
-      forecastDataPoints: this.forecastDataPoints.length,
-      historicalSample: this.historicalData.slice(0, 2),
-      forecastSample: this.forecastDataPoints.slice(0, 2)
-    });
+    // console.log('[FORECAST-CHART] Updating chart with:', {
+    //   historicalDataPoints: this.historicalData.length,
+    //   forecastDataPoints: this.forecastDataPoints.length,
+    //   historicalSample: this.historicalData.slice(0, 2),
+    //   forecastSample: this.forecastDataPoints.slice(0, 2)
+    // });
 
     // Update series data
     this.chart.setOption({
@@ -763,7 +762,7 @@ export class ForecastChartComponent
       this.noDataMessage = 'No data available for the selected sensor';
     }
 
-    console.log('[FORECAST-CHART] Chart updated, hasNoData:', this.hasNoData);
+    // console.log('[FORECAST-CHART] Chart updated, hasNoData:', this.hasNoData);
   }
 
   private subscribeToTelemetry(): void {

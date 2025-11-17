@@ -57,6 +57,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { ECharts, echartsModule } from '@home/components/widget/lib/chart/echarts-widget.models';
 import { AttributeService } from '@core/http/attribute.service';
 import { Timewindow, QuickTimeInterval, AggregationType } from '@shared/models/time/time.models';
+import { PredictiveModelsService } from '@core/http/forecast.service';
 
 // Register ECharts components
 echarts.use([
@@ -100,16 +101,27 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
   @Input() forecastMaxSteps: number; // Number of forecast steps
 
+  @Input() modelId: string; // Model ID for fetching historical predictions
+
+  @Input() forecastHistoryPoint$: EventEmitter<{ sensor: string; timestamp: number; value: number }>; // Real-time forecast history points
+
   @Output() sensorChanged = new EventEmitter<string>();
+
+  @Input() historyPredictions: any;
 
   // Available sensors fetched from device
   availableSensors: string[] = [];
+
+  // Subscription for real-time forecast history points
+  private forecastHistorySubscription: Subscription;
 
   // Track if sensor was explicitly provided vs auto-selected
   private sensorExplicitlyProvided = false;
 
   // Forecast data points for the chart
   private forecastDataPoints: Array<[number, number]> = [];
+
+  private historyForecastDataPoints: Array<[number, number]> = [];
 
   // Timewindow configuration
   timewindow: Timewindow = {
@@ -165,10 +177,11 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   constructor(
     private telemetryWsService: TelemetryWebsocketService,
     private attributeService: AttributeService,
+    private predictiveModelsService: PredictiveModelsService,
     private translate: TranslateService,
     private zone: NgZone,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     // Initialize empty data array
@@ -179,7 +192,26 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Fetch available sensors if deviceId is provided
     if (this.deviceId) {
-      this.fetchAvailableSensors();
+      // this.fetchAvailableSensors();
+    }
+  }
+
+  processHistoryPredictions(): void {
+    // same as processForecastData but for historyPredictions
+    console.log(
+      '[TIME-SERIES] Processing history predictions for sensor:',
+      this.selectedSensor,
+    );
+    if (typeof this.selectedSensor == 'string'
+      && typeof this.historyPredictions == 'object' && this.historyPredictions.sensor_name === this.selectedSensor) {
+      const forecast = this.historyPredictions.forecast;
+      const timestamp =
+      this.historyPredictions.prediction_info.recent_point_ts + this.historyPredictions.prediction_info.group_by_period_ms;
+      this.historyForecastDataPoints = this.historyForecastDataPoints.concat([[timestamp, forecast]]);
+      this.historyForecastDataPoints.sort((a, b) => a[0] - b[0]);
+      console.log(
+        `[TIME-SERIES] ✓ Loaded ${this.historyForecastDataPoints.length} history forecast points for sensor ${this.selectedSensor}`,
+      );
     }
   }
 
@@ -191,8 +223,8 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       }
       this.clearData();
       this.forecastDataPoints = [];
-      if (this.deviceId) {
-        this.fetchAvailableSensors();
+      if (this.deviceId && this.selectedSensor) {
+        this.getSensorData();
       }
     }
 
@@ -206,14 +238,39 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       }
       this.clearData();
       if (this.deviceId && this.selectedSensor) {
-        this.subscribeToTelemetry();
+        // this.subscribeToTelemetry();
       }
       // Process forecast data for the new sensor
       if (this.forecastData) {
+        console.log('[TIME-SERIES] this.forcastData changed:', this.forecastData);
         this.processForecastData();
+      }
+
+      // Fetch saved forecast predictions for the new sensor
+      if (this.modelId) {
+        this.fetchForecastHistoryPredictions();
       }
       if (this.chart) {
         this.updateChart();
+      }
+    }
+
+    if (changes.historyPredictions) {
+      console.log('hello world');
+      console.log('[TIME-SERIES] ✓ History predictions change detected:', {
+        firstChange: changes.historyPredictions.firstChange,
+        previousValue: changes.historyPredictions.previousValue,
+        currentValue: changes.historyPredictions.currentValue
+      });
+      // History predictions changed - process them
+      this.processHistoryPredictions();
+      this.updateChart();
+    }
+
+    if (changes.modelId && !changes.modelId.firstChange) {
+      // Model ID changed - fetch saved predictions
+      if (this.modelId && this.selectedSensor) {
+        this.fetchForecastHistoryPredictions();
       }
     }
 
@@ -246,12 +303,22 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Subscribe to telemetry if device ID and sensor are available
     if (this.deviceId && this.selectedSensor) {
-      this.subscribeToTelemetry();
+      // this.subscribeToTelemetry();
     }
 
     // Process forecast data if available
     if (this.forecastData) {
       this.processForecastData();
+    }
+
+    // Fetch saved forecast predictions if model ID is available
+    if (this.modelId && this.selectedSensor) {
+      this.fetchForecastHistoryPredictions();
+    }
+
+    // Subscribe to real-time forecast history points
+    if (this.forecastHistoryPoint$) {
+      this.subscribeToForecastHistory();
     }
 
     // Start time axis update interval (update every second)
@@ -264,6 +331,9 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   ngOnDestroy(): void {
     if (this.telemetrySubscription) {
       this.telemetrySubscription.unsubscribe();
+    }
+    if (this.forecastHistorySubscription) {
+      this.forecastHistorySubscription.unsubscribe();
     }
     if (this.timeAxisUpdateInterval) {
       clearInterval(this.timeAxisUpdateInterval);
@@ -489,6 +559,10 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
         // Extract all available telemetry keys
         this.availableSensors = Object.keys(timeseriesData);
 
+        console.log('this.availableSensors: ', {
+          availableSensors: this.availableSensors,
+        });
+
         // Assign colors to sensors
         this.assignColorsToSensors();
 
@@ -500,7 +574,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
         // Subscribe to telemetry if sensor is selected and chart is ready
         if (this.selectedSensor && this.chart) {
-          this.subscribeToTelemetry();
+          // this.subscribeToTelemetry();
         }
 
         this.cdr.detectChanges();
@@ -514,11 +588,8 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
   private subscribeToTelemetry(): void {
     if (!this.deviceId || !this.selectedSensor) {
-      // console.warn('Cannot subscribe to telemetry: missing deviceId or sensor');
       return;
     }
-
-    // console.log(`Subscribing to telemetry for device ${this.deviceId}, sensor:`, this.selectedSensor);
 
     // Create entity ID
     const entityId: EntityId = {
@@ -544,7 +615,31 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     this.telemetryWsService.subscribe(subscriber);
   }
 
+  private subscribeToForecastHistory(): void {
+    if (!this.forecastHistoryPoint$) {
+      return;
+    }
+
+    // Subscribe to real-time forecast history points
+    this.forecastHistorySubscription = this.forecastHistoryPoint$.subscribe((point) => {
+      // Only add points for the currently selected sensor
+      if (point.sensor === this.selectedSensor) {
+        // Add the new forecast history point
+        this.forecastDataPoints.push([point.timestamp, point.value]);
+
+        // Sort by timestamp
+        this.forecastDataPoints.sort((a, b) => a[0] - b[0]);
+
+        // Update the chart
+        if (this.chart) {
+          this.updateChart();
+        }
+      }
+    });
+  }
+
   private processForecastData(): void {
+    return;
     if (!this.forecastData || !this.selectedSensor) {
       // console.log('[TIME-SERIES] No forecast data or sensor selected');
       this.forecastDataPoints = [];
@@ -561,7 +656,10 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
       // Convert forecast data to [timestamp, value] format
       if (sensorForecast.forecast && sensorForecast.timestamp) {
-        this.forecastDataPoints = sensorForecast.timestamp.map((ts: number, index: number) => [ts, sensorForecast.forecast[index]]);
+        const forecastDataPoints = sensorForecast.timestamp.map((ts: number, index: number) =>
+          [ts, sensorForecast.forecast[index]]);
+
+        this.forecastDataPoints = this.forecastDataPoints.concat(forecastDataPoints);
 
         console.log(`[TIME-SERIES] ✓ Loaded ${this.forecastDataPoints.length} forecast points for sensor ${this.selectedSensor}`);
         console.log('[TIME-SERIES] First few points:', this.forecastDataPoints.slice(0, 3));
@@ -576,17 +674,121 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     }
   }
 
+  /**
+   * Fetch saved forecast predictions from database and display on chart
+   */
+  private fetchForecastHistoryPredictions(): void {
+    // return;
+    if (!this.modelId || !this.selectedSensor) {
+      console.log('[TIME-SERIES] Cannot fetch forecast history: missing modelId or selectedSensor');
+      return;
+    }
+
+    console.log(`[TIME-SERIES] Fetching forecast history for model ${this.modelId}, sensor ${this.selectedSensor}`);
+
+    const { minTime, maxTime } = this.calculateTimeWindow();
+
+    const startTs = minTime;
+    const endTs = maxTime;
+
+    this.predictiveModelsService.fetchHistoryPredictions(
+      this.modelId,
+      'Forecast',
+      startTs,
+      endTs,
+      100 // Limit to 100 predictions
+    ).subscribe({
+      next: (response) => {
+        console.log('[TIME-SERIES] Received forecast history response:', response);
+
+        if (!response.predictions || response.predictions.length === 0) {
+          console.log('[TIME-SERIES] No saved predictions found');
+          return;
+        }
+
+        // Process each saved prediction
+        // NEW STRUCTURE: Each prediction is now for a SINGLE SENSOR
+        const savedForecastPoints: Array<[number, number]> = [];
+
+        response.predictions.forEach((prediction) => {
+          try {
+            const predictionValue = prediction.predictionValue;
+
+            // Check if this prediction is for the selected sensor
+            const sensorName = predictionValue.sensor_name;
+            if (sensorName !== this.selectedSensor) {
+              // This prediction is for a different sensor, skip it
+              return;
+            }
+
+            // Extract prediction_info which contains recent_point_ts and group_by_period_ms
+            const predictionInfo = predictionValue.prediction_info;
+            if (!predictionInfo) {
+              console.warn('[TIME-SERIES] Prediction missing prediction_info:', prediction);
+              return;
+            }
+
+            const recentPointTs = predictionInfo.recent_point_ts;
+            const groupByPeriodMs = predictionInfo.group_by_period_ms;
+
+            if (!recentPointTs || !groupByPeriodMs) {
+              console.warn('[TIME-SERIES] Prediction missing recent_point_ts or group_by_period_ms:', predictionInfo);
+              return;
+            }
+
+            // Get the forecast value (now a single number, not an array)
+            const forecastValue = predictionValue.forecast;
+            if (forecastValue === undefined || forecastValue === null) {
+              console.warn('[TIME-SERIES] Prediction missing forecast value:', predictionValue);
+              return;
+            }
+
+            // Calculate X-axis timestamp: recent_point_ts + group_by_period_ms
+            // This gives us the timestamp of the first forecast point
+            const firstForecastTimestamp = recentPointTs + groupByPeriodMs;
+
+            // Add the forecast point
+            savedForecastPoints.push([firstForecastTimestamp, forecastValue]);
+            console.log(`[TIME-SERIES] Added forecast point for ${sensorName}: ts=${new Date(firstForecastTimestamp).toISOString()}, ` +
+              `value=${forecastValue}`);
+          } catch (error) {
+            console.error('[TIME-SERIES] Error processing prediction:', error, prediction);
+          }
+        });
+
+        // Add saved forecast points to the existing forecast data
+        if (savedForecastPoints.length > 0) {
+          console.log(`[TIME-SERIES] ✓ Loaded ${savedForecastPoints.length} saved forecast points`);
+          this.historyForecastDataPoints = [...this.historyForecastDataPoints, ...savedForecastPoints];
+
+          // Sort by timestamp
+          this.historyForecastDataPoints.sort((a, b) => a[0] - b[0]);
+
+          // Update chart
+          if (this.chart) {
+            this.updateChart();
+          }
+        }
+      },
+      error: (error) => {
+        console.error('[TIME-SERIES] Error fetching forecast history:', error);
+      }
+    });
+  }
+
   private handleTelemetryUpdate(update: SubscriptionUpdate): void {
     if (!update || !update.data) {
       return;
     }
 
-    // console.log('Telemetry update received:', update);
+    const { maxTime, minTime } = this.calculateTimeWindow();
 
     // Process incoming telemetry data for the selected sensor
     const sensorKey = this.selectedSensor;
+
     if (update.data[sensorKey]) {
       const values = update.data[sensorKey];
+
       if (Array.isArray(values)) {
         values.forEach(dataPoint => {
           // dataPoint is [timestamp, value]
@@ -601,13 +803,14 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
           } else {
             // Add new data point
             this.telemetryData.push([timestamp, value]);
+            this.telemetryData = this.telemetryData.filter(point => point[0] >= minTime && point[0] <= maxTime);
           }
         });
 
         // Keep only last 1000 points to avoid memory issues
-        if (this.telemetryData.length > 1000) {
-          this.telemetryData = this.telemetryData.slice(-1000);
-        }
+        // if (this.telemetryData.length > 1000) {
+        //   this.telemetryData = this.telemetryData.slice(-1000);
+        // }
 
         // Sort by timestamp
         this.telemetryData.sort((a, b) => a[0] - b[0]);
@@ -651,8 +854,9 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Add forecast series if forecast data is available
     if (this.forecastDataPoints && this.forecastDataPoints.length > 0) {
-      // console.log('[TIME-SERIES] Adding forecast series to chart with', this.forecastDataPoints.length, 'points');
-      // console.log('[TIME-SERIES] Forecast data sample:', this.forecastDataPoints.slice(0, 3));
+      this.forecastDataPoints.sort((a, b) => a[0] - b[0]);
+      console.log('[TIME-SERIES] Adding forecast series to chart with', this.forecastDataPoints.length, 'points');
+      console.log('[TIME-SERIES] Forecast data sample:', this.forecastDataPoints.slice(0, 3));
       seriesArray.push({
         name: `Forecast`, // Simplified name for debugging
         type: 'line',
@@ -676,6 +880,36 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     const legendData = this.forecastDataPoints && this.forecastDataPoints.length > 0
       ? [this.selectedSensor, 'Forecast'] // Simplified legend
       : [this.selectedSensor];
+
+    // Add history forecast series if history forecast data is available
+    if (this.historyForecastDataPoints && this.historyForecastDataPoints.length > 0) {
+      this.historyForecastDataPoints.sort((a, b) => a[0] - b[0]);
+      this.historyForecastDataPoints = this.historyForecastDataPoints.filter(
+        point => point[0] >= minTime
+      );
+      console.log('[TIME-SERIES] Adding history forecast series to chart with', this.historyForecastDataPoints.length, 'points');
+      console.log('[TIME-SERIES] History forecast data sample:', this.historyForecastDataPoints.slice(0, 3));
+      seriesArray.push({
+        name: `Predictions`, // Simplified name for debugging
+        type: 'line',
+        data: this.historyForecastDataPoints,
+        smooth: false,
+        symbol: 'diamond',
+        symbolSize: 6, // Larger symbols for better visibility
+        lineStyle: {
+          width: 3, // Thicker line for better visibility
+          color: '#4caf50', // Green color for contrast
+          type: 'dotted' // Dotted line for predictions
+        },
+        itemStyle: {
+          color: '#4caf50',
+          opacity: 1 // Full opacity for debugging
+        }
+      });
+
+      // Update legend to include predictions
+      legendData.push('Predictions');
+    }
 
     // console.log('[TIME-SERIES] Updating chart with:', {
     //   telemetryPoints: this.telemetryData.length,
@@ -710,11 +944,21 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       const timewindowMs = this.timewindow.realtime.timewindowMs || 60000; // Default to 1 minute
       minTime = now - timewindowMs;
     } else if (this.timewindow.history) {
-      // History mode - use fixed start/end time
-      minTime = this.timewindow.history.timewindowMs || (now - 3600000); // Default to 1 hour ago
-      maxTime = this.timewindow.history.historyType === 0
-        ? now
-        : (minTime + (this.timewindow.history.timewindowMs || 3600000));
+      // History mode - calculate based on historyType
+      if (this.timewindow.history.historyType === 0) { // LAST_INTERVAL
+        // timewindowMs is a duration (e.g., 60000ms = 1 minute)
+        const timewindowMs = this.timewindow.history.timewindowMs || 3600000; // Default to 1 hour
+        minTime = now - timewindowMs;
+        maxTime = now;
+      } else if (this.timewindow.history.fixedTimewindow) { // FIXED
+        // Use the fixed start/end times
+        minTime = this.timewindow.history.fixedTimewindow.startTimeMs;
+        maxTime = this.timewindow.history.fixedTimewindow.endTimeMs;
+      } else {
+        // Fallback
+        minTime = now - 3600000;
+        maxTime = now;
+      }
     } else {
       // Default fallback - last 1 minute
       minTime = now - 60000;
@@ -724,16 +968,53 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   }
 
   private startTimeAxisUpdate(): void {
+    // Only update time axis in realtime mode
+    if (!this.timewindow?.realtime) {
+      return;
+    }
+
     // Update time axis every second to keep it moving
     this.timeAxisUpdateInterval = setInterval(() => {
       if (this.chart) {
         const { minTime, maxTime } = this.calculateTimeWindow();
 
+        // Expand the display range to include any forecast points so forecast history is visible
+        let displayMin = minTime;
+        let displayMax = maxTime;
+
+        try {
+          if (this.forecastDataPoints && this.forecastDataPoints.length > 0) {
+            const fcMin = this.forecastDataPoints[0][0];
+            const fcMax = this.forecastDataPoints[this.forecastDataPoints.length - 1][0];
+            if (isFinite(fcMin)) {
+              displayMin = Math.min(displayMin, fcMin - 1000); // 1s buffer
+            }
+            if (isFinite(fcMax)) {
+              displayMax = Math.max(displayMax, fcMax + 1000);
+            }
+          }
+
+          if (this.telemetryData && this.telemetryData.length > 0) {
+            const tMin = this.telemetryData[0][0];
+            const tMax = this.telemetryData[this.telemetryData.length - 1][0];
+            if (isFinite(tMin)) {
+              displayMin = Math.min(displayMin, tMin - 1000);
+            }
+            if (isFinite(tMax)) {
+              displayMax = Math.max(displayMax, tMax + 1000);
+            }
+          }
+        } catch (e) {
+          // defensive: fall back to calculated window on unexpected data
+          displayMin = minTime;
+          displayMax = maxTime;
+        }
+
         // Update only the x-axis without changing series data
         this.chart.setOption({
           xAxis: {
-            min: minTime,
-            max: maxTime
+            min: displayMin,
+            max: displayMax
           }
         }, false, false);
       }
@@ -762,6 +1043,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   }
 
   private fetchHistoricalData(): Promise<void> {
+    console.log('Fetching historical data for device:', this.deviceId, 'sensor:', this.selectedSensor);
     return new Promise((resolve) => {
       if (!this.deviceId || !this.selectedSensor) {
         // console.warn('Cannot fetch historical data: missing deviceId or sensor');
@@ -797,6 +1079,8 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       // console.log(`Actual display range: ${new Date(minTime)} to ${new Date(maxTime)}`);
       // console.log(`Aggregation: ${aggregationType}, Interval: ${intervalMs}, Limit: ${limit}`);
 
+      console.log('=======================================Fetching Historical data:==================================');
+
       // Fetch historical telemetry data with buffer
       this.attributeService.getEntityTimeseries(
         entityId,
@@ -809,10 +1093,9 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
         DataSortOrder.ASC
       ).subscribe({
         next: (data) => {
-          // console.log('Historical data received:', data);
-
           // Process historical data
           if (data && data[this.selectedSensor]) {
+            const { minTime: timewindowMin, maxTime: timewindowMax } = this.calculateTimeWindow();
             const historicalPoints = data[this.selectedSensor];
 
             // Convert to [timestamp, value] format
@@ -820,12 +1103,12 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
             // Filter out data points outside the actual requested time range
             // Keep data points within [minTime, maxTime]
-            this.telemetryData = allDataPoints.filter(point => point[0] >= minTime && point[0] <= maxTime);
+            this.telemetryData = allDataPoints.filter(point => point[0] >= timewindowMin && point[0] <= timewindowMax);
 
             // Sort by timestamp
             this.telemetryData.sort((a, b) => a[0] - b[0]);
 
-            // console.log(`Fetched ${allDataPoints.length} total data points, filtered to ${this.telemetryData.length} points within range`);
+            // console.log(`Fetched ${allDataPoints.length} total, filtered to ${this.telemetryData.length} in range`);
             // console.log(`Aggregation: ${aggregationType}`);
 
             // Update chart with historical data
@@ -850,6 +1133,17 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     this.timewindow = timewindow;
 
+    // Stop time axis updates if switching to history mode, start if switching to realtime
+    if (this.timeAxisUpdateInterval) {
+      clearInterval(this.timeAxisUpdateInterval);
+      this.timeAxisUpdateInterval = null;
+    }
+
+    // Start time axis updates only in realtime mode
+    if (this.timewindow.realtime) {
+      this.startTimeAxisUpdate();
+    }
+
     // Unsubscribe from current telemetry
     if (this.telemetrySubscription) {
       // console.log('Unsubscribing from existing telemetry subscription');
@@ -865,7 +1159,15 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Fetch historical data first, then subscribe to realtime updates
     if (this.deviceId && this.selectedSensor) {
-      // console.log('Starting historical data fetch...');
+      this.getSensorData();
+    } else {
+      // console.log('Skipping historical data fetch - missing deviceId or selectedSensor');
+    }
+    // console.log('====== End timewindow change ======');
+  }
+
+  getSensorData() {
+      console.log('Starting historical data fetch...');
       this.fetchHistoricalData().then(() => {
         // console.log('Historical data fetch completed');
         // After historical data is loaded, subscribe to realtime updates if in realtime mode
@@ -873,12 +1175,13 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
           // console.log('Re-subscribing to realtime telemetry');
           this.subscribeToTelemetry();
         }
+        // In history mode, also fetch forecast predictions
+        if (this.timewindow.history && this.modelId) {
+          console.log('[TIME-SERIES] History mode detected - fetching forecast predictions');
+          this.fetchForecastHistoryPredictions();
+        }
         // Chart is already updated in fetchHistoricalData, no need to call updateChart again
       });
-    } else {
-      // console.log('Skipping historical data fetch - missing deviceId or selectedSensor');
-    }
-    // console.log('====== End timewindow change ======');
   }
 
   selectSensor(sensor: string): void {
@@ -888,6 +1191,21 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     this.selectedSensor = sensor;
     this.onSensorChange();
+  }
+
+  refreshHistoryPredictions(): void {
+    console.log('[TIME-SERIES] Manually refreshing history predictions');
+
+    // Clear existing forecast data
+    this.forecastDataPoints = [];
+
+    // Refetch forecast history for the current sensor and model
+    this.fetchForecastHistoryPredictions();
+
+    // Update the chart to reflect the new data
+    if (this.chart) {
+      this.updateChart();
+    }
   }
 
   onSensorChange(): void {
@@ -945,7 +1263,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Resubscribe with new sensor
     if (this.deviceId && this.selectedSensor) {
-      this.subscribeToTelemetry();
+      // this.subscribeToTelemetry();
     }
   }
 }

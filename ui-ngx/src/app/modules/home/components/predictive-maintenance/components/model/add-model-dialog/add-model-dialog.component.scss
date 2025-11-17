@@ -609,27 +609,157 @@
   border-color: var(--tb-primary-color) !important;
 }
 
-.field {
+// Field wrapper - contains each sensor configuration
+.field-wrapper {
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+::ng-deep .tb-dark .field-wrapper {
+  border-color: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+// Field header with delete button and title
+.field-header {
   display: flex;
   align-items: center;
-  justify-items: center;
-  justify-content: center;
-  // background-color: red;
-  gap: 5px; /* Adds some space between the button and input */
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
+
+::ng-deep .tb-dark .field-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.field-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+::ng-deep .tb-dark .field-title {
+  color: rgba(255, 255, 255, 0.87);
+}
+
+// Field row - contains the three dropdowns
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+// Each field item (sensor name, aggregation, group by)
+.field-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0; // Allow proper text truncation
+}
+
 .delete_button {
-  // background-color: red;
-  margin-top: 4px;
-  align-self: flex-start;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  min-width: 36px;
 }
+
 button {
-  margin-right: 10px; /* Adds space on the right of the button */
+  margin: 0;
 }
 
 .input-field {
-  flex-grow: 1; /* Makes the input field take up the remaining space */
-  margin-top: 0px; // Remove top margin to position closer to label
-  margin-bottom: 0px; // Remove bottom margin to position labels closer
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+// Group by header with label and advanced button
+.group-by-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.advanced-button {
+  font-size: 0.75rem;
+  height: 28px;
+  line-height: 28px;
+  padding: 0 8px;
+  min-width: auto;
+  border-radius: 4px;
+  color: var(--tb-primary-color, #3f51b5);
+  background-color: rgba(var(--tb-primary-color-rgb, 63, 81, 181), 0.08);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+  }
+
+  &:hover {
+    background-color: rgba(var(--tb-primary-color-rgb, 63, 81, 181), 0.12);
+  }
+}
+
+::ng-deep .tb-dark .advanced-button {
+  color: var(--tb-primary-color, #3f51b5);
+  background-color: rgba(var(--tb-primary-color-rgb, 63, 81, 181), 0.15);
+
+  &:hover {
+    background-color: rgba(var(--tb-primary-color-rgb, 63, 81, 181), 0.22);
+  }
+}
+
+// Custom time inline (shown in place of dropdown)
+.custom-time-inline {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.custom-time-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.time-input {
+  margin: 0;
+
+  input[type="number"] {
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+}
+
+.custom-hint {
+  font-size: 0.7rem;
+  color: rgba(33, 150, 243, 0.8);
+  margin-top: 4px;
+}
+
+::ng-deep .tb-dark .custom-hint {
+  color: rgba(33, 150, 243, 0.9);
+}
+
+// Dark mode styling for custom time inputs
+::ng-deep .tb-dark .custom-time-inline {
+  .time-input {
+    .mat-mdc-text-field-wrapper {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+  }
 }
 
 .date-container {

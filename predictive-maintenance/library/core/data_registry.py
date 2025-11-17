@@ -9,11 +9,9 @@ from typing import Tuple, Optional, List, Dict, Any
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-import logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-
-logger = logging.getLogger(__name__)
+from src.logger import logger  # Global logger
 
 
 class DataRegistry:
@@ -69,13 +67,8 @@ class DataRegistry:
     def _connect(self) -> None:
         """Establish database connection."""
         try:
-            self.engine = create_engine(self.database_url, echo=True)
-            logger.info(f"Connected to database: {self.database_url.split('@')[-1]}")
-            logger.info(f"Configured telemetry keys: {self.telemetry_keys}")
-            logger.info(f"Configured error keys: {self.error_keys}")
-            logger.info(f"Configured component keys: {self.component_keys}")
+            self.engine = create_engine(self.database_url, echo=False)
         except Exception as e:
-            logger.error(f"Failed to connect to database: {e}")
             raise
 
     def _get_key_ids(self, key_names: List[str]) -> List[int]:
@@ -182,7 +175,11 @@ class DataRegistry:
                         attributes,
                         forecast_algorithm,
                         anomaly_algorithm,
-                        name
+                        name,
+                        forecast_start_date,
+                        forecast_end_date,
+                        anomaly_start_date,
+                        anomaly_end_date
                     FROM predictive_maintenance_config 
                     WHERE id = :model_id
                 """
@@ -206,6 +203,8 @@ class DataRegistry:
                         row.anomaly_algorithm if hasattr(row, "anomaly_algorithm") else "THRESHOLD"
                     ),
                     "name": row.name if hasattr(row, "name") else "Unknown",
+                    # forecast_grouping_ms is now stored per-sensor in attributes, with fallback to 5 seconds
+                    "forecast_grouping_ms": 5000,
                 }
 
                 logger.info(
@@ -317,24 +316,17 @@ class DataRegistry:
             end_date = datetime.now()
         # cutoff_date = start_date - timedelta(days=days_back)
         cutoff_date = start_date
-        print(
-            f"[FETCH_TELEMETRY_DATA] fetching telemetry data from {cutoff_date} to {end_date}",
-            flush=True,
-        )
 
         # Fetch telemetry keys from model configuration
         telemetry_keys = self.fetch_model_telemetry_keys(device_id)
-        logger.info(f"Using telemetry keys for {device_id}: {telemetry_keys}")
 
         # Convert telemetry keys to key IDs
         telemetry_key_ids = self._get_key_ids(telemetry_keys)
         if not telemetry_key_ids:
-            logger.error(f"No valid key IDs found for telemetry keys: {telemetry_keys}")
             return pd.DataFrame(), None
 
         # Create key_id to key_name mapping for later use
         key_id_to_name = dict(zip(telemetry_key_ids, telemetry_keys))
-        logger.info(f"Using telemetry key IDs: {key_id_to_name}")
 
         with self.engine.connect() as conn:
             # Build dynamic SQL for telemetry key IDs (integers)
@@ -427,7 +419,7 @@ class DataRegistry:
         # cutoff_date = start_date - timedelta(days=days_back)
         cutoff_date = start_date
 
-        print(f"[FETCH_MAINTENANCE_DATA] fetch data from {cutoff_date} to {end_date}", flush=True)
+        # print(f"[FETCH_MAINTENANCE_DATA] fetch data from {cutoff_date} to {end_date}", flush=True)
 
         with self.engine.connect() as conn:
             if end_date is not None:
@@ -469,7 +461,7 @@ class DataRegistry:
 
             maint_result = conn.execute(maint_query, query_params)
 
-            print("Fetched maintenance records:", flush=True)
+            # print("Fetched maintenance records:", flush=True)
             # print(maint_result.fetchall(), flush=True)
 
             # replace maintenance_date with datetime
@@ -485,7 +477,7 @@ class DataRegistry:
                 )
 
             if len(maint_data) == 0:
-                print(f"Returning empty dataframe", flush=True)
+                # print(f"Returning empty dataframe", flush=True)
                 return pd.DataFrame(
                     {
                         "datetime": [],
@@ -507,7 +499,7 @@ class DataRegistry:
         # cutoff_date = start_date - timedelta(days=days_back)
         cutoff_date = start_date
 
-        print(f"[FETCH_ERROR_DATA] fetch error data from {cutoff_date} to {end_date}", flush=True)
+        # print(f"[FETCH_ERROR_DATA] fetch error data from {cutoff_date} to {end_date}", flush=True)
 
         with self.engine.connect() as conn:
             if end_date is not None:
@@ -579,9 +571,9 @@ class DataRegistry:
         # cutoff_date = start_date - timedelta(days=days_back)
         cutoff_date = start_date
 
-        print(
-            f"[FETCH_FAILURE_DATA] fetch failure data from {cutoff_date} to {end_date}", flush=True
-        )
+        # print(
+        #     f"[FETCH_FAILURE_DATA] fetch failure data from {cutoff_date} to {end_date}", flush=True
+        # )
 
         with self.engine.connect() as conn:
             failure_query = text(
@@ -765,16 +757,16 @@ class DataRegistry:
 
                 if len(telemetry_data) == 0:
                     logger.warning(f"No telemetry data found for device {device_id}")
-                    print(
-                        f"[FETCH] No telemetry data found for device {device_id}",
-                        flush=True,
-                    )
+                    # print(
+                    #     f"[FETCH] No telemetry data found for device {device_id}",
+                    #     flush=True,
+                    # )
                     return pd.DataFrame(), None
 
-                print(
-                    f"[FETCH] Got {len(telemetry_data)} telemetry records for device {device_id}",
-                    flush=True,
-                )
+                # print(
+                #     f"[FETCH] Got {len(telemetry_data)} telemetry records for device {device_id}",
+                #     flush=True,
+                # )
 
                 # Pivot telemetry data
                 telemetry_df = pd.DataFrame(telemetry_data)
@@ -782,16 +774,16 @@ class DataRegistry:
                     index="datetime", columns="key", values="value"
                 ).reset_index()
 
-                print(
-                    f"[FETCH] After pivot: {telemetry_pivot.shape}, columns: {list(telemetry_pivot.columns)}",
-                    flush=True,
-                )
+                # print(
+                #     f"[FETCH] After pivot: {telemetry_pivot.shape}, columns: {list(telemetry_pivot.columns)}",
+                #     flush=True,
+                # )
 
                 # Resample to 3-hour intervals
                 telemetry_pivot.set_index("datetime", inplace=True)
                 telemetry_3h = telemetry_pivot.resample("3h").agg(["mean", "std"]).reset_index()
 
-                print(f"[FETCH] After 3h resample: {telemetry_3h.shape}", flush=True)
+                # print(f"[FETCH] After 3h resample: {telemetry_3h.shape}", flush=True)
 
                 # Flatten column names
                 telemetry_3h.columns = [
@@ -823,34 +815,34 @@ class DataRegistry:
                 else:
                     telemetry_24h = telemetry_3h_temp.reset_index()[["datetime"]]
 
-                print(
-                    f"[FETCH] 24h features shape before dropna: {telemetry_24h.shape}",
-                    flush=True,
-                )
+                # print(
+                #     f"[FETCH] 24h features shape before dropna: {telemetry_24h.shape}",
+                #     flush=True,
+                # )
 
                 # Merge 3h and 24h features (both on same 3h resampled datetime index)
-                print(
-                    f"[FETCH] telemetry_3h shape: {telemetry_3h.shape}, telemetry_24h shape: {telemetry_24h.shape}",
-                    flush=True,
-                )
+                # print(
+                #     f"[FETCH] telemetry_3h shape: {telemetry_3h.shape}, telemetry_24h shape: {telemetry_24h.shape}",
+                #     flush=True,
+                # )
                 features_df = telemetry_3h.merge(telemetry_24h, on="datetime", how="left")
-                print(
-                    f"[FETCH] After merge, features_df shape: {features_df.shape}",
-                    flush=True,
-                )
+                # print(
+                #     f"[FETCH] After merge, features_df shape: {features_df.shape}",
+                #     flush=True,
+                # )
 
                 # Drop rows where ALL 24h features are NaN (first ~8 periods)
                 feature_cols_24h = [col for col in features_df.columns if "24h" in col]
                 if feature_cols_24h:
-                    print(
-                        f"[FETCH] Before dropna on 24h features: {len(features_df)} rows",
-                        flush=True,
-                    )
+                    # print(
+                    #     f"[FETCH] Before dropna on 24h features: {len(features_df)} rows",
+                    #     flush=True,
+                    # )
                     features_df = features_df.dropna(subset=feature_cols_24h, how="all")
-                    print(
-                        f"[FETCH] After dropna on 24h features: {len(features_df)} rows",
-                        flush=True,
-                    )
+                    # print(
+                    #     f"[FETCH] After dropna on 24h features: {len(features_df)} rows",
+                    #     flush=True,
+                    # )
 
                 # Fetch error counts (24h rolling window)
                 # Query from device_errors table instead of ts_kv
@@ -1009,10 +1001,10 @@ class DataRegistry:
                     for i in range(1, 5):
                         features_df[f"comp{i}"] = 365
 
-                print(
-                    f"[FETCH] Before adding age, features_df shape: {features_df.shape}",
-                    flush=True,
-                )
+                # print(
+                #     f"[FETCH] Before adding age, features_df shape: {features_df.shape}",
+                #     flush=True,
+                # )
 
                 # Add machine age (fetch from device attributes)
                 age_key_id = self._get_key_id("age")
@@ -1075,34 +1067,35 @@ class DataRegistry:
 
                     if failure_data:
                         failure_df = pd.DataFrame(failure_data)
-                        print(
-                            f"[FETCH] Found {len(failure_df)} failure records",
-                            flush=True,
-                        )
-                        print(
-                            f"[FETCH] Failure timestamps (floored to 3h): {failure_df['datetime'].tolist()[:5]}",
-                            flush=True,
-                        )
-                        print(
-                            f"[FETCH] Feature datetime range: {features_df['datetime'].min()} to {features_df['datetime'].max()}",
-                            flush=True,
-                        )
+                        # print(
+                        #     f"[FETCH] Found {len(failure_df)} failure records",
+                        #     flush=True,
+                        # )
+                        # print(
+                        #     f"[FETCH] Failure timestamps (floored to 3h): {failure_df['datetime'].tolist()[:5]}",
+                        #     flush=True,
+                        # )
+                        # print(
+                        #     f"[FETCH] Feature datetime range: {features_df['datetime'].min()} to {features_df['datetime'].max()}",
+                        #     flush=True,
+                        # )
 
                         features_with_labels = features_df.merge(
                             failure_df, on="datetime", how="left"
                         )
                         labels = features_with_labels["failure_component"].fillna("none")
-                        print(
-                            f"[FETCH] Labels value counts: {labels.value_counts().to_dict()}",
-                            flush=True,
-                        )
+                        # print(
+                        #     f"[FETCH] Labels value counts: {labels.value_counts().to_dict()}",
+                        #     flush=True,
+                        # )
 
                         features_df = features_with_labels.drop("failure_component", axis=1)
                     else:
-                        print(
-                            f"[FETCH] No failure data found for device {device_id}",
-                            flush=True,
-                        )
+                        # print(
+                        #     f"[FETCH] No failure data found for device {device_id}",
+                        #     flush=True,
+                        # )
+                        pass
 
                 # Drop datetime column for training
                 if "datetime" in features_df.columns:
@@ -1143,17 +1136,17 @@ class DataRegistry:
                 logger.info(
                     f"Fetched {len(features_df)} samples with {len(expected_cols)} features: {expected_cols}"
                 )
-                print(
-                    f"[FETCH] Returning features_df with {len(features_df)} samples and labels: {type(labels)}",
-                    flush=True,
-                )
+                # print(
+                #     f"[FETCH] Returning features_df with {len(features_df)} samples and labels: {type(labels)}",
+                #     flush=True,
+                # )
                 return features_df, labels
 
         except Exception as e:
             logger.error(f"Error fetching anomaly training data: {e}")
             import traceback
 
-            print(f"[FETCH ERROR] Exception occurred: {str(e)}", flush=True)
+            # print(f"[FETCH ERROR] Exception occurred: {str(e)}", flush=True)
             traceback.print_exc()
             return pd.DataFrame(), None
 
@@ -1200,16 +1193,11 @@ class DataRegistry:
             )
 
             if forecast_df.empty:
-                logger.warning(
-                    f"No time series data found for device {device_id}, sensor {sensor_key}"
-                )
                 return forecast_df
 
-            logger.info(f"Fetched {len(forecast_df)} time series points of {sensor_key}")
             return forecast_df
 
         except Exception as e:
-            logger.error(f"Error fetching forecast training data: {e}")
             raise
 
     def fetch_device_sensors(self, device_id: str) -> List[str]:
@@ -1418,8 +1406,6 @@ class DataRegistry:
             """
 
         query = text(text_q)
-        # print query text for debugging
-        print(f"[DEBUG] _fetch_time_series_data query: {text_q}", flush=True)
         # Build parameters dictionary, only including limit if it's not None
         params = {
             "device_id": device_id,

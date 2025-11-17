@@ -11,13 +11,10 @@ import websockets
 import asyncio
 import time
 from src.forecast.predict import predict
+from src.logger import logger  # Global logger
 import requests
 import sys
-import logging
 import os
-
-logger = logging.getLogger("uvicorn.debug")
-logger1 = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/forecast",
@@ -135,9 +132,7 @@ async def forecast_routine(
         attribute_keys = [attr["key"] for attr in attributes]
         attribute_keys.append("datetime")
         result = session.execute(
-            text(
-                f"SELECT credentials_id FROM device_credentials where device_id = '{device_id}'"
-            ),
+            text(f"SELECT credentials_id FROM device_credentials where device_id = '{device_id}'"),
         )
         result = result.fetchone()
         session.commit()
@@ -168,16 +163,14 @@ async def forecast_routine(
                             if response["errorCode"] != 0:
                                 raise Exception("Error in response")
                             response_data = response.get("data", None)
-                            if not response_data or not response_data.get(
-                                "pressure", None
-                            ):
+                            if not response_data or not response_data.get("pressure", None):
                                 continue
                             for key in response_data.keys():
                                 tm_data[key].extend(response_data[key])
                                 tm_data[key] = tm_data[key][-25:]
-                            if len(tm_data["pressure"]) >= 24 and len(
-                                tm_data["datetime"]
-                            ) == len(tm_data["pressure"]):
+                            if len(tm_data["pressure"]) >= 24 and len(tm_data["datetime"]) == len(
+                                tm_data["pressure"]
+                            ):
                                 forecast_data = predict(tm_data, 1)
                                 os.system(
                                     f"mosquitto_pub -d -q 1 -h thingsboard -p 1883 -t v1/devices/me/telemetry -u "
@@ -190,7 +183,7 @@ async def forecast_routine(
                                     + "}}' >/dev/null"
                                 )
                             else:
-                                logging.warning(
+                                logger.warning(
                                     f"pressure: {len(tm_data['pressure'])}, datetime: {len(tm_data['datetime'])}"
                                 )
                         except asyncio.exceptions.TimeoutError:
@@ -273,9 +266,9 @@ async def websocket_endpoint(
                         for key in response_data.keys():
                             tm_data[key].extend(response_data[key])
                             tm_data[key] = tm_data[key][-25:]
-                        if len(tm_data["pressure"]) >= 24 and len(
-                            tm_data["pressure"]
-                        ) == len(tm_data["datetime"]):
+                        if len(tm_data["pressure"]) >= 24 and len(tm_data["pressure"]) == len(
+                            tm_data["datetime"]
+                        ):
                             forecast_data = predict(tm_data, forecastWindow)
                         await client.send_text(
                             json.dumps(

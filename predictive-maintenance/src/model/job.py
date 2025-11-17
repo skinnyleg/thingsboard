@@ -3,7 +3,6 @@ Job management system for background prediction workers
 """
 
 import json
-import logging
 import threading
 import time
 import uuid
@@ -16,13 +15,12 @@ from typing import Dict, Callable, Set, Union
 from scipy.sparse import data
 from library import AnomalyPredictor, ForecastModel
 from src.settings import settings
+from src.logger import logger  # Global logger
 import numpy as np
 from library.models.anomaly_predictor import predict_failure, feature_cols, load_models
 from .shared import get_data_registry
 import traceback
 from sqlalchemy import text
-
-logger = logging.getLogger(__name__)
 
 # Global job registry: {model_id: {status, thread, start_time, etc}}
 active_jobs: Dict[str, dict] = {}
@@ -93,8 +91,11 @@ def add_model_log(model_id: str, level: str, message: JSONValue) -> None:
     }
     model_logs[model_id].append(log_entry)
 
-    # Also log to standard logger
-    if level.lower() == "error":
+    # Also log to standard logger (but skip "prediction" level - those are only for WebSocket)
+    if level.lower() == "prediction":
+        # Don't log prediction data to console, only send to WebSocket
+        pass
+    elif level.lower() == "error":
         logger.error(f"[{model_id}] {message}")
     elif level.lower() == "warn":
         logger.warning(f"[{model_id}] {message}")
@@ -111,40 +112,45 @@ def add_model_log(model_id: str, level: str, message: JSONValue) -> None:
                     logger.error(f"Error broadcasting log to WebSocket: {str(e)}")
 
 
-def prediction_job_worker(model_id: str, model_type: str, device_id: str = None):
+def prediction_job_worker(model_id: str, model_type: str, device_id: str = None, group_by_ms_per_sensor: dict = None, aggregation_funcs: dict = None):
     """
     Background worker that runs predictions periodically.
 
     For AnomalyPredictor: Checks for anomalies every 5 minutes
     For ForecastModel: Generates forecasts every 1 hour
     """
-    print(
-        f"[PREDICTION JOB] {model_id} - Worker thread started for {model_type}, device_id={device_id}",
-        flush=True,
-    )
+    # print(
+    #     f"[PREDICTION JOB] {model_id} - Worker thread started for {model_type}, device_id={device_id}",
+    #     flush=True,
+    # )
     add_model_log(model_id, "info", f"Prediction job started for {model_type}")
     data_registry = get_data_registry()
     try:
-        print(f"[PREDICTION JOB] {model_id} - Initializing model worker", flush=True)
+        # print(f"[PREDICTION JOB] {model_id} - Initializing model worker", flush=True)
         add_model_log(model_id, "info", f"Initializing model worker for {model_type}")
         path = settings.models_path
         model_dir = Path(path) / model_id
         add_model_log(model_id, "info", f"Model directory: {model_dir}")
+        
+        # Initialize variables that will be used in inner_loop
+        hourly_models = None
+        model = None
+        
         if model_type == "AnomalyPredictor":
             add_model_log(model_id, "info", "Getting data registry...")
             add_model_log(model_id, "info", f"Loading model from {model_dir}...")
             hourly_models = load_models(model_dir)
             add_model_log(model_id, "info", "Model loaded successfully from disk")
             interval = 20  # 20 seconds for testing
-            print(
-                f"[PREDICTION JOB] {model_id} - AnomalyPredictor model loaded",
-                flush=True,
-            )
-            for hour, mdl in hourly_models.items():
-                print(
-                    f"[PREDICTION JOB] {model_id} - Hour {hour} model: {mdl}",
-                    flush=True,
-                )
+            # print(
+            #     f"[PREDICTION JOB] {model_id} - AnomalyPredictor model loaded",
+            #     flush=True,
+            # )
+            # for hour, mdl in hourly_models.items():
+            # print(
+            #     f"[PREDICTION JOB] {model_id} - Hour {hour} model: {mdl}",
+            #     flush=True,
+            # )
         elif model_type == "ForecastModel":
             data_registry = get_data_registry()
             forecast_id = model_id.rsplit("/", 1)[0]
@@ -152,10 +158,10 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
             sensors = model_config.get("attributes", [])
             sensors = [sensor["key"] for sensor in sensors if "key" in sensor]
             device_id = device_id or model_config.get("device_id")
-            print(
-                f"[PREDICTION JOB] {model_id} - Using sensors: {sensors}, device_id: {device_id}",
-                flush=True,
-            )
+            # print(
+            #     f"[PREDICTION JOB] {model_id} - Using sensors: {sensors}, device_id: {device_id}",
+            #     flush=True,
+            # )
             model = ForecastModel(
                 sensors=sensors,
                 name=model_id,
@@ -163,6 +169,8 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
                 lookback=20,
                 device_id=device_id,
                 data_registry=data_registry,
+                group_by_ms_per_sensor=group_by_ms_per_sensor,
+                aggregation_funcs=aggregation_funcs,
             )
             model.load(model_dir)
             interval = 5  # 2 seconds for testing
@@ -174,37 +182,39 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None)
             "info",
             f"Model loaded successfully, running predictions every {interval}s",
         )
-        print(
-            f"[PREDICTION JOB] {model_id} - Model loaded successfully, starting prediction loop with {interval}s interval",
-            flush=True,
-        )
+        # print(
+        #     f"[PREDICTION JOB] {model_id} - Model loaded successfully, starting prediction loop with {interval}s interval",
+        #     flush=True,
+        # )
         iteration = 0
-        print(f"[PREDICTION JOB] {model_id} - Entering prediction loop", flush=True)
+        # print(f"[PREDICTION JOB] {model_id} - Entering prediction loop", flush=True)
         while True:
-            inner_loop(
+            should_break = inner_loop(
                 model_id,
                 model_type,
                 device_id,
-                hourly_models,
+                model,
                 hourly_models,
                 iteration,
                 data_registry,
             )
+            if should_break:
+                break
+            iteration += 1
             threading.Event().wait(interval)
-            break
     except Exception as e:
         error_details = traceback.format_exc()
-        print(f"[PREDICTION JOB] {model_id} - Job worker crashed: {str(e)}", flush=True)
-        print(
-            f"[PREDICTION JOB] {model_id} - Crash traceback:\n{error_details}",
-            flush=True,
-        )
+        # print(f"[PREDICTION JOB] {model_id} - Job worker crashed: {str(e)}", flush=True)
+        # print(
+        #     f"[PREDICTION JOB] {model_id} - Crash traceback:\n{error_details}",
+        #     flush=True,
+        # )
         add_model_log(model_id, "error", f"Job worker crashed: {str(e)}")
     finally:
         with job_lock:
             if model_id in active_jobs:
                 active_jobs[model_id]["status"] = "stopped"
-        print(f"[PREDICTION JOB] {model_id} - Job worker terminated", flush=True)
+        # print(f"[PREDICTION JOB] {model_id} - Job worker terminated", flush=True)
         add_model_log(model_id, "info", "Job worker terminated")
 
 
@@ -212,10 +222,10 @@ def anomaly_predict_model(
     model_id: str, iteration: int, device_id: str, hourly_models: dict, data_registry
 ):
     # Fetch latest sensor data and predict
-    print(
-        f"[PREDICTION JOB] {model_id} - Iteration {iteration}: Fetching latest data for device {device_id}",
-        flush=True,
-    )
+    # print(
+    #     f"[PREDICTION JOB] {model_id} - Iteration {iteration}: Fetching latest data for device {device_id}",
+    #     flush=True,
+    # )
     add_model_log(model_id, "info", f"Fetching latest data for device {device_id}")
     anomalyModel = AnomalyPredictor(data_registry=get_data_registry())
     (
@@ -237,35 +247,35 @@ def anomaly_predict_model(
         and failures_df.empty
         and machines_df.empty
     ):
-        print(
-            f"[PREDICTION JOB] {model_id} - No data available for prediction",
-            flush=True,
-        )
+        # print(
+        #     f"[PREDICTION JOB] {model_id} - No data available for prediction",
+        #     flush=True,
+        # )
         add_model_log(model_id, "warn", "No data available for prediction")
         return False
-    print(
-        f"[PREDICTION JOB] {model_id} - Fetched {len(telemetry_df)} rows of data",
-        flush=True,
-    )
+    # print(
+    #     f"[PREDICTION JOB] {model_id} - Fetched {len(telemetry_df)} rows of data",
+    #     flush=True,
+    # )
     add_model_log(model_id, "info", f"Fetched {len(telemetry_df)} rows of data")
     if telemetry_df.empty:
-        print(
-            f"[PREDICTION JOB] {model_id} - No data available for prediction",
-            flush=True,
-        )
+        # print(
+        #     f"[PREDICTION JOB] {model_id} - No data available for prediction",
+        #     flush=True,
+        # )
         add_model_log(model_id, "warn", "No data available for prediction")
         return False
-    print(
-        f"[PREDICTION JOB] {model_id} - Running prediction on data with columns: {list(telemetry_df.columns)}",
-        flush=True,
-    )
+    # print(
+    #     f"[PREDICTION JOB] {model_id} - Running prediction on data with columns: {list(telemetry_df.columns)}",
+    #     flush=True,
+    # )
     add_model_log(
         model_id,
         "info",
         f"Running prediction on data with columns: {list(telemetry_df.columns)}",
     )
-    print(f"[PREDICTION JOB] {model_id} - latest data", flush=True)
-    print(telemetry_df.head(), flush=True)
+    # print(f"[PREDICTION JOB] {model_id} - latest data", flush=True)
+    # print(telemetry_df.head(), flush=True)
     predictions = predict_failure(
         "2015-04-20 02:00:00",
         {},
@@ -293,10 +303,10 @@ def anomaly_predict_model(
     hourly_records = list(predictions["hourly_predictions"].values())
     predictions_json_str = json.dumps(hourly_records, default=to_native)
     predictions_json = json.loads(predictions_json_str)
-    print(
-        f"[PREDICTION JOB] {model_id} - Predictions: {predictions_json}",
-        flush=True,
-    )
+    # print(
+    #     f"[PREDICTION JOB] {model_id} - Predictions: {predictions_json}",
+    #     flush=True,
+    # )
     # Send each prediction individually to avoid WebSocket buffer overflow
     # Instead of sending all 24 predictions in one message, send one at a time
     for idx, prediction in enumerate(predictions_json):
@@ -319,112 +329,79 @@ def anomaly_predict_model(
     )
 
 
-def forecast_predict_model(
-    model_id: str, iteration: int, device_id: str, model, data_registry
-):
+def forecast_predict_model(model_id: str, iteration: int, device_id: str, model, data_registry):
+    add_model_log(model_id, "info", f"Starting forecast (iteration {iteration})")
     result = model.forecast(predict_for=24)
-    print(
-        f"[PREDICTION JOB] {model_id} - Forecast result: {result}",
-        flush=True,
-    )
     result_copy = json.loads(json.dumps(result, default=to_native))
     sensor_count = 0
+    
+    # Build summary for logging (don't log full arrays)
+    prediction_summary = []
     for sensor_name, sensor_data in result_copy.items():
         if sensor_name != "forecast_max_steps" and isinstance(sensor_data, dict):
             sensor_count += 1
+            # Create summary with first value only for logging
+            forecast_values = sensor_data.get("forecast", [])
+            timestamp_values = sensor_data.get("timestamp", [])
+            summary = {
+                "sensor": sensor_name,
+                "forecast_count": len(forecast_values),
+                "first_forecast": forecast_values[0] if forecast_values else None,
+                "first_timestamp": timestamp_values[0] if timestamp_values else None,
+            }
+            prediction_summary.append(summary)
+            
+            # Send full prediction data via add_model_log for WebSocket (same as anomaly model)
+            # add_model_log(
+            #     model_id,
+            #     "prediction",
+            #     {
+            #         "iteration": iteration,
+            #         "device_id": device_id,
+            #         "sensor": sensor_name,
+            #         "result": sensor_data,
+            #         "prediction_type": "forecast",
+            #     },
+            # )
+
+            saved_prediction = {
+                "sensor_name": sensor_name,
+                "prediction_info": sensor_data.get("prediction_info", {
+                    "group_by_period_ms": None,
+                    "recent_point_ts": None
+                }),
+                "forecast": sensor_data.get("forecast", [None])[0]  # get the first forecast value only
+            }
+            
+            # Save prediction to database (same as anomaly model)
+            save_prediction(data_registry, model_id, saved_prediction, "Forecast")
+
+            saved_prediction["prediction_type"] = "history"
+
             add_model_log(
                 model_id,
                 "prediction",
-                {
-                    "iteration": iteration,
-                    "device_id": device_id,
-                    "sensor": sensor_name,
-                    "result": sensor_data,
-                },
+                saved_prediction
             )
+    
+    # Log summary only (not full arrays)
     add_model_log(
         model_id,
         "info",
-        f"Forecast completed (iteration {iteration}): sent predictions for {sensor_count} sensors",
+        f"Forecast completed (iteration {iteration}): {sensor_count} sensors - {prediction_summary}",
     )
-    print(f"[DEBUG] {model_id} - BEFORE truncating:", flush=True)
-    print(f"[DEBUG] model.sensors: {model.sensors}", flush=True)
-    print(f"[DEBUG] result.keys(): {list(result.keys())}", flush=True)
-    for sensor in result.keys():
-        if sensor != "forecast_max_steps":
-            print(
-                f"[DEBUG] {sensor}: {len(result[sensor].get('forecast', []))} forecast points, {len(result[sensor].get('timestamp', []))} timestamps",
-                flush=True,
-            )
-    sensors = model.sensors
+    
+    # Log timestamp ranges before truncating (for debugging saved predictions)
     for sensor in model.sensors:
-        if sensor in result:
-            if len(result[sensor].get("forecast", [])) > 1:
-                result[sensor]["timestamp"] = [result[sensor]["timestamp"][0]]
-                result[sensor]["forecast"] = [result[sensor]["forecast"][0]]
+        if sensor in result and "timestamp" in result[sensor]:
+            timestamps = result[sensor].get("timestamp", [])
+            if timestamps:
+                from datetime import datetime as dt
+                min_ts = dt.fromtimestamp(timestamps[0] / 1000)
+                max_ts = dt.fromtimestamp(timestamps[-1] / 1000)
+                logger.info(f"SAVE DEBUG - {sensor}: prediction timestamps [{min_ts} to {max_ts}], {len(timestamps)} points")
+    
 
-    # DEBUG: Log sensors AFTER truncating
-    print(f"[DEBUG] {model_id} - AFTER truncating:", flush=True)
-    for sensor in result.keys():
-        if sensor != "forecast_max_steps":
-            print(
-                f"[DEBUG] {sensor}: {len(result[sensor].get('forecast', []))} forecast points, {len(result[sensor].get('timestamp', []))} timestamps",
-                flush=True,
-            )
-
-    _model_id = model_id.split("/")[0]
-
-    # save_prediction(
-    #     data_registry,
-    #     _model_id,
-    #     device_id,
-    #     "prediction",
-    #     f"Forecast result (iteration {iteration})",
-    #     result,
-    #     "ForecastModel",
-    # )
-
-    # DEBUG: Fetch and log what was saved to database
-    try:
-        with data_registry.engine.connect() as conn:
-            query = text(
-                """
-                SELECT message, created_at
-                FROM model_logs
-                WHERE model_id = :model_id
-                AND log_level = 'prediction'
-                ORDER BY created_time DESC
-                LIMIT 1
-                """
-            )
-            db_result = conn.execute(query, {"model_id": _model_id})
-            row = db_result.fetchone()
-            if row:
-                saved_data = json.loads(row[0])
-                print(
-                    f"[DEBUG] {model_id} - SAVED TO DATABASE:",
-                    flush=True,
-                )
-                print(f"[DEBUG] Created at: {row[1]}", flush=True)
-                print(
-                    f"[DEBUG] Saved sensors: {list(saved_data.keys())}",
-                    flush=True,
-                )
-                for sensor in saved_data.keys():
-                    if sensor != "forecast_max_steps":
-                        print(
-                            f"[DEBUG] {sensor} in DB: {len(saved_data[sensor].get('forecast', []))} forecast points",
-                            flush=True,
-                        )
-    except Exception as e:
-        print(
-            f"[DEBUG] {model_id} - Error fetching saved data: {e}",
-            flush=True,
-        )
-
-        # Update last run time
-        active_jobs[model_id]["last_run"] = datetime.now().isoformat() + "Z"
-        active_jobs[model_id]["iterations"] = iteration
 
 
 def inner_loop(
@@ -440,52 +417,50 @@ def inner_loop(
     # Check if job is stopped or paused
     with job_lock:
         if model_id not in active_jobs or active_jobs[model_id]["status"] != "running":
-            print(f"[PREDICTION JOB] {model_id} - Job stopped by user", flush=True)
+            # print(f"[PREDICTION JOB] {model_id} - Job stopped by user", flush=True)
             add_model_log(model_id, "info", "Job stopped by user")
             return True
 
         # If paused, wait and skip this iteration
         if active_jobs[model_id].get("paused", False):
-            print(
-                f"[PREDICTION JOB] {model_id} - Job is paused, waiting...",
-                flush=True,
-            )
+            # print(
+            #     f"[PREDICTION JOB] {model_id} - Job is paused, waiting...",
+            #     flush=True,
+            # )
             threading.Event().wait(1)  # Wait 1 second before checking again
             return False
     result = {}
     try:
-        iteration += 1
-        print(
-            f"[PREDICTION JOB] {model_id} - Starting iteration #{iteration}",
-            flush=True,
-        )
+        # Note: iteration is now incremented by the outer loop
+        # print(
+        #     f"[PREDICTION JOB] {model_id} - Starting iteration #{iteration}",
+        #     flush=True,
+        # )
         add_model_log(model_id, "info", f"Running prediction iteration #{iteration}")
 
         if model_type == "AnomalyPredictor":
-            anomaly_predict_model(
-                model_id, iteration, device_id, hourly_models, data_registry
-            )
+            anomaly_predict_model(model_id, iteration, device_id, hourly_models, data_registry)
         elif model_type == "ForecastModel":
             forecast_predict_model(model_id, iteration, device_id, model, data_registry)
     except Exception as e:
         error_details = traceback.format_exc()
-        print(
-            f"[PREDICTION JOB] {model_id} - Prediction failed: {str(e)}",
-            flush=True,
-        )
-        print(
-            f"[PREDICTION JOB] {model_id} - Traceback:\n{error_details}",
-            flush=True,
-        )
+        # print(
+        #     f"[PREDICTION JOB] {model_id} - Prediction failed: {str(e)}",
+        #     flush=True,
+        # )
+        # print(
+        #     f"[PREDICTION JOB] {model_id} - Traceback:\n{error_details}",
+        #     flush=True,
+        # )
         add_model_log(model_id, "error", f"Prediction failed: {str(e)}")
         add_model_log(model_id, "error", f"Traceback: {error_details}")
         return False
     # Note: actual sleeping is performed by the outer worker loop which knows the interval.
     # Avoid referencing `interval` here (not in scope) to prevent NameError.
-    print(
-        f"[PREDICTION JOB] {model_id} - Sleeping until next iteration",
-        flush=True,
-    )
+    # print(
+    #     f"[PREDICTION JOB] {model_id} - Sleeping until next iteration",
+    #     flush=True,
+    # )
 
 
 def save_prediction(data_registry, model_id: str, message, source):
@@ -495,6 +470,15 @@ def save_prediction(data_registry, model_id: str, message, source):
     _model_id = model_id.split("/")[0] if "/" in model_id else model_id
     created_at = datetime.now().isoformat() + "Z"
     created_time = int(time.time() * 1000)
+
+    # Log timestamp range of predictions being saved (for debugging)
+    if isinstance(message, dict) and "timestamp" in message:
+        timestamps = message.get("timestamp", [])
+        if timestamps:
+            from datetime import datetime as dt
+            min_ts = dt.fromtimestamp(timestamps[0] / 1000)
+            max_ts = dt.fromtimestamp(timestamps[-1] / 1000)
+            logger.info(f"Saving {source} prediction: timestamps [{min_ts} to {max_ts}], {len(timestamps)} points")
 
     try:
         with data_registry.engine.connect() as conn:
@@ -518,17 +502,17 @@ def save_prediction(data_registry, model_id: str, message, source):
                 },
             )
             conn.commit()
-        print(f"[PREDICTION JOB] {model_id} - Prediction saved: {_id}", flush=True)
+        # print(f"[PREDICTION JOB] {model_id} - Prediction saved: {_id}", flush=True)
     except Exception as e:
         error_details = traceback.format_exc()
-        print(
-            f"[PREDICTION JOB] {model_id} - Failed to save prediction: {str(e)}",
-            flush=True,
-        )
-        print(
-            f"[PREDICTION JOB] {model_id} - Save traceback:\n{error_details}",
-            flush=True,
-        )
+        # print(
+        #     f"[PREDICTION JOB] {model_id} - Failed to save prediction: {str(e)}",
+        #     flush=True,
+        # )
+        # print(
+        #     f"[PREDICTION JOB] {model_id} - Save traceback:\n{error_details}",
+        #     flush=True,
+        # )
         add_model_log(model_id, "error", f"Failed to save prediction: {str(e)}")
         add_model_log(model_id, "error", f"Save traceback: {error_details}")
 
@@ -619,7 +603,7 @@ def save_prediction(data_registry, model_id: str, message, source):
 #         add_model_log(model_id, "error", f"Save traceback: {error_details}")
 
 
-def start_prediction_job(model_id: str, model_type: str, device_id: str = None) -> bool:
+def start_prediction_job(model_id: str, model_type: str, device_id: str = None, group_by_ms_per_sensor: dict = None, aggregation_funcs: dict = None) -> bool:
     """Start a prediction job for a model"""
     with job_lock:
         if model_id in active_jobs and active_jobs[model_id]["status"] == "running":
@@ -629,7 +613,7 @@ def start_prediction_job(model_id: str, model_type: str, device_id: str = None) 
         # Create job thread
         job_thread = threading.Thread(
             target=prediction_job_worker,
-            args=(model_id, model_type, device_id),
+            args=(model_id, model_type, device_id, group_by_ms_per_sensor, aggregation_funcs),
             daemon=True,
         )
 
@@ -672,7 +656,7 @@ def pause_prediction_job(model_id: str) -> bool:
 
         active_jobs[model_id]["paused"] = True
         add_model_log(model_id, "info", "Job paused")
-        print(f"[PREDICTION JOB] {model_id} - Job paused by user", flush=True)
+        # print(f"[PREDICTION JOB] {model_id} - Job paused by user", flush=True)
         return True
 
 
@@ -687,7 +671,7 @@ def unpause_prediction_job(model_id: str) -> bool:
 
         active_jobs[model_id]["paused"] = False
         add_model_log(model_id, "info", "Job resumed")
-        print(f"[PREDICTION JOB] {model_id} - Job resumed by user", flush=True)
+        # print(f"[PREDICTION JOB] {model_id} - Job resumed by user", flush=True)
         return True
 
 

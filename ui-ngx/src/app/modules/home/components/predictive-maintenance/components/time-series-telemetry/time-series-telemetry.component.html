@@ -27,8 +27,19 @@
           [noPadding]="true"
           [isEdit]="false"
           [(ngModel)]="timewindow"
-          (ngModelChange)="onTimewindowChanged($event)">
+          (ngModelChange)="onTimewindowChanged($event)"
+        >
         </tb-timewindow>
+        <button
+          *ngIf="timewindow?.history"
+          mat-icon-button
+          class="history-refresh-button"
+          [matTooltip]="'Refresh saved predictions'"
+          matTooltipPosition="above"
+          (click)="refreshHistoryPredictions()"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
       </div>
       <div class="sensor-selector" *ngIf="availableSensors.length > 0">
         <button
@@ -36,7 +47,8 @@
           class="sensor-selector-button"
           [matTooltip]="'Select sensor: ' + (selectedSensor | titlecase)"
           matTooltipPosition="above"
-          [matMenuTriggerFor]="sensorMenu">
+          [matMenuTriggerFor]="sensorMenu"
+        >
           <mat-icon>sensors</mat-icon>
           <span class="sensor-name-text">{{ selectedSensor | titlecase }}</span>
         </button>
@@ -45,9 +57,12 @@
             mat-menu-item
             *ngFor="let sensor of availableSensors"
             (click)="selectSensor(sensor)"
-            [class.selected]="selectedSensor === sensor">
+            [class.selected]="selectedSensor === sensor"
+          >
             <mat-icon *ngIf="selectedSensor === sensor">check</mat-icon>
-            <span [style.margin-left]="selectedSensor === sensor ? '0' : '24px'">
+            <span
+              [style.margin-left]="selectedSensor === sensor ? '0' : '24px'"
+            >
               {{ sensor | titlecase }}
             </span>
           </button>

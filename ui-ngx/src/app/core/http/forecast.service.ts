@@ -55,7 +55,7 @@ export class PredictiveModelsService {
    * @param config - Optional HTTP request config
    * @returns Observable with predictions array and totalCount
    */
-  fetchANomalyHistoryPredictions(
+  fetchHistoryPredictions(
     modelId: string,
     predictionType: string,
     startTs?: number,

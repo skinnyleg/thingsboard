@@ -39,6 +39,8 @@ export const ForecastStatusTranslationMap = new Map<ForecastStatus, string>([
 
 export interface ForecastAttribute {
   key: string;
+  aggregation?: string; // 'average', 'min', 'max'
+  groupByMs?: number; // grouping interval in milliseconds
 }
 
 export interface Forecast extends BaseData<ForecastId> {

@@ -127,10 +127,32 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   // Algorithm form controls
   forecastAlgorithmControl = new FormControl('', Validators.required);
 
-  // Grouping/scheduling control for timeseries aggregation (hourly/daily/etc.)
-  forecastGroupingControl = new FormControl('hourly');
-
   anomaliesAlgorithmControl = new FormControl('', Validators.required);
+
+  // Aggregation options for per-sensor data aggregation
+  aggregationOptions = [
+    { value: 'average', label: 'Average' },
+    { value: 'min', label: 'Minimum' },
+    { value: 'max', label: 'Maximum' },
+  ];
+
+  // Group by interval options (in milliseconds)
+  groupByOptions = [
+    { value: 5000, label: '5 Seconds' },           // 5 sec
+    { value: 30000, label: '30 Seconds' },         // 30 sec
+    { value: 60000, label: '1 Minute' },           // 1 min
+    { value: 300000, label: '5 Minutes' },         // 5 min
+    { value: 900000, label: '15 Minutes' },        // 15 min
+    { value: 1800000, label: '30 Minutes' },       // 30 min
+    { value: 3600000, label: '1 Hour' },           // 1 hr (default)
+    { value: 7200000, label: '2 Hours' },          // 2 hr
+    { value: 21600000, label: '6 Hours' },         // 6 hr
+    { value: 43200000, label: '12 Hours' },        // 12 hr
+    { value: 86400000, label: '24 Hours' },        // 24 hr
+  ];
+
+  // Track which fields are using custom time input
+  customTimeFields: { [key: number]: { hours: number; minutes: number; seconds: number } } = {};
 
   // Algorithm options
   forecastAlgorithmOptions = [
@@ -145,15 +167,6 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     { value: 'prophet', label: 'Prophet' },
     { value: 'sarima', label: 'SARIMA (Seasonal ARIMA)' },
     { value: 'random_forest', label: 'Random Forest' },
-  ];
-
-  // Grouping options for scheduling/aggregation
-  forecastGroupingOptions = [
-    { value: 'minute', label: 'Minute' },
-    { value: 'hourly', label: 'Hourly' },
-    { value: 'daily', label: 'Daily' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
   ];
 
   anomaliesAlgorithmOptions = [
@@ -543,7 +556,16 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   // Add a new field with telemetry autocomplete
   addField(): void {
     if (this.canAddField) {
-      this.fields.push({ key: '', startDate: null, endDate: null });
+      // Default to 5 second grouping (5000 ms)
+      const groupByMs = 5000;
+
+      this.fields.push({
+        key: '',
+        startDate: null,
+        endDate: null,
+        aggregation: 'average', // Default aggregation
+        groupByMs, // Default grouping
+      });
     }
   }
 
@@ -558,6 +580,54 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
 
   removeField(index: number): void {
     this.fields.splice(index, 1);
+    // Clean up custom time fields tracking
+    delete this.customTimeFields[index];
+  }
+
+  // Check if field is using custom time
+  isCustomTime(index: number): boolean {
+    return this.customTimeFields[index] !== undefined;
+  }
+
+  // Toggle between preset and custom time input
+  toggleCustomTime(index: number): void {
+    if (this.isCustomTime(index)) {
+      // Switch back to preset - use current groupByMs or default to 1 hour
+      const currentMs = this.fields[index].groupByMs;
+      // Check if current value matches a preset
+      const matchingPreset = this.groupByOptions.find(opt => opt.value === currentMs);
+      if (!matchingPreset) {
+        // If no match, default to 1 hour
+        this.fields[index].groupByMs = 3600000;
+      }
+      delete this.customTimeFields[index];
+    } else {
+      // Switch to custom time - initialize from current groupByMs
+      const currentMs = this.fields[index].groupByMs || 3600000;
+      const hours = Math.floor(currentMs / 3600000);
+      const minutes = Math.floor((currentMs % 3600000) / 60000);
+      const seconds = Math.floor((currentMs % 60000) / 1000);
+      this.customTimeFields[index] = { hours, minutes, seconds };
+    }
+  }
+
+  // Update groupByMs when custom time inputs change
+  updateCustomTime(index: number): void {
+    const custom = this.customTimeFields[index];
+    if (custom) {
+      const hours = Math.max(0, Math.min(23, custom.hours || 0));
+      const minutes = Math.max(0, Math.min(59, custom.minutes || 0));
+      const seconds = Math.max(0, Math.min(59, custom.seconds || 0));
+
+      // Update the actual values to clamped values
+      this.customTimeFields[index] = { hours, minutes, seconds };
+
+      // Calculate total milliseconds
+      this.fields[index].groupByMs =
+        (hours * 3600000) +
+        (minutes * 60000) +
+        (seconds * 1000);
+    }
   }
 
   onCancel(): void {
@@ -612,25 +682,21 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
     }
     const deviceId = this.selectedDevice.id;
 
-    // If device telemetry keys are available, send all of them as attributes
-    // otherwise fall back to any user-selected fields
-    let attributes: { key: string }[] = [];
-    if (this.availableTelemetry && this.availableTelemetry.length > 0) {
-      attributes = this.availableTelemetry.map((k) => ({ key: k }));
-    } else {
-      attributes = this.fields
-        .filter((field) => field.key && field.key.trim() !== '')
-        .map((el) => ({ key: el.key }));
-    }
+    // Only use manually added fields (sensors) - no auto-detection
+    const attributes: { key: string; aggregation: string; groupByMs: number }[] = this.fields
+      .filter((field) => field.key && field.key.trim() !== '')
+      .map((el) => ({
+        key: el.key,
+        aggregation: el.aggregation || 'average',
+        groupByMs: el.groupByMs || 5000, // Use field-specific grouping or default to 5 seconds
+      }));
 
     const forecastData: ForecastCreate = {
       name: this.forecastNameControl.value,
       deviceId,
       attributes,
       forecastAlgorithm: this.forecastAlgorithmControl.value,
-      additionalData: JSON.stringify({
-        forecastGrouping: this.forecastGroupingControl.value
-      }),
+      additionalData: JSON.stringify({}),
       anomalyAlgorithm: this.anomaliesAlgorithmControl.value,
       forecastStartDate: this.globalStartDate.getTime(),
       forecastEndDate: this.globalEndDate.getTime(),
@@ -731,22 +797,42 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
       const attributeKeys = this.editingForecast.attributesText
         .split(', ')
         .filter((key) => key.trim());
-      this.fields = attributeKeys.map((key) => ({
-        key: key.trim(),
-        startDate: null,
-        endDate: null,
-      }));
+      this.fields = attributeKeys.map((key, index: number) => {
+        const groupByMs = 3600000; // Default to hourly for legacy models
+        return {
+          key: key.trim(),
+          startDate: null,
+          endDate: null,
+          aggregation: 'average', // Default aggregation for existing models
+          groupByMs, // Default to hourly
+        };
+      });
       // Store original attributes for change detection
       this.originalAttributes = attributeKeys.map((key) => key.trim());
     } else if (
       this.editingForecast.attributes &&
       Array.isArray(this.editingForecast.attributes)
     ) {
-      this.fields = this.editingForecast.attributes.map((attr: any) => ({
-        key: attr.key || attr,
-        startDate: null,
-        endDate: null,
-      }));
+      this.fields = this.editingForecast.attributes.map((attr: any, index: number) => {
+        const groupByMs = attr.groupByMs || 3600000;
+        // Check if this groupByMs is in the preset options
+        const isPresetOption = this.groupByOptions.some(opt => opt.value === groupByMs && opt.value !== -1);
+        const fieldData = {
+          key: attr.key || attr,
+          startDate: null,
+          endDate: null,
+          aggregation: attr.aggregation || 'average',
+          groupByMs, // Keep the actual value
+        };
+        if (!isPresetOption) {
+          // Initialize custom time for this field
+          const hours = Math.floor(groupByMs / 3600000);
+          const minutes = Math.floor((groupByMs % 3600000) / 60000);
+          const seconds = Math.floor((groupByMs % 60000) / 1000);
+          this.customTimeFields[index] = { hours, minutes, seconds };
+        }
+        return fieldData;
+      });
       // Store original attributes for change detection
       this.originalAttributes = this.editingForecast.attributes.map((attr: any) => attr.key || attr);
     }
@@ -812,12 +898,6 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
           'Forecast algorithm control value after setting:',
           this.forecastAlgorithmControl.value
         );
-      }
-
-      // Populate grouping if present in edit data
-      const groupingVal = this.editingForecast.forecastGrouping || this.editingForecast.grouping;
-      if (groupingVal) {
-        this.forecastGroupingControl.setValue(groupingVal);
       }
 
       const anomalyAlg =

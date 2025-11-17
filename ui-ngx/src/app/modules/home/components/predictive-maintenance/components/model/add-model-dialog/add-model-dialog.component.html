@@ -145,8 +145,8 @@
         Select time-series keys (ts_kv) from the database for specific
         forecasting, or proceed without them for general model creation.
       </p>
-      <div *ngFor="let field of fields; let i = index">
-        <div class="field">
+      <div *ngFor="let field of fields; let i = index" class="field-wrapper">
+        <div class="field-header">
           <!-- Button to remove the field -->
           <button
             mat-icon-button
@@ -156,26 +156,146 @@
           >
             <mat-icon>remove_circle</mat-icon>
           </button>
-
-          <!-- Select dropdown for telemetry keys from database -->
-          <mat-label>Time-Series Key {{ i + 1 }}:</mat-label>
-          <mat-form-field appearance="outline" class="input-field">
-            <mat-select
-              [(ngModel)]="field.key"
-              placeholder="Select from database"
-              [attr.aria-label]="'Time-series key ' + (i + 1) + ' selection'"
-            >
-              <mat-option
-                *ngFor="let telemetry of getFilteredTelemetry(i)"
-                [value]="telemetry"
-              >
-                {{ telemetry }}
-              </mat-option>
-            </mat-select>
-            <mat-hint> Select from available ts_kv keys in database </mat-hint>
-          </mat-form-field>
+          <span class="field-title">Time-Series Key {{ i + 1 }}</span>
         </div>
+
+        <div class="field-row">
+          <!-- Select dropdown for telemetry keys from database -->
+          <div class="field-item">
+            <mat-label>Sensor Name:</mat-label>
+            <mat-form-field appearance="outline" class="input-field">
+              <mat-select
+                [(ngModel)]="field.key"
+                placeholder="Select from database"
+                [attr.aria-label]="'Time-series key ' + (i + 1) + ' selection'"
+              >
+                <mat-option
+                  *ngFor="let telemetry of getFilteredTelemetry(i)"
+                  [value]="telemetry"
+                >
+                  {{ telemetry }}
+                </mat-option>
+              </mat-select>
+              <mat-hint>
+                Select from available ts_kv keys in database
+              </mat-hint>
+            </mat-form-field>
+          </div>
+
+          <!-- Aggregation function dropdown for this sensor -->
+          <div class="field-item">
+            <mat-label>Aggregation Function:</mat-label>
+            <mat-form-field appearance="outline" class="input-field">
+              <mat-select
+                [(ngModel)]="field.aggregation"
+                placeholder="Select aggregation function"
+                [attr.aria-label]="'Aggregation function for ' + (i + 1)"
+              >
+                <mat-option
+                  *ngFor="let agg of aggregationOptions"
+                  [value]="agg.value"
+                >
+                  {{ agg.label }}
+                </mat-option>
+              </mat-select>
+              <mat-hint>
+                How to aggregate data points within time intervals
+              </mat-hint>
+            </mat-form-field>
+          </div>
+
+          <!-- Group By interval dropdown for this sensor -->
+          <div class="field-item">
+            <div class="group-by-header">
+              <mat-label>Group By Interval:</mat-label>
+              <button
+                mat-button
+                class="advanced-button"
+                (click)="toggleCustomTime(i)"
+                type="button"
+                [attr.aria-label]="
+                  'Toggle advanced time input for field ' + (i + 1)
+                "
+              >
+                <mat-icon>{{
+                  isCustomTime(i) ? "arrow_back" : "schedule"
+                }}</mat-icon>
+                {{ isCustomTime(i) ? "Presets" : "Advanced" }}
+              </button>
+            </div>
+            <mat-form-field
+              appearance="outline"
+              class="input-field"
+              *ngIf="!isCustomTime(i)"
+            >
+              <mat-select
+                [(ngModel)]="field.groupByMs"
+                placeholder="Select time interval"
+                [attr.aria-label]="'Group by interval for ' + (i + 1)"
+              >
+                <mat-option
+                  *ngFor="let groupBy of groupByOptions"
+                  [value]="groupBy.value"
+                >
+                  {{ groupBy.label }}
+                </mat-option>
+              </mat-select>
+              <mat-hint> Time interval for data grouping </mat-hint>
+            </mat-form-field>
+
+            <!-- Custom time inputs (inline when Advanced is selected) -->
+            <div *ngIf="isCustomTime(i)" class="custom-time-inline">
+              <div class="custom-time-inputs">
+                <mat-form-field appearance="outline" class="time-input">
+                  <mat-label>Hours</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="0"
+                    max="23"
+                    [(ngModel)]="customTimeFields[i].hours"
+                    (ngModelChange)="updateCustomTime(i)"
+                    placeholder="0-23"
+                    [attr.aria-label]="'Hours for field ' + (i + 1)"
+                  />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="time-input">
+                  <mat-label>Minutes</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="0"
+                    max="59"
+                    [(ngModel)]="customTimeFields[i].minutes"
+                    (ngModelChange)="updateCustomTime(i)"
+                    placeholder="0-59"
+                    [attr.aria-label]="'Minutes for field ' + (i + 1)"
+                  />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="time-input">
+                  <mat-label>Seconds</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="0"
+                    max="59"
+                    [(ngModel)]="customTimeFields[i].seconds"
+                    (ngModelChange)="updateCustomTime(i)"
+                    placeholder="0-59"
+                    [attr.aria-label]="'Seconds for field ' + (i + 1)"
+                  />
+                </mat-form-field>
+              </div>
+              <mat-hint class="custom-hint"
+                >Specify custom time interval using hours, minutes, and
+                seconds</mat-hint
+              >
+            </div>
+          </div>
+        </div>
+        <!-- End of field-row -->
       </div>
+      <!-- End of field wrapper -->
 
       <!-- Button to add a new field -->
       <button
@@ -291,23 +411,6 @@
           >
             Please select a forecast algorithm
           </mat-error>
-        </mat-form-field>
-      </div>
-
-      <div fxFlex="240px" class="grouping-select">
-        <mat-label>Grouping / Schedule:</mat-label>
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-select
-            [formControl]="forecastGroupingControl"
-            [attr.aria-label]="'Forecast grouping selection'"
-          >
-            <mat-option
-              *ngFor="let grp of forecastGroupingOptions"
-              [value]="grp.value"
-              >{{ grp.label }}</mat-option
-            >
-          </mat-select>
-          <mat-hint>How to group time-series when scheduling</mat-hint>
         </mat-form-field>
       </div>
     </div>

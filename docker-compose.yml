@@ -27,7 +27,15 @@ services:
       - "-c"
       - "work_mem=16MB"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready", "-d", "${POSTGRES_DB}", "-U", "${POSTGRES_USER}" ]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready",
+          "-d",
+          "${POSTGRES_DB}",
+          "-U",
+          "${POSTGRES_USER}",
+        ]
       interval: 2m
       timeout: 30s
       retries: 3
@@ -60,20 +68,20 @@ services:
   #   networks:
   #     - thingsboard
 
-  # ws-events:
-  #   build:
-  #     context: ./send-telemetry/
-  #     dockerfile: ws-events.Dockerfile
-  #   container_name: ws-events
-  #   mem_limit: 512m
-  #   cpus: 0.5
-  #   depends_on:
-  #     thingsboard:
-  #       condition: service_healthy
-  #   networks:
-  #     - thingsboard
-  #   volumes:
-  #     - application_source_code:/app
+  ws-events:
+    build:
+      context: ./send-telemetry/
+      dockerfile: ws-events.Dockerfile
+    container_name: ws-events
+    mem_limit: 512m
+    cpus: 0.5
+    depends_on:
+      thingsboard:
+        condition: service_healthy
+    networks:
+      - thingsboard
+    volumes:
+      - application_source_code:/app
 
   # dashboard-script:
   #   build:
@@ -93,9 +101,9 @@ services:
       context: ./predictive-maintenance
       dockerfile: .Dockerfile
     container_name: model
-    mem_limit: 4g
-    mem_reservation: 1g
-    cpus: 2.0
+    mem_limit: 2g
+    mem_reservation: 512mb
+    cpus: 0.75
     volumes:
       - application_source_code:/app
       - application_pip_cache:/root/.cache/pip
@@ -107,7 +115,7 @@ services:
     networks:
       - thingsboard
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8000/health || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 2m
       timeout: 10s
       retries: 3
@@ -125,6 +133,7 @@ services:
       - MODELS_PATH=/models
       - AUTO_START_PREDICTION_JOBS=${AUTO_START_PREDICTION_JOBS:-false}
       - ENABLE_FILE_WATCH=false
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
 
   thingsboard:
     container_name: thingsboard
@@ -152,7 +161,7 @@ services:
       model:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8080 || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: 2m
       timeout: 10s
       retries: 3
@@ -181,8 +190,8 @@ services:
       dockerfile: .Dockerfile
     container_name: thingsboard-dev
     mem_limit: 10g
-    mem_reservation: 2g
-    cpus: 2.0
+    mem_reservation: 1g
+    cpus: 1.0
     volumes:
       - application_source_code:/app
       - application_npm_cache:/root/.npm
@@ -206,7 +215,7 @@ services:
       # Reduce TypeScript compilation overhead
       - NG_BUILD_CACHE=.angular/cache
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:4200 || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:4200 || exit 1"]
       interval: 3m
       timeout: 30s
       retries: 3

@@ -350,10 +350,8 @@ CREATE TABLE IF NOT EXISTS predictions (
     model_id UUID NOT NULL REFERENCES predictive_maintenance_config (id) ON DELETE CASCADE,
     created_time BIGINT NOT NULL, -- ThingsBoard standard created_time in epoch milliseconds
     created_at TIMESTAMP DEFAULT NOW(),
-
     prediction_time TIMESTAMP NOT NULL DEFAULT NOW(),
     prediction_type VARCHAR(100) NOT NULL, -- Anomaly, Forecast, Failure
-
     prediction_value JSONB
 );
 

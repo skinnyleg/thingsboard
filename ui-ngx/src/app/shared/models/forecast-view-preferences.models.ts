@@ -15,18 +15,20 @@
 ///
 
 export enum ForecastViewType {
-  FORECAST = "forecast",
-  ANOMALIES = "anomalies",
+  FORECAST = 'forecast',
+  ANOMALIES = 'anomalies',
 }
 
 export interface ForecastViewPreferences {
   selectedViews: ForecastViewType[];
   selectedSensor?: string; // Currently selected sensor for forecast chart (e.g., 'rotate', 'pressure', 'vibration', 'volt')
+  hideSensorTelemetry?: boolean; // Hide sensor telemetry widget
 }
 
 export const DEFAULT_VIEW_PREFERENCES: ForecastViewPreferences = {
   selectedViews: [ForecastViewType.FORECAST, ForecastViewType.ANOMALIES],
   selectedSensor: 'rotate', // Default to first sensor
+  hideSensorTelemetry: false, // Show sensor telemetry by default
 };
 
 export function parseForecastViewPreferences(
@@ -41,18 +43,18 @@ export function parseForecastViewPreferences(
 
     // Handle legacy format where selectedView was a single string
     if (parsed.selectedView) {
-      if (parsed.selectedView === "both") {
+      if (parsed.selectedView === 'both') {
         return {
           selectedViews: [
             ForecastViewType.FORECAST,
             ForecastViewType.ANOMALIES,
           ],
         };
-      } else if (parsed.selectedView === "forecast") {
+      } else if (parsed.selectedView === 'forecast') {
         return {
           selectedViews: [ForecastViewType.FORECAST],
         };
-      } else if (parsed.selectedView === "anomalies") {
+      } else if (parsed.selectedView === 'anomalies') {
         return {
           selectedViews: [ForecastViewType.ANOMALIES],
         };
@@ -66,12 +68,15 @@ export function parseForecastViewPreferences(
           Object.values(ForecastViewType).includes(view)
         ),
         selectedSensor: parsed.selectedSensor || DEFAULT_VIEW_PREFERENCES.selectedSensor,
+        hideSensorTelemetry: parsed.hideSensorTelemetry !== undefined
+          ? parsed.hideSensorTelemetry
+          : DEFAULT_VIEW_PREFERENCES.hideSensorTelemetry,
       };
     }
 
     return DEFAULT_VIEW_PREFERENCES;
   } catch (error) {
-    console.warn("Failed to parse forecast view preferences:", error);
+    console.warn('Failed to parse forecast view preferences:', error);
     return DEFAULT_VIEW_PREFERENCES;
   }
 }
@@ -82,7 +87,7 @@ export function stringifyForecastViewPreferences(
   try {
     return JSON.stringify(preferences);
   } catch (error) {
-    console.warn("Failed to stringify forecast view preferences:", error);
+    console.warn('Failed to stringify forecast view preferences:', error);
     return JSON.stringify(DEFAULT_VIEW_PREFERENCES);
   }
 }

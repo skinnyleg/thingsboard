@@ -14,24 +14,19 @@ MODEL_PATH = settings.models_path + "/model.h5"
 
 # Try to load model, but don't fail if it's not available
 import os
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 model = None
 try:
     if os.path.exists(MODEL_PATH):
         model = load_model(MODEL_PATH)
-        print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
-        print(f"Model loaded successfully from {MODEL_PATH}")
-    else:
-        print(f"Warning: Model file not found at {MODEL_PATH}. Predictions will not be available.")
 except Exception as e:
-    print(f"Warning: Failed to load model: {e}. Predictions will not be available.")
+    pass
 
 scaler = MinMaxScaler()
 
-import logging
-
-logger = logging.getLogger("uvicorn.debug")
+from src.logger import logger  # Global logger
 
 
 def create_feature(df: pd.DataFrame):
@@ -108,9 +103,7 @@ def predict(tm_data: Data, forecastWindow: int) -> Data:
         logger.warning(f"Exception: {e}")
         return recursive_pred
     recursive_pred["pressure"] = (
-        scaler.inverse_transform(np.array(recursive_pred["pressure"]))
-        .flatten()
-        .tolist()
+        scaler.inverse_transform(np.array(recursive_pred["pressure"])).flatten().tolist()
     )
     current_date = df["datetime"].iloc[-1]
     for _ in range(0, forecastWindow):

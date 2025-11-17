@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-cat << 'EOF'
+cat <<'EOF'
 ============================================================
     PREDICTIVE MAINTENANCE MODEL SERVICE
 ============================================================
@@ -10,7 +10,7 @@ EOF
 
 # Check if ENABLE_FILE_WATCH is set to true (case-insensitive)
 if [ "${ENABLE_FILE_WATCH,,}" = "true" ]; then
-    cat << 'EOF'
+  cat <<'EOF'
   MODE: DEVELOPMENT
   FILE WATCHING: ENABLED
   Auto-reload on code changes: YES
@@ -21,9 +21,9 @@ if [ "${ENABLE_FILE_WATCH,,}" = "true" ]; then
 ============================================================
 
 EOF
-    exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+  exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level warning --no-access-log
 else
-    cat << 'EOF'
+  cat <<'EOF'
   MODE: PRODUCTION
   FILE WATCHING: DISABLED
   Auto-reload on code changes: NO
@@ -34,5 +34,5 @@ else
 ============================================================
 
 EOF
-    exec uvicorn main:app --host 0.0.0.0 --port 8000 --log-level debug
+  exec uvicorn main:app --host 0.0.0.0 --port 8000 --log-level warning --no-access-log
 fi

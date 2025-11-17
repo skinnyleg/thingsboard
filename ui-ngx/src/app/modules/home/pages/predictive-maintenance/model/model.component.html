@@ -179,10 +179,11 @@
   <!-- Charts Container - Side by Side -->
   <div class="charts-container">
     <!-- Time Series Telemetry Section with Collapse Button -->
+    <!-- Sensor telemetry visibility is controlled independently via hideSensorTelemetry -->
     <div
       class="chart-section"
       [class.collapsed]="timeSeriesChartCollapsed"
-      *ngIf="shouldShowForecastChart()"
+      *ngIf="!hideSensorTelemetry"
     >
       <div
         class="section-header"
@@ -221,107 +222,14 @@
           [deviceId]="deviceId"
           [selectedSensor]="selectedSensor"
           [forecastData]="forecastData"
+          [historyPredictions]="historyForecastPredictions"
           [forecastMaxSteps]="forecastMaxSteps"
+          [modelId]="trueId"
+          [forecastHistoryPoint$]="forecastHistoryPoint$"
           [title]="'Live Sensor Data'"
           (sensorChanged)="onSensorChanged($event)"
         >
         </tb-time-series-telemetry>
-      </div>
-    </div>
-
-    <!-- Forecast Chart Section with Collapse Button -->
-    <div
-      class="chart-section"
-      [class.collapsed]="forecastChartCollapsed"
-      *ngIf="shouldShowForecastChart()"
-    >
-      <div
-        class="section-header"
-        (click)="toggleForecastChart()"
-        role="button"
-        [attr.aria-expanded]="!forecastChartCollapsed"
-        aria-label="Toggle forecast chart section"
-      >
-        <button
-          mat-icon-button
-          class="collapse-btn"
-          (click)="$event.stopPropagation(); toggleForecastChart()"
-          [matTooltip]="
-            forecastChartCollapsed
-              ? 'Expand forecast chart'
-              : 'Collapse forecast chart'
-          "
-          matTooltipPosition="right"
-          [attr.aria-expanded]="!forecastChartCollapsed"
-          aria-label="Toggle forecast chart visibility"
-        >
-          <mat-icon>{{
-            forecastChartCollapsed ? "chevron_right" : "expand_more"
-          }}</mat-icon>
-        </button>
-        <h3 class="section-title">
-          <mat-icon class="section-icon">trending_up</mat-icon>
-          Forecast
-          <span class="algorithm-label" *ngIf="forecastAlgorithm">{{
-            forecastAlgorithm
-          }}</span>
-        </h3>
-        <button
-          mat-icon-button
-          (click)="pauseForecastJob(); $event.stopPropagation()"
-          [disabled]="!trueId"
-          class="section-pause-button"
-          matTooltip="Pause forecast predictions"
-          matTooltipPosition="left"
-          *ngIf="!forecastJobPaused"
-        >
-          <mat-icon>pause_circle</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          (click)="unpauseForecastJob(); $event.stopPropagation()"
-          [disabled]="!trueId"
-          class="section-unpause-button"
-          matTooltip="Resume forecast predictions"
-          matTooltipPosition="left"
-          *ngIf="forecastJobPaused"
-        >
-          <mat-icon>play_circle</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          (click)="$event.stopPropagation(); openForecastLogsDialog()"
-          [disabled]="!trueId"
-          class="section-logs-button"
-          matTooltip="View forecast logs"
-          matTooltipPosition="left"
-        >
-          <mat-icon>description</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          (click)="$event.stopPropagation(); openForecastStatsDialog()"
-          [disabled]="!trueId"
-          class="section-stats-button"
-          matTooltip="View forecast training stats"
-          matTooltipPosition="left"
-        >
-          <mat-icon>info_outline</mat-icon>
-        </button>
-      </div>
-      <div
-        class="chart-content"
-        [@slideCollapse]="forecastChartCollapsed ? 'collapsed' : 'expanded'"
-      >
-        <tb-forecast-chart
-          [deviceId]="deviceId"
-          [Attributes]="Attributes"
-          [forecastId]="trueId"
-          [forecastData]="forecastData"
-          [forecastMaxSteps]="forecastMaxSteps"
-          [selectedSensor]="selectedSensor"
-          (sensorChanged)="onSensorChanged($event)"
-        ></tb-forecast-chart>
       </div>
     </div>
   </div>
@@ -403,7 +311,7 @@
 <!-- Floating View Selector Menu -->
 <div class="view-selector-floating-menu" *ngIf="showViewSelector">
   <div class="view-selector-overlay" (click)="showViewSelector = false"></div>
-  <div class="view-selector-checkboxes">
+  <div class="view-selector-checkboxes" (click)="$event.stopPropagation()">
     <div class="menu-header">
       <h4>Select Views</h4>
       <button
@@ -415,7 +323,11 @@
       </button>
     </div>
     <div class="view-options">
-      <div class="view-option" *ngFor="let option of viewOptions">
+      <div
+        class="view-option"
+        *ngFor="let option of viewOptions"
+        (click)="$event.stopPropagation()"
+      >
         <mat-checkbox
           [checked]="isViewSelected(option.value)"
           (change)="toggleView(option.value, $event.checked)"
