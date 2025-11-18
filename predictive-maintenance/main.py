@@ -23,14 +23,18 @@ from dotenv import load_dotenv
 from src.settings import settings
 from src.logger import logger  # Global logger
 import pandas as pd
+from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
+from src.model.shared import get_data_registry
+from src.model.job import start_prediction_job, add_model_log
+from sqlalchemy import text
+from library.core.data_registry import DataRegistry
+import traceback
+
 
 pd.set_option("display.max_columns", None)
-
-
 # Load environment variables from .env file
 load_dotenv()
-
-from fastapi.middleware.cors import CORSMiddleware
 
 # Ensure the models directory exists
 os.makedirs(settings.models_path, exist_ok=True)
@@ -60,14 +64,11 @@ app.include_router(model_router)
 app.include_router(notify_router)
 
 # Log startup with current log level
-import logging
-current_log_level = logging.getLevelName(logger.level)
-logger.info(f"Predictive Maintenance Service Starting (Log Level: {current_log_level})")
+logger.info(f"Predictive Maintenance Service Starting")
 
 
 @app.on_event("startup")
 async def startup_event():
-    return
     """
     Startup event handler: Auto-start prediction jobs for trained models
     """
@@ -79,13 +80,6 @@ async def startup_event():
             flush=True,
         )
         return
-    import logging
-    from pathlib import Path
-    from src.model.shared import get_data_registry
-    from src.model.job import start_prediction_job, add_model_log
-    from sqlalchemy import text
-
-    logger = logging.getLogger(__name__)
     print("=" * 80, flush=True)
     print("STARTUP: Auto-starting prediction jobs for trained models", flush=True)
     print("=" * 80, flush=True)
@@ -347,8 +341,6 @@ async def startup_event():
 
     except Exception as e:
         print(f"STARTUP: Failed to auto-start prediction jobs: {str(e)}", flush=True)
-        import traceback
-
         print(f"STARTUP: Traceback:\n{traceback.format_exc()}", flush=True)
         logger.error(f"STARTUP: Failed to auto-start prediction jobs: {str(e)}")
         logger.error(f"STARTUP: Traceback:\n{traceback.format_exc()}")
@@ -357,9 +349,6 @@ async def startup_event():
 @app.get("/health")
 def health_check():
     """Health check endpoint for container monitoring"""
-    import os
-    from library.core.data_registry import DataRegistry
-
     status = {
         "status": "healthy",
         "service": "predictive-maintenance",

@@ -174,7 +174,9 @@ class ForecastModel(BaseModel):
         for sensor, df in data.items():
             if "datetime" in df.columns and not df.empty:
                 self.last_fetched_date = df["datetime"].max()
-                logger.info(f"[FETCH_LATEST] Updated last_fetched_date for {sensor}: {self.last_fetched_date}")
+                logger.info(
+                    f"[FETCH_LATEST] Updated last_fetched_date for {sensor}: {self.last_fetched_date}"
+                )
 
         for sensor, df in data.items():
             self.models[sensor]["data"] = df
@@ -402,7 +404,9 @@ class ForecastModel(BaseModel):
 
                 # Check if we got any samples
                 if len(test_x) == 0:
-                    logger.warning(f"[PREDICT] {sensor_key}: Skipping - insufficient data for lookback window")
+                    logger.warning(
+                        f"[PREDICT] {sensor_key}: Skipping - insufficient data for lookback window"
+                    )
                     continue
 
                 test_x = np.reshape(test_x, (test_x.shape[0], 1, test_x.shape[1]))
@@ -418,14 +422,18 @@ class ForecastModel(BaseModel):
 
                 max_timestamp = sensor_df["datetime"].max()
                 min_timestamp = sensor_df["datetime"].min()
-                
+
                 # Log timestamp range for debugging
-                logger.info(f"{sensor_key}: INPUT data range [{min_timestamp} to {max_timestamp}], {len(sensor_df)} points")
+                logger.info(
+                    f"{sensor_key}: INPUT data range [{min_timestamp} to {max_timestamp}], {len(sensor_df)} points"
+                )
 
                 # Store the last real timestamp for this sensor (in milliseconds)
                 self.last_real_timestamps[sensor_key] = int(max_timestamp.timestamp() * 1000)
-                
-                logger.info(f"{sensor_key}: last_real_timestamp stored = {max_timestamp} ({self.last_real_timestamps[sensor_key]} ms)")
+
+                logger.info(
+                    f"{sensor_key}: last_real_timestamp stored = {max_timestamp} ({self.last_real_timestamps[sensor_key]} ms)"
+                )
 
                 results[sensor_key] = {}
 

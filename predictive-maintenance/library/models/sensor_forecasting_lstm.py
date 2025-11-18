@@ -54,6 +54,9 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 import tensorflow as tf
 
+# Global logger setup
+from src.logger import logger
+
 # Set plot style
 plt.style.use("fivethirtyeight")
 
@@ -429,18 +432,18 @@ def train_lstm_model(
     Returns:
         Trained model
     """
+
     if use_optimized_pipeline:
-        # Split data for validation manually since tf.data doesn't support validation_split
+        logger.info("Using optimized tf.data pipeline for training.")
         split_idx = int(len(train_x) * (1 - validation_split))
         train_x_split = train_x[:split_idx]
         train_y_split = train_y[:split_idx]
         val_x_split = train_x[split_idx:]
         val_y_split = train_y[split_idx:]
 
-        # Check if GPU is available
         gpu_available = len(tf.config.list_physical_devices("GPU")) > 0
+        logger.info(f"GPU available: {gpu_available}")
 
-        # Create optimized datasets
         train_dataset = create_optimized_dataset(
             train_x_split,
             train_y_split,
@@ -457,19 +460,24 @@ def train_lstm_model(
             use_gpu=gpu_available,
         )
 
-        # Train with optimized pipeline on GPU
-        model.fit(train_dataset, validation_data=val_dataset, epochs=epochs, verbose=0)
+        logger.info(
+            f"Training samples: {len(train_x_split)}, Validation samples: {len(val_x_split)}"
+        )
+        model.fit(train_dataset, validation_data=val_dataset, epochs=epochs, verbose=1)
+        logger.info("Model training completed using optimized pipeline.")
     else:
-        # Fallback to standard training (slower)
+        logger.info("Using standard training pipeline.")
         model.fit(
             train_x,
             train_y,
             epochs=epochs,
             batch_size=batch_size,
             validation_split=validation_split,
-            verbose=0,
+            verbose=1,
         )
+        logger.info("Model training completed using standard pipeline.")
 
+    logger.info("train_lstm_model finished.")
     return model
 
 

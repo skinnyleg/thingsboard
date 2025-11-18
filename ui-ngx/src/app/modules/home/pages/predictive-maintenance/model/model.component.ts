@@ -491,17 +491,20 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
       // Extract result from the message
       // Expected structure:
       // {
-      //     "level": "FORECAST_HISTORY",
+      //     "level": "PREDICTION",
       //     "message": {
       //         "device_id": "3f41e590-b890-11f0-a275-a13bd5e488b9",
       //         "iteration": 1,
+      //         "prediction_type": "forecast",
       //         "recent_point_ts": 1709654400000,
       //         "result": {
-      //             "prediction_info": {...},
-      //             "sensor_name": {
-      //                 "forecast": [value],
-      //                 "timestamp": [ts]
-      //             }
+      //             "prediction_info": {
+      //                "group_by_period_ms": 5000,
+      //                "recent_recent_ts": 1763487178717,
+      //             },
+      //             "timestamp": [],
+      //             "forecast": [],
+      //             "sensor": "rotate",
       //         }
       //     },
       //     "timestamp": "2025-11-10T14:11:02.747464Z",
@@ -511,56 +514,39 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
       console.log('[MODEL] Received forecast prediction log:', log.message.prediction_type);
 
       if (log.message.prediction_type === 'forecast') {
-      //   console.log(
-      // '[MODEL] Processing forecast prediction log:', log
-      //   );
-      const results = log.message.result as ForecastSensorPrediction;
+        //   console.log(
+        // '[MODEL] Processing forecast prediction log:', log
+        //   );
+        const results = log.message.result as ForecastSensorPrediction;
 
-      if (results) {
-        // Extract prediction_info for calculating forecast history points
-        const predictionInfo = (results as any).prediction_info;
-        const recentPointTs = predictionInfo?.recent_point_ts;
-        const groupByPeriodMs = predictionInfo?.group_by_period_ms;
+        if (results) {
+          // Extract prediction_info for calculating forecast history points
+          const predictionInfo = (results as any).prediction_info;
+          const recentPointTs = predictionInfo?.recent_point_ts;
+          const groupByPeriodMs = predictionInfo?.group_by_period_ms;
+          const sensorName: string = (log.message as any).sensor;
+          const forecast: number[] = (results as any).forecast;
 
-        // Process each sensor in the results
-        for (const [sensorName, sensorData] of Object.entries(results)) {
-          // Skip metadata fields
-          if (sensorName === 'prediction_info' || sensorName === 'forecast_max_steps') {
-            continue;
-          }
+          console.log({
+            predictionInfo,
+            recentPointTs,
+            groupByPeriodMs,
+            sensorName,
+            forecast,
+          })
 
-          // Emit forecast history point for this sensor
-          if (recentPointTs && groupByPeriodMs && recentPointTs[sensorName] !== undefined && groupByPeriodMs[sensorName] !== undefined) {
-            const sensorRecentPointTs = recentPointTs[sensorName];
-            const sensorGroupByMs = groupByPeriodMs[sensorName];
-            const firstForecastTimestamp = sensorRecentPointTs + sensorGroupByMs;
-
-            // Emit the first forecast point as a history point
-            if (sensorData.forecast && sensorData.forecast.length > 0) {
-              this.forecastHistoryPoint$.emit({
-                sensor: sensorName,
-                timestamp: firstForecastTimestamp,
-                value: sensorData.forecast[0]
-              });
+          if (sensorName !== this.selectedSensor) return;
+          this.forecastData = {
+            ...this.forecastData,
+            [sensorName]: {
+              forecast: Array.from(forecast),
+              timestamp: forecast.map((_, i) => recentPointTs + (i + 2) * groupByPeriodMs)
             }
           }
-
-          // Only update if this is the currently selected sensor
-          if (sensorName === this.selectedSensor) {
-            // Run inside Angular zone to trigger change detection
-            this.forecastData = {
-              ...this.forecastData,
-              [sensorName]: sensorData,
-            };
-            // Force change detection
-            this.cdr.detectChanges();
-
-            console.log(`[MODEL] Updated forecast data for sensor: ${sensorName}`, sensorData);
-          }
+          this.cdr.detectChanges();
+        } else {
+          console.warn('[MODEL] No forecast results to process');
         }
-      } else {
-        console.warn('[MODEL] No forecast results to process');
-      }
       } else if (log.message.prediction_type === 'history') {
         // Historical forecast prediction - add to historyForecastPredictions
         console.log('[MODEL] Processing historical forecast prediction log:', log);

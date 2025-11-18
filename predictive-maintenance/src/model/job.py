@@ -112,7 +112,13 @@ def add_model_log(model_id: str, level: str, message: JSONValue) -> None:
                     logger.error(f"Error broadcasting log to WebSocket: {str(e)}")
 
 
-def prediction_job_worker(model_id: str, model_type: str, device_id: str = None, group_by_ms_per_sensor: dict = None, aggregation_funcs: dict = None):
+def prediction_job_worker(
+    model_id: str,
+    model_type: str,
+    device_id: str = None,
+    group_by_ms_per_sensor: dict = None,
+    aggregation_funcs: dict = None,
+):
     """
     Background worker that runs predictions periodically.
 
@@ -131,11 +137,11 @@ def prediction_job_worker(model_id: str, model_type: str, device_id: str = None,
         path = settings.models_path
         model_dir = Path(path) / model_id
         add_model_log(model_id, "info", f"Model directory: {model_dir}")
-        
+
         # Initialize variables that will be used in inner_loop
         hourly_models = None
         model = None
-        
+
         if model_type == "AnomalyPredictor":
             add_model_log(model_id, "info", "Getting data registry...")
             add_model_log(model_id, "info", f"Loading model from {model_dir}...")
@@ -334,7 +340,7 @@ def forecast_predict_model(model_id: str, iteration: int, device_id: str, model,
     result = model.forecast(predict_for=24)
     result_copy = json.loads(json.dumps(result, default=to_native))
     sensor_count = 0
-    
+
     # Build summary for logging (don't log full arrays)
     prediction_summary = []
     for sensor_name, sensor_data in result_copy.items():
@@ -350,58 +356,56 @@ def forecast_predict_model(model_id: str, iteration: int, device_id: str, model,
                 "first_timestamp": timestamp_values[0] if timestamp_values else None,
             }
             prediction_summary.append(summary)
-            
+
             # Send full prediction data via add_model_log for WebSocket (same as anomaly model)
-            # add_model_log(
-            #     model_id,
-            #     "prediction",
-            #     {
-            #         "iteration": iteration,
-            #         "device_id": device_id,
-            #         "sensor": sensor_name,
-            #         "result": sensor_data,
-            #         "prediction_type": "forecast",
-            #     },
-            # )
+            add_model_log(
+                model_id,
+                "prediction",
+                {
+                    "iteration": iteration,
+                    "device_id": device_id,
+                    "sensor": sensor_name,
+                    "result": sensor_data,
+                    "prediction_type": "forecast",
+                },
+            )
 
             saved_prediction = {
                 "sensor_name": sensor_name,
-                "prediction_info": sensor_data.get("prediction_info", {
-                    "group_by_period_ms": None,
-                    "recent_point_ts": None
-                }),
-                "forecast": sensor_data.get("forecast", [None])[0]  # get the first forecast value only
+                "prediction_info": sensor_data.get(
+                    "prediction_info", {"group_by_period_ms": None, "recent_point_ts": None}
+                ),
+                "forecast": sensor_data.get("forecast", [None])[
+                    0
+                ],  # get the first forecast value only
             }
-            
+
             # Save prediction to database (same as anomaly model)
             save_prediction(data_registry, model_id, saved_prediction, "Forecast")
 
             saved_prediction["prediction_type"] = "history"
 
-            add_model_log(
-                model_id,
-                "prediction",
-                saved_prediction
-            )
-    
+            add_model_log(model_id, "prediction", saved_prediction)
+
     # Log summary only (not full arrays)
     add_model_log(
         model_id,
         "info",
         f"Forecast completed (iteration {iteration}): {sensor_count} sensors - {prediction_summary}",
     )
-    
+
     # Log timestamp ranges before truncating (for debugging saved predictions)
     for sensor in model.sensors:
         if sensor in result and "timestamp" in result[sensor]:
             timestamps = result[sensor].get("timestamp", [])
             if timestamps:
                 from datetime import datetime as dt
+
                 min_ts = dt.fromtimestamp(timestamps[0] / 1000)
                 max_ts = dt.fromtimestamp(timestamps[-1] / 1000)
-                logger.info(f"SAVE DEBUG - {sensor}: prediction timestamps [{min_ts} to {max_ts}], {len(timestamps)} points")
-    
-
+                logger.info(
+                    f"SAVE DEBUG - {sensor}: prediction timestamps [{min_ts} to {max_ts}], {len(timestamps)} points"
+                )
 
 
 def inner_loop(
@@ -476,9 +480,12 @@ def save_prediction(data_registry, model_id: str, message, source):
         timestamps = message.get("timestamp", [])
         if timestamps:
             from datetime import datetime as dt
+
             min_ts = dt.fromtimestamp(timestamps[0] / 1000)
             max_ts = dt.fromtimestamp(timestamps[-1] / 1000)
-            logger.info(f"Saving {source} prediction: timestamps [{min_ts} to {max_ts}], {len(timestamps)} points")
+            logger.info(
+                f"Saving {source} prediction: timestamps [{min_ts} to {max_ts}], {len(timestamps)} points"
+            )
 
     try:
         with data_registry.engine.connect() as conn:
@@ -603,7 +610,13 @@ def save_prediction(data_registry, model_id: str, message, source):
 #         add_model_log(model_id, "error", f"Save traceback: {error_details}")
 
 
-def start_prediction_job(model_id: str, model_type: str, device_id: str = None, group_by_ms_per_sensor: dict = None, aggregation_funcs: dict = None) -> bool:
+def start_prediction_job(
+    model_id: str,
+    model_type: str,
+    device_id: str = None,
+    group_by_ms_per_sensor: dict = None,
+    aggregation_funcs: dict = None,
+) -> bool:
     """Start a prediction job for a model"""
     with job_lock:
         if model_id in active_jobs and active_jobs[model_id]["status"] == "running":
