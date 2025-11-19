@@ -505,8 +505,10 @@ async def unified_model_stream(websocket: WebSocket):
                 }
             )
 
-    except WebSocketDisconnect:
+    except WebSocketDisconnect as e:
         logger.info("Unified WebSocket client disconnected")
+        logger.info("stacktrace:")
+        logger.info(e)
     except Exception as e:
         logger.error(f"Error in unified WebSocket: {str(e)}", exc_info=True)
         try:
@@ -649,14 +651,14 @@ async def handle_activate(websocket: WebSocket, command_id: int, forecast_id: st
             sensors = model_config.get("attributes", [])
             # map {'key': 'sensor'} to ['sensor']
             sensors = [sensor["key"] for sensor in sensors if "key" in sensor]
-            
+
             # Extract aggregation functions per sensor
             aggregation_funcs = {
                 sensor["key"]: sensor.get("aggregation", "average")
                 for sensor in model_config.get("attributes", [])
                 if "key" in sensor
             }
-            
+
             # Extract per-sensor grouping intervals from attributes
             # Accept either the newer UI field `groupByMs` or legacy `grouping_interval_ms`.
             # Fallback to global forecast_grouping_ms if not set per-sensor.
@@ -672,7 +674,7 @@ async def handle_activate(websocket: WebSocket, command_id: int, forecast_id: st
                         else sensor.get("grouping_interval_ms", default_group_by_ms)
                     )
                     group_by_ms_per_sensor[sensor_key] = sensor_group_by_ms
-            
+
             # For backward compatibility, keep group_by_ms as default
             group_by_ms = default_group_by_ms
 

@@ -288,7 +288,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Fetch saved forecast predictions if model ID is available
     if (this.modelId && this.selectedSensor) {
-      // this.fetchForecastHistoryPredictions();
+      this.fetchForecastHistoryPredictions();
     }
 
     // Subscribe to real-time forecast history points
