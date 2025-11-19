@@ -263,6 +263,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     }
 
     if (changes.forecastData) {
+      console.log('[ngOnChanges] changes.forecastData', changes.forecastData);
       this.processForecastData();
     }
 
@@ -282,7 +283,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Process forecast data if available
     if (this.forecastData) {
-      this.processForecastData();
+      // this.processForecastData();
     }
 
     // Fetch saved forecast predictions if model ID is available
@@ -634,8 +635,8 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
         this.forecastDataPoints = forecastDataPoints;
 
-        console.log(`[TIME-SERIES] ✓ Loaded ${this.forecastDataPoints.length} forecast points for sensor ${this.selectedSensor}`);
-        console.log('[TIME-SERIES] First few points:', this.forecastDataPoints.slice(0, 3));
+        // console.log(`[TIME-SERIES] ✓ Loaded ${this.forecastDataPoints.length} forecast points for sensor ${this.selectedSensor}`);
+        // console.log('[TIME-SERIES] First few points:', this.forecastDataPoints.slice(0, 3));
       } else {
         console.warn(`[TIME-SERIES] Sensor forecast missing 'forecast' or 'timestamp' fields:`, sensorForecast);
         this.forecastDataPoints = [];
@@ -645,6 +646,10 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       console.warn('[TIME-SERIES] Available sensors in forecast data:', Object.keys(this.forecastData));
       this.forecastDataPoints = [];
     }
+
+    this.updateChart()
+
+    this.cdr.detectChanges();
   }
 
   /**
@@ -672,10 +677,10 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       100 // Limit to 100 predictions
     ).subscribe({
       next: (response) => {
-        console.log('[TIME-SERIES] Received forecast history response:', response);
+        // console.log('[TIME-SERIES] Received forecast history response:', response);
 
         if (!response.predictions || response.predictions.length === 0) {
-          console.log('[TIME-SERIES] No saved predictions found');
+          // console.log('[TIME-SERIES] No saved predictions found');
           return;
         }
 
@@ -731,7 +736,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
         // Add saved forecast points to the existing forecast data
         if (savedForecastPoints.length > 0) {
-          console.log(`[TIME-SERIES] ✓ Loaded ${savedForecastPoints.length} saved forecast points`);
+          // console.log(`[TIME-SERIES] ✓ Loaded ${savedForecastPoints.length} saved forecast points`);
           this.historyForecastDataPoints = [...this.historyForecastDataPoints, ...savedForecastPoints];
 
           // Sort by timestamp
@@ -828,12 +833,12 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     // Add forecast series if forecast data is available
     if (this.forecastDataPoints && this.forecastDataPoints.length > 0) {
       this.forecastDataPoints.sort((a, b) => a[0] - b[0]);
-      console.log('[TIME-SERIES] Adding forecast series to chart with', this.forecastDataPoints.length, 'points');
-      console.log('[TIME-SERIES] Forecast data sample:', this.forecastDataPoints.slice(0, 3));
+      // console.log('[TIME-SERIES] Adding forecast series to chart with', this.forecastDataPoints.length, 'points');
+      // console.log('[TIME-SERIES] Forecast data sample:', this.forecastDataPoints.slice(0, 3));
       seriesArray.push({
         name: `Forecast`, // Simplified name for debugging
         type: 'line',
-        data: this.forecastDataPoints,
+        data: Array.from(this.forecastDataPoints),
         smooth: false,
         symbol: 'circle',
         symbolSize: 6, // Larger symbols for better visibility
@@ -860,8 +865,8 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       this.historyForecastDataPoints = this.historyForecastDataPoints.filter(
         point => point[0] >= minTime
       );
-      console.log('[TIME-SERIES] Adding history forecast series to chart with', this.historyForecastDataPoints.length, 'points');
-      console.log('[TIME-SERIES] History forecast data sample:', this.historyForecastDataPoints.slice(0, 3));
+      // console.log('[TIME-SERIES] Adding history forecast series to chart with', this.historyForecastDataPoints.length, 'points');
+      // console.log('[TIME-SERIES] History forecast data sample:', this.historyForecastDataPoints.slice(0, 3));
       seriesArray.push({
         name: `Predictions`, // Simplified name for debugging
         type: 'line',
@@ -890,18 +895,63 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     //   seriesCount: seriesArray.length,
     //   timeWindow: { minTime: new Date(minTime), maxTime: new Date(maxTime) }
     // });
+    //
+    if (this.chart) {
+      const { minTime, maxTime } = this.calculateTimeWindow();
+
+      // Expand the display range to include any forecast points so forecast history is visible
+      let displayMin = minTime;
+      let displayMax = maxTime;
+
+      try {
+        if (this.forecastDataPoints && this.forecastDataPoints.length > 0) {
+          const fcMin = this.forecastDataPoints[0][0];
+          const fcMax = this.forecastDataPoints[this.forecastDataPoints.length - 1][0];
+          if (isFinite(fcMin)) {
+            displayMin = Math.min(displayMin, fcMin - 1000); // 1s buffer
+          }
+          if (isFinite(fcMax)) {
+            displayMax = Math.max(displayMax, fcMax + 1000);
+          }
+        }
+
+        if (this.telemetryData && this.telemetryData.length > 0) {
+          const tMin = this.telemetryData[0][0];
+          const tMax = this.telemetryData[this.telemetryData.length - 1][0];
+          if (isFinite(tMin)) {
+            displayMin = Math.min(displayMin, tMin - 1000);
+          }
+          if (isFinite(tMax)) {
+            displayMax = Math.max(displayMax, tMax + 1000);
+          }
+        }
+      } catch (e) {
+        // defensive: fall back to calculated window on unexpected data
+        displayMin = minTime;
+        displayMax = maxTime;
+      }
+
+      // Update only the x-axis without changing series data
+      // this.chart.setOption({
+      //   xAxis: {
+      //     min: displayMin,
+      //     max: displayMax
+      //   }
+      // }, false, false);
+      this.chart.setOption({
+        xAxis: {
+          min: displayMin,
+          max: displayMax,
+        },
+        legend: {
+          data: legendData
+        },
+        series: seriesArray
+      }, false, false);
+    }
 
     // Update series data and axis range without animation
-    this.chart.setOption({
-      xAxis: {
-        min: minTime,
-        max: maxTime
-      },
-      legend: {
-        data: legendData
-      },
-      series: seriesArray
-    }, false, false);
+
 
     // console.log('[TIME-SERIES] Chart updated successfully');
   }
@@ -941,6 +991,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   }
 
   private startTimeAxisUpdate(): void {
+    return;
     // Only update time axis in realtime mode
     if (!this.timewindow?.realtime) {
       return;
@@ -1204,7 +1255,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Process forecast data for the new sensor
     if (this.forecastData) {
-      this.processForecastData();
+      // this.processForecastData();
     }
 
     // Update chart with new sensor color, legend, and axis labels

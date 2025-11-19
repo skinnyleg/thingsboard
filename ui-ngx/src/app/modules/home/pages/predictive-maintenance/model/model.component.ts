@@ -533,16 +533,16 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
             groupByPeriodMs,
             sensorName,
             forecast,
-          })
+          });
 
-          if (sensorName !== this.selectedSensor) return;
+          if (sensorName !== this.selectedSensor) { return; }
           this.forecastData = {
             ...this.forecastData,
             [sensorName]: {
               forecast: Array.from(forecast),
               timestamp: forecast.map((_, i) => recentPointTs + (i + 2) * groupByPeriodMs)
             }
-          }
+          };
           this.cdr.detectChanges();
         } else {
           console.warn('[MODEL] No forecast results to process');
@@ -779,36 +779,36 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
         this.subscribeToForecastPredictions();
 
         // Subscribe to real-time job status updates
-        const jobStatusSubscription = this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
-          // if (msg.type === 'prediction') {
-          //   console.log('Job prediction:', msg.data.logs);
-          // } else {
-          //   console.log('Job status message received:', msg);
-          // }
-          if (msg?.data) {
-            this.currentIteration = msg.data.iteration || 0;
-            this.jobStatus = msg.data.status;
-            this.lastRunTime = msg.data.last_run;
+        // const jobStatusSubscription = this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'anomaly').subscribe((msg: any) => {
+        //   // if (msg.type === 'prediction') {
+        //   //   console.log('Job prediction:', msg.data.logs);
+        //   // } else {
+        //   //   console.log('Job status message received:', msg);
+        //   // }
+        //   if (msg?.data) {
+        //     this.currentIteration = msg.data.iteration || 0;
+        //     this.jobStatus = msg.data.status;
+        //     this.lastRunTime = msg.data.last_run;
 
-            // Update main status if job is running (ensure it's a string)
-            // if (this.jobStatus === 'running') {
-            //   this.status = 'active';
-            // } else if (this.jobStatus === 'stopped' || this.jobStatus === 'not_found') {
-            //   this.status = 'inactive';
-            // }
-            if (msg.data.model_exists) {
-              // this.status = 'active';
-              this.status = 'inactive';
-              this.anomaliesComponent?.setStreamStatus(true, null);
-            } else {
-              this.status = 'inactive';
-            }
-          }
-        }, (err) => {
-          console.error('Error subscribing to job status:', err);
-          this.anomaliesComponent?.setStreamStatus(false, 'Error subscribing to job status');
-        });
-        this.subscriptions.push(jobStatusSubscription);
+        //     // Update main status if job is running (ensure it's a string)
+        //     // if (this.jobStatus === 'running') {
+        //     //   this.status = 'active';
+        //     // } else if (this.jobStatus === 'stopped' || this.jobStatus === 'not_found') {
+        //     //   this.status = 'inactive';
+        //     // }
+        //     if (msg.data.model_exists) {
+        //       // this.status = 'active';
+        //       this.status = 'inactive';
+        //       this.anomaliesComponent?.setStreamStatus(true, null);
+        //     } else {
+        //       this.status = 'inactive';
+        //     }
+        //   }
+        // }, (err) => {
+        //   console.error('Error subscribing to job status:', err);
+        //   this.anomaliesComponent?.setStreamStatus(false, 'Error subscribing to job status');
+        // });
+        // this.subscriptions.push(jobStatusSubscription);
 
         // Fetch status from the service to ensure it's up-to-date
         // this.getModelStatus();
@@ -1088,27 +1088,27 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
     console.log('[MODEL] Checking forecast job status for', this.trueId);
 
     // Subscribe to job status updates
-    this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'forecast').subscribe({
-      next: (response: any) => {
-        console.log('[MODEL] Forecast job status response:', response);
-        if (response.data) {
-          const status = response.data.status || response.data.data?.status;
-          const paused = response.data.paused || response.data.data?.paused || false;
+    // this.modelWebSocketService.subscribeToJobStatus(this.trueId, 'forecast').subscribe({
+    //   next: (response: any) => {
+    //     console.log('[MODEL] Forecast job status response:', response);
+    //     if (response.data) {
+    //       const status = response.data.status || response.data.data?.status;
+    //       const paused = response.data.paused || response.data.data?.paused || false;
 
-          this.forecastJobRunning = status === 'running';
-          this.forecastJobPaused = paused;
-          this.cdr.detectChanges();
+    //       this.forecastJobRunning = status === 'running';
+    //       this.forecastJobPaused = paused;
+    //       this.cdr.detectChanges();
 
-          console.log('[MODEL] Updated forecast job state:', {
-            running: this.forecastJobRunning,
-            paused: this.forecastJobPaused
-          });
-        }
-      },
-      error: (error) => {
-        console.error('[MODEL] Error checking forecast job status:', error);
-      }
-    });
+    //       console.log('[MODEL] Updated forecast job state:', {
+    //         running: this.forecastJobRunning,
+    //         paused: this.forecastJobPaused
+    //       });
+    //     }
+    //   },
+    //   error: (error) => {
+    //     console.error('[MODEL] Error checking forecast job status:', error);
+    //   }
+    // });
   }
 
   openForecastStatsDialog(): void {

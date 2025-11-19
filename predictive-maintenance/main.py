@@ -69,6 +69,7 @@ logger.info(f"Predictive Maintenance Service Starting")
 
 @app.on_event("startup")
 async def startup_event():
+    return
     """
     Startup event handler: Auto-start prediction jobs for trained models
     """
