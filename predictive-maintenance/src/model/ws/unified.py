@@ -322,9 +322,9 @@ async def unified_model_stream(websocket: WebSocket):
                 log_subscriptions.add(forecast_id)
 
                 # send existing logs as initial batch for forecast model
-                await handle_job_logs(websocket, command_id, forecast_id, data, "forecast_model")
-                # send existing logs as initial batch for anomaly model
-                await handle_job_logs(websocket, command_id, forecast_id, data, "anomaly_predictor")
+                # await handle_job_logs(websocket, command_id, forecast_id, data, "forecast_model")
+                # # send existing logs as initial batch for anomaly model
+                # await handle_job_logs(websocket, command_id, forecast_id, data, "anomaly_predictor")
 
                 # Create a real-time callback for this WebSocket connection
                 def create_log_callback(ws, fid, cmd_id, loop):
