@@ -88,6 +88,9 @@ echarts.use([
   ]
 })
 export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterViewInit, OnChanges {
+  @Input() timewindow: Timewindow;
+
+  @Output() timewindowChange = new EventEmitter<Timewindow>();
 
   @ViewChild('chart', { static: false }) chartElement: ElementRef<HTMLElement>;
 
@@ -122,22 +125,6 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   private forecastDataPoints: Array<[number, number]> = [];
 
   private historyForecastDataPoints: Array<[number, number]> = [];
-
-  // Timewindow configuration
-  timewindow: Timewindow = {
-    displayValue: '',
-    hideInterval: false,
-    hideAggregation: false,
-    hideAggInterval: false,
-    hideTimezone: false,
-    selectedTab: 0,
-    realtime: {
-      realtimeType: 0,
-      interval: 60000,
-      timewindowMs: 60000,
-      quickInterval: QuickTimeInterval.CURRENT_DAY
-    }
-  };
 
   private chart: ECharts;
 
@@ -647,7 +634,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       this.forecastDataPoints = [];
     }
 
-    this.updateChart()
+    this.updateChart();
 
     this.cdr.detectChanges();
   }
@@ -897,8 +884,6 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     // });
     //
     if (this.chart) {
-      const { minTime, maxTime } = this.calculateTimeWindow();
-
       // Expand the display range to include any forecast points so forecast history is visible
       let displayMin = minTime;
       let displayMax = maxTime;
@@ -1151,11 +1136,8 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   }
 
   onTimewindowChanged(timewindow: Timewindow): void {
-    // console.log('====== Timewindow changed ======');
-    // console.log('New timewindow:', timewindow);
-    // console.log('DeviceId:', this.deviceId, 'SelectedSensor:', this.selectedSensor);
-
     this.timewindow = timewindow;
+    this.timewindowChange.emit(timewindow);
 
     // Stop time axis updates if switching to history mode, start if switching to realtime
     if (this.timeAxisUpdateInterval) {

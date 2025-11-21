@@ -68,6 +68,7 @@ import {
 } from '@angular/animations';
 import { ModelWebSocketService } from '@app/core/http/model-websocket.service';
 import { ModelLogsNotifierService } from './model-logs-notifier.service';
+import { QuickTimeInterval, Timewindow } from '@shared/models/time/time.models';
 import { flatMap, result } from 'lodash';
 import { mergeMap, Observable } from 'rxjs';
 import { distinctUntilChanged, filter, tap } from 'rxjs/operators';
@@ -110,6 +111,22 @@ import { distinctUntilChanged, filter, tap } from 'rxjs/operators';
   ],
 })
 export class ModelComponent extends PageComponent implements Order, OnDestroy {
+  // Timewindow config for telemetry chart
+  timewindow: Timewindow = {
+    displayValue: '',
+    hideInterval: false,
+    hideAggregation: false,
+    hideAggInterval: false,
+    hideTimezone: false,
+    selectedTab: 0, // Will be set to TimewindowType.REALTIME or HISTORY
+    realtime: {
+      realtimeType: 0,
+      interval: 60000,
+      timewindowMs: 600000, // 10 minutes
+      quickInterval: QuickTimeInterval.CURRENT_DAY
+    },
+    history: undefined // Only set when in history mode
+  };
 
   // Reference to the anomalies table component
   @ViewChild(AnomaliesComponent) anomaliesComponent?: AnomaliesComponent;
@@ -1626,6 +1643,7 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
         this.selectedViews = preferences.selectedViews;
         this.selectedSensor = preferences.selectedSensor || 'rotate';
         this.hideSensorTelemetry = preferences.hideSensorTelemetry || false;
+        this.timewindow = preferences.timewindow;
       },
       (error) => {
         console.warn(
@@ -1654,6 +1672,7 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
           selectedViews: this.selectedViews,
           selectedSensor: this.selectedSensor,
           hideSensorTelemetry: this.hideSensorTelemetry,
+          timewindow: this.timewindow,
         };
 
         // Update the forecast with new view preferences
@@ -1715,6 +1734,33 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
    */
   onSensorChanged(sensor: string): void {
     this.selectedSensor = sensor;
+    this.saveViewPreferences();
+  }
+
+  onTimewindowChanged(timewindow: Timewindow): void {
+    // Enforce correct mode structure
+    if (timewindow.selectedTab === 0 /* TimewindowType.REALTIME */) {
+      timewindow.history = undefined;
+      if (!timewindow.realtime) {
+        timewindow.realtime = {
+          realtimeType: 0,
+          interval: 60000,
+          timewindowMs: 600000,
+          quickInterval: QuickTimeInterval.CURRENT_DAY
+        };
+      }
+    } else if (timewindow.selectedTab === 1 /* TimewindowType.HISTORY */) {
+      timewindow.realtime = undefined;
+      if (!timewindow.history) {
+        timewindow.history = {
+          historyType: 0,
+          interval: 60000,
+          timewindowMs: 600000,
+          quickInterval: QuickTimeInterval.CURRENT_DAY
+        };
+      }
+    }
+    this.timewindow = timewindow;
     this.saveViewPreferences();
   }
 

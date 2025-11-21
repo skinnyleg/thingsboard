@@ -14,6 +14,8 @@
 /// limitations under the License.
 ///
 
+import { QuickTimeInterval, Timewindow } from '@shared/models/time/time.models';
+
 export enum ForecastViewType {
   FORECAST = 'forecast',
   ANOMALIES = 'anomalies',
@@ -23,12 +25,14 @@ export interface ForecastViewPreferences {
   selectedViews: ForecastViewType[];
   selectedSensor?: string; // Currently selected sensor for forecast chart (e.g., 'rotate', 'pressure', 'vibration', 'volt')
   hideSensorTelemetry?: boolean; // Hide sensor telemetry widget
+  timewindow?: Timewindow; // Timewindow configuration for telemetry chart
 }
 
 export const DEFAULT_VIEW_PREFERENCES: ForecastViewPreferences = {
   selectedViews: [ForecastViewType.FORECAST, ForecastViewType.ANOMALIES],
   selectedSensor: 'rotate', // Default to first sensor
   hideSensorTelemetry: false, // Show sensor telemetry by default
+  timewindow: undefined, // Default to undefined timewindow
 };
 
 export function parseForecastViewPreferences(
@@ -40,26 +44,7 @@ export function parseForecastViewPreferences(
     }
 
     const parsed = JSON.parse(viewPreferencesJson);
-
-    // Handle legacy format where selectedView was a single string
-    if (parsed.selectedView) {
-      if (parsed.selectedView === 'both') {
-        return {
-          selectedViews: [
-            ForecastViewType.FORECAST,
-            ForecastViewType.ANOMALIES,
-          ],
-        };
-      } else if (parsed.selectedView === 'forecast') {
-        return {
-          selectedViews: [ForecastViewType.FORECAST],
-        };
-      } else if (parsed.selectedView === 'anomalies') {
-        return {
-          selectedViews: [ForecastViewType.ANOMALIES],
-        };
-      }
-    }
+    console.log('Parsed forecast view preferences:', parsed);
 
     // Handle new format with selectedViews array
     if (parsed.selectedViews && Array.isArray(parsed.selectedViews)) {
@@ -71,6 +56,7 @@ export function parseForecastViewPreferences(
         hideSensorTelemetry: parsed.hideSensorTelemetry !== undefined
           ? parsed.hideSensorTelemetry
           : DEFAULT_VIEW_PREFERENCES.hideSensorTelemetry,
+        timewindow: parsed.timewindow || DEFAULT_VIEW_PREFERENCES.timewindow,
       };
     }
 

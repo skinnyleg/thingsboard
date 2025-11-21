@@ -227,7 +227,9 @@
           [modelId]="trueId"
           [forecastHistoryPoint$]="forecastHistoryPoint$"
           [title]="'Live Sensor Data'"
+          [timewindow]="timewindow"
           (sensorChanged)="onSensorChanged($event)"
+          (timewindowChange)="onTimewindowChanged($event)"
         >
         </tb-time-series-telemetry>
       </div>
