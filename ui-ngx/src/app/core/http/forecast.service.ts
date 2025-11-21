@@ -1,3 +1,4 @@
+
 ///
 /// Copyright © 2016-2024 The Thingsboard Authors
 ///
@@ -17,6 +18,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
+export interface AvailableModelsResponse {
+  ForecastModel?: { model_name: string }[];
+  AnomalyPredictor?: { model_name: string }[];
+}
 import { defaultHttpOptionsFromConfig, RequestConfig } from './http-utils'; // Import utility functions if available
 import { PageData, PageLink } from '@app/shared/public-api';
 import { Order } from '@app/modules/home/models/predictive-maintenance.models';
@@ -27,6 +33,14 @@ import { Forecast, ForecastCreate } from '@app/shared/models/forecast.models';
   providedIn: 'root',
 })
 export class PredictiveModelsService {
+  /**
+   * Fetch available model types and algorithms from backend
+   * @returns Observable with available models structure
+   */
+  getAvailableModels(): Observable<AvailableModelsResponse> {
+    return this.http.get<AvailableModelsResponse>('/api/predictiveMaintenance/availableModels');
+  }
+
   private baseUrl = '/api/forecasts'; // Base URL for your API
 
   private baseUrlModels = '/api/models'; // Base URL for your API

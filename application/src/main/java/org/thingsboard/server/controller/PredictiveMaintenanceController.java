@@ -70,6 +70,15 @@ public class PredictiveMaintenanceController extends BaseController {
         return fastAPIService.getHelloWorld();
     }
 
+    @ApiOperation(value = "Get available model types for training", notes = "Fetch available models from Python backend")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @GetMapping(value = "/predictiveMaintenance/availableModels", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public JsonNode getAvailableModels() {
+        // Calls FastAPIService to fetch available models from Python backend
+        return fastAPIService.getAvailableModels();
+    }
+
     @ApiOperation(value = "Get predictiveMaintenance models", notes = "access the predictive models in predictive maintenance route directive")
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
     @GetMapping(value = "/forecasts", params = { "pageSize", "page" })

@@ -33,27 +33,48 @@ def get_data_registry() -> DataRegistry:
         component_keys=settings.component_keys,
     )
 
+# const names
+RANDOM_FOREST = "random_forest"
+PROPHET = "prophet"
+LSTM = "lstm"
+XGBOOST = "xgboost"
+ANOMALY_PREDICTOR = "AnomalyPredictor"
+FORECAST_MODEL = "ForecastModel"
 
-# Model type mapping: model_type -> (ModelClass, default_algorithm, default_hyperparams)
 MODEL_TYPE_MAP = {
-    "AnomalyPredictor": (
-        AnomalyPredictor,
-        "random_forest",
+    ANOMALY_PREDICTOR: [
         {
-            "n_estimators": 100,
-            "max_depth": 12,
-            "min_samples_split": 8,
-            "min_samples_leaf": 4,
-            "class_weight": "balanced",
-            "n_jobs": -1,
-            "random_state": 42,
+            "model_name": RANDOM_FOREST,
+            "model_parameters": {}
         },
-    ),
-    "ForecastModel": (
-        ForecastModel,
-        "prophet",
-        {"seasonality_mode": "multiplicative", "changepoint_prior_scale": 0.05},
-    ),
+        {
+            "model_name": XGBOOST,
+            "model_parameters": {}
+        }
+    ],
+    FORECAST_MODEL: [
+        {
+            "model_name": LSTM,
+            "model_parameters": {}
+        },
+        {
+            "model_name": XGBOOST,
+            "model_parameters": {}
+        }
+    ],
+}
+
+MODEL_TYPE_MAP_CLASS = {
+    ANOMALY_PREDICTOR: {
+        "model_name": AnomalyPredictor,
+        "default_algorithm": MODEL_TYPE_MAP[ANOMALY_PREDICTOR][0]["model_name"],
+        "default_hyperparams": MODEL_TYPE_MAP[ANOMALY_PREDICTOR][0]["model_parameters"],
+    },
+    FORECAST_MODEL: {
+        "model_name": ForecastModel,
+        "default_algorithm": MODEL_TYPE_MAP[FORECAST_MODEL][0]["model_name"],
+        "default_hyperparams": MODEL_TYPE_MAP[FORECAST_MODEL][0]["model_parameters"],
+    },
 }
 
 training_results = None
@@ -95,7 +116,11 @@ def train_and_save_model(
             f"Unknown model_type: {model_type}. Supported types: {list(MODEL_TYPE_MAP.keys())}"
         )
 
-    ModelClass, default_algorithm, default_hyperparams = MODEL_TYPE_MAP[model_type]
+    ModelClass, default_algorithm, default_hyperparams = (
+        MODEL_TYPE_MAP_CLASS[model_type]["model_name"],
+        MODEL_TYPE_MAP_CLASS[model_type]["default_algorithm"],
+        MODEL_TYPE_MAP_CLASS[model_type]["default_hyperparams"],
+    )
 
     # Use defaults if not provided
     algorithm = algorithm or default_algorithm

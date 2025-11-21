@@ -58,6 +58,7 @@ import { ECharts, echartsModule } from '@home/components/widget/lib/chart/echart
 import { AttributeService } from '@core/http/attribute.service';
 import { Timewindow, QuickTimeInterval, AggregationType } from '@shared/models/time/time.models';
 import { PredictiveModelsService } from '@core/http/forecast.service';
+import { startCase } from 'lodash';
 
 // Register ECharts components
 echarts.use([
@@ -328,7 +329,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       backgroundColor: 'transparent',
       animation: false,
       title: {
-        text: this.toCapitalizedWords(this.selectedSensor) + ' Data',
+        text: startCase(this.selectedSensor) + ' Data',
         left: 'center',
         textStyle: {
           color: '#fff',
@@ -1251,7 +1252,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     if (this.chart) {
       this.chart.setOption({
         title: {
-          text: this.toCapitalizedWords(this.selectedSensor) + ' Data'
+          text: startCase(this.selectedSensor) + ' Data'
         },
         legend: {
           data: [this.selectedSensor]

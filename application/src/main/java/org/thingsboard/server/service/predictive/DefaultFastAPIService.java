@@ -53,8 +53,14 @@ public class DefaultFastAPIService implements FastAPIService {
                 .build();
     }
 
+
     public JsonNode getHelloWorld() {
         return this.restTemplate.getForObject("predictiveMaintenance", JsonNode.class);
+    }
+
+    public JsonNode getAvailableModels() {
+        // Calls the Python backend REST API for available models
+        return this.restTemplate.getForObject("models/available", JsonNode.class);
     }
 
     public void activatePredictiveModel(PredictiveModelId predictiveModelId) throws ThingsboardException {

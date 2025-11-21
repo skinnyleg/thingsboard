@@ -24,4 +24,6 @@ public interface FastAPIService {
     public JsonNode getHelloWorld();
 
     public void activatePredictiveModel(PredictiveModelId predictiveModelId) throws ThingsboardException;
+
+    public JsonNode getAvailableModels();
 }

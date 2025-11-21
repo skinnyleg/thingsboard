@@ -27,6 +27,7 @@ import { DevicesDataSource } from '@app/modules/home/models/datasource/device-da
 import { DeviceInfo } from '@shared/models/device.models';
 import { PageLink } from '@shared/models/page/page-link';
 import { Observable, of, Subject } from 'rxjs';
+import { AvailableModelsResponse, PredictiveModelsService } from '@app/core/http/forecast.service';
 import { map, startWith, takeUntil } from 'rxjs/operators';
 
 // Import necessary Angular Material modules
@@ -48,6 +49,7 @@ import { FlexLayoutModule } from '@angular/flex-layout';
 import { Direction, EntityType } from '@app/shared/public-api';
 import { ForecastField } from '@app/modules/home/models/predictive-maintenance.models';
 import { Forecast, ForecastCreate } from '@app/shared/models/forecast.models';
+import { startCase } from 'lodash';
 
 @Component({
   selector: 'app-add-model-dialog',
@@ -155,38 +157,16 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   customTimeFields: { [key: number]: { hours: number; minutes: number; seconds: number } } = {};
 
   // Algorithm options
-  forecastAlgorithmOptions = [
-    {
-      value: 'arima',
-      label: 'ARIMA (Auto Regressive Integrated Moving Average)',
-    },
-    { value: 'lstm', label: 'LSTM (Long Short-Term Memory)' },
-    { value: 'linear_regression', label: 'Linear Regression' },
-    { value: 'polynomial_regression', label: 'Polynomial Regression' },
-    { value: 'exponential_smoothing', label: 'Exponential Smoothing' },
-    { value: 'prophet', label: 'Prophet' },
-    { value: 'sarima', label: 'SARIMA (Seasonal ARIMA)' },
-    { value: 'random_forest', label: 'Random Forest' },
-  ];
+  forecastAlgorithmOptions: { value: string; label: string }[] = [];
 
-  anomaliesAlgorithmOptions = [
-    { value: 'random_forest', label: 'Random Forest' },
-    { value: 'xgboost', label: 'XGBoost' },
-    { value: 'isolation_forest', label: 'Isolation Forest' },
-    { value: 'one_class_svm', label: 'One-Class SVM' },
-    { value: 'local_outlier_factor', label: 'Local Outlier Factor (LOF)' },
-    { value: 'elliptic_envelope', label: 'Elliptic Envelope' },
-    { value: 'statistical_outlier', label: 'Statistical Outlier Detection' },
-    { value: 'dbscan', label: 'DBSCAN Clustering' },
-    { value: 'autoencoder', label: 'Autoencoder Neural Network' },
-    { value: 'seasonal_decompose', label: 'Seasonal Decomposition' },
-  ];
+  anomaliesAlgorithmOptions: { value: string; label: string }[] = [];
 
   constructor(
     public dialogRef: MatDialogRef<AddModelDialogComponent, any>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private deviceService: DeviceService,
-    private attributeService: AttributeService
+    private attributeService: AttributeService,
+    private predictiveModelsService: PredictiveModelsService
   ) {
     this.devicesDataSource = new DevicesDataSource(this.deviceService);
 
@@ -208,6 +188,23 @@ export class AddModelDialogComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Fetch available models from backend
+    this.predictiveModelsService.getAvailableModels().subscribe((res: AvailableModelsResponse) => {
+      // ForecastModel
+      if (res.ForecastModel && Array.isArray(res.ForecastModel)) {
+        this.forecastAlgorithmOptions = res.ForecastModel.map((item: any) => ({
+          value: item.model_name,
+          label: startCase(item.model_name)
+        }));
+      }
+      // AnomalyPredictor
+      if (res.AnomalyPredictor && Array.isArray(res.AnomalyPredictor)) {
+        this.anomaliesAlgorithmOptions = res.AnomalyPredictor.map((item: any) => ({
+          value: item.model_name,
+          label: startCase(item.model_name)
+        }));
+      }
+    });
     // Initialize forecast dates with default values (last 30 days) and set specific times
     this.globalEndDate = new Date();
     this.globalEndDate.setHours(23, 59, 59, 999); // Set to end of day
