@@ -1643,7 +1643,7 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
         this.selectedViews = preferences.selectedViews;
         this.selectedSensor = preferences.selectedSensor || 'rotate';
         this.hideSensorTelemetry = preferences.hideSensorTelemetry || false;
-        this.timewindow = preferences.timewindow;
+        this.timewindow = preferences.timewindow || this.timewindow;
       },
       (error) => {
         console.warn(

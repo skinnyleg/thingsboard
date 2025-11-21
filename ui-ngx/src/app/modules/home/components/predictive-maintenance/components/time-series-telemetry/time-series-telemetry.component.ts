@@ -976,7 +976,6 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   }
 
   private startTimeAxisUpdate(): void {
-    return;
     // Only update time axis in realtime mode
     if (!this.timewindow?.realtime) {
       return;
