@@ -59,6 +59,7 @@ import { AttributeService } from '@core/http/attribute.service';
 import { Timewindow, QuickTimeInterval, AggregationType } from '@shared/models/time/time.models';
 import { PredictiveModelsService } from '@core/http/forecast.service';
 import { startCase } from 'lodash';
+import { ForecastAttribute } from '@app/shared/models/forecast.models';
 
 // Register ECharts components
 echarts.use([
@@ -105,6 +106,8 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   @Input() forecastData: any; // Forecast data passed from parent component
 
   @Input() forecastMaxSteps: number; // Number of forecast steps
+
+  @Input() attributes: ForecastAttribute[]; // Predictive model attributes only
 
   @Input() modelId: string; // Model ID for fetching historical predictions
 
@@ -178,11 +181,6 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Track if sensor was explicitly provided
     this.sensorExplicitlyProvided = !!this.selectedSensor;
-
-    // Fetch available sensors if deviceId is provided
-    if (this.deviceId) {
-      // this.fetchAvailableSensors();
-    }
   }
 
   processHistoryPredictions(): void {
@@ -205,6 +203,17 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+        // Update availableSensors if attributes input changes
+        if (changes.attributes && Array.isArray(this.attributes)) {
+          this.availableSensors = this.attributes.map(attr => attr.key);
+          this.assignColorsToSensors();
+          // Only auto-select if sensor was NOT explicitly provided via @Input
+          if (!this.sensorExplicitlyProvided && !this.selectedSensor && this.availableSensors.length > 0) {
+            this.selectedSensor = this.availableSensors[0];
+            this.sensorChanged.emit(this.selectedSensor);
+          }
+          this.cdr.detectChanges();
+        }
     if (changes.deviceId && !changes.deviceId.firstChange) {
       // Device changed - fetch sensors and resubscribe
       if (this.telemetrySubscription) {
@@ -227,17 +236,12 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       }
       this.clearData();
       if (this.deviceId && this.selectedSensor) {
-        // this.subscribeToTelemetry();
-      }
-      // Process forecast data for the new sensor
-      if (this.forecastData) {
-        console.log('[TIME-SERIES] this.forcastData changed:', this.forecastData);
-        // this.processForecastData();
+        this.subscribeToTelemetry();
       }
 
       // Fetch saved forecast predictions for the new sensor
       if (this.modelId) {
-        this.fetchForecastHistoryPredictions();
+        this.fetchSensorForecastHistoryPredictions();
       }
     }
 
@@ -247,13 +251,13 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     if (changes.modelId && !changes.modelId.firstChange) {
       if (this.modelId && this.selectedSensor) {
-        this.fetchForecastHistoryPredictions();
+        this.fetchSensorForecastHistoryPredictions();
       }
     }
 
     if (changes.forecastData) {
       console.log('[ngOnChanges] changes.forecastData', changes.forecastData);
-      this.processForecastData();
+      this.processSensorForecastData();
     }
 
     if (this.chart) {
@@ -277,7 +281,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Fetch saved forecast predictions if model ID is available
     if (this.modelId && this.selectedSensor) {
-      this.fetchForecastHistoryPredictions();
+      this.fetchSensorForecastHistoryPredictions();
     }
 
     // Subscribe to real-time forecast history points
@@ -507,47 +511,19 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   }
 
   private fetchAvailableSensors(): void {
-    if (!this.deviceId) {
-      // console.warn('Cannot fetch sensors: missing deviceId');
-      return;
+
+    // No-op: handled in ngOnChanges
+
+    // Assign colors to sensors
+    this.assignColorsToSensors();
+
+    // Only auto-select if sensor was NOT explicitly provided via @Input
+    if (!this.sensorExplicitlyProvided && !this.selectedSensor && this.availableSensors.length > 0) {
+      this.selectedSensor = this.availableSensors[0];
+      this.sensorChanged.emit(this.selectedSensor);
     }
 
-    const entityId: EntityId = {
-      entityType: EntityType.DEVICE,
-      id: this.deviceId
-    };
-
-    // Fetch latest telemetry to get available sensor keys
-    this.attributeService.getEntityTimeseriesLatest(entityId).subscribe(
-      (timeseriesData) => {
-        // Extract all available telemetry keys
-        this.availableSensors = Object.keys(timeseriesData);
-
-        console.log('this.availableSensors: ', {
-          availableSensors: this.availableSensors,
-        });
-
-        // Assign colors to sensors
-        this.assignColorsToSensors();
-
-        // Only auto-select if sensor was NOT explicitly provided via @Input
-        if (!this.sensorExplicitlyProvided && !this.selectedSensor && this.availableSensors.length > 0) {
-          this.selectedSensor = this.availableSensors[0];
-          this.sensorChanged.emit(this.selectedSensor);
-        }
-
-        // Subscribe to telemetry if sensor is selected and chart is ready
-        if (this.selectedSensor && this.chart) {
-          // this.subscribeToTelemetry();
-        }
-
-        this.cdr.detectChanges();
-      },
-      (error) => {
-        console.error('Error fetching available sensors:', error);
-        this.availableSensors = [];
-      }
-    );
+    this.cdr.detectChanges();
   }
 
   private subscribeToTelemetry(): void {
@@ -602,7 +578,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     });
   }
 
-  private processForecastData(): void {
+  private processSensorForecastData(): void {
     if (!this.forecastData || !this.selectedSensor) {
       // console.log('[TIME-SERIES] No forecast data or sensor selected');
       this.forecastDataPoints = [];
@@ -644,7 +620,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
   /**
    * Fetch saved forecast predictions from database and display on chart
    */
-  private fetchForecastHistoryPredictions(): void {
+  private fetchSensorForecastHistoryPredictions(): void {
     // return;
     if (!this.modelId || !this.selectedSensor) {
       console.log('[TIME-SERIES] Cannot fetch forecast history: missing modelId or selectedSensor');
@@ -918,14 +894,10 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
         displayMax = maxTime;
       }
 
-      // Update only the x-axis without changing series data
-      // this.chart.setOption({
-      //   xAxis: {
-      //     min: displayMin,
-      //     max: displayMax
-      //   }
-      // }, false, false);
       this.chart.setOption({
+        title: {
+          text: startCase(this.selectedSensor) + ' Data'
+        },
         xAxis: {
           min: displayMin,
           max: displayMax,
@@ -1185,7 +1157,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       // In history mode, also fetch forecast predictions
       if (this.timewindow.history && this.modelId) {
         console.log('[TIME-SERIES] History mode detected - fetching forecast predictions');
-        this.fetchForecastHistoryPredictions();
+        this.fetchSensorForecastHistoryPredictions();
       }
       // Chart is already updated in fetchHistoricalData, no need to call updateChart again
     });
@@ -1207,7 +1179,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     this.forecastDataPoints = [];
 
     // Refetch forecast history for the current sensor and model
-    this.fetchForecastHistoryPredictions();
+    this.fetchSensorForecastHistoryPredictions();
 
     // Update the chart to reflect the new data
     if (this.chart) {
@@ -1280,7 +1252,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
     // Resubscribe with new sensor
     if (this.deviceId && this.selectedSensor) {
-      // this.subscribeToTelemetry();
+      this.subscribeToTelemetry();
     }
   }
 }

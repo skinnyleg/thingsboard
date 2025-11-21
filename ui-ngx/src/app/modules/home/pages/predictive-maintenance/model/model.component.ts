@@ -16,6 +16,7 @@ import {
   isForecastActive,
   getForecastViewPreferences,
   setForecastViewPreferences,
+  ForecastAttribute,
 } from '@app/shared/models/forecast.models';
 import {
   ForecastViewType,
@@ -125,6 +126,8 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
     },
     history: undefined // Only set when in history mode
   };
+
+  attributes: ForecastAttribute[]; // To store the temperature data
 
   // Reference to the anomalies table component
   @ViewChild(AnomaliesComponent) anomaliesComponent?: AnomaliesComponent;
@@ -901,6 +904,7 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
       (data) => {
         this.deviceId = data.deviceId.id;
         this.Attributes = data.attributes.map((attr) => attr.key);
+        this.attributes = data.attributes;
 
         // Initialize selectedSensor from model's configured attributes (first sensor)
         if (this.Attributes.length > 0 && !this.Attributes.includes(this.selectedSensor)) {
