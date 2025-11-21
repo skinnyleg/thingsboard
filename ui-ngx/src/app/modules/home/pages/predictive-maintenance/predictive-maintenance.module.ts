@@ -14,12 +14,12 @@
 /// limitations under the License.
 ///
 
-import { CommonModule } from "@angular/common";
-import { NgModule } from "@angular/core";
-import { SharedModule } from "@shared/shared.module";
-import { PredictiveMaintenanceRoutingModule } from "./predictive-maintenance-routing.module";
+import { CommonModule } from '@angular/common';
+import { NgModule } from '@angular/core';
+import { SharedModule } from '@shared/shared.module';
+import { PredictiveMaintenanceRoutingModule } from './predictive-maintenance-routing.module';
 // import { NgApexchartsModule } from "ng-apexcharts";
-import { ModelComponent } from "./model/model.component";
+import { ModelComponent } from './model/model.component';
 @NgModule({
   declarations: [],
   imports: [
