@@ -14,59 +14,64 @@
     limitations under the License.
 -->
 <div class="time-series-telemetry-container">
-  <div class="timewindow-panel">
-    <div class="timewindow-controls">
-      <div class="timewindow-selector">
-        <tb-timewindow
-          [aggregation]="false"
-          [quickIntervalOnly]="false"
-          [historyOnly]="false"
-          [alwaysDisplayTypePrefix]="true"
-          [timezone]="true"
-          [noMargin]="true"
-          [noPadding]="true"
-          [isEdit]="false"
-          [(ngModel)]="timewindow"
-          (ngModelChange)="onTimewindowChanged($event)"
-        >
-        </tb-timewindow>
-        <button
-          *ngIf="timewindow?.history"
-          mat-icon-button
-          class="history-refresh-button"
-          [matTooltip]="'Refresh saved predictions'"
-          matTooltipPosition="above"
-          (click)="refreshHistoryPredictions()"
-        >
-          <mat-icon>refresh</mat-icon>
-        </button>
-      </div>
-      <div class="sensor-selector" *ngIf="availableSensors.length > 0">
-        <button
-          mat-button
-          class="sensor-selector-button"
-          [matTooltip]="'Select sensor: ' + (selectedSensor | titlecase)"
-          matTooltipPosition="above"
-          [matMenuTriggerFor]="sensorMenu"
-        >
-          <mat-icon>sensors</mat-icon>
-          <span class="sensor-name-text">{{ selectedSensor | titlecase }}</span>
-        </button>
-        <mat-menu #sensorMenu="matMenu">
-          <button
-            mat-menu-item
-            *ngFor="let sensor of availableSensors"
-            (click)="selectSensor(sensor)"
-            [class.selected]="selectedSensor === sensor"
+  <div class="telemetry-header">
+    <span class="telemetry-title"> Forecast Sensor Telemetry </span>
+    <div class="timewindow-panel">
+      <div class="timewindow-controls">
+        <div class="timewindow-selector">
+          <tb-timewindow
+            [aggregation]="false"
+            [quickIntervalOnly]="false"
+            [historyOnly]="false"
+            [alwaysDisplayTypePrefix]="true"
+            [timezone]="true"
+            [noMargin]="true"
+            [noPadding]="true"
+            [isEdit]="false"
+            [(ngModel)]="timewindow"
+            (ngModelChange)="onTimewindowChanged($event)"
           >
-            <mat-icon *ngIf="selectedSensor === sensor">check</mat-icon>
-            <span
-              [style.margin-left]="selectedSensor === sensor ? '0' : '24px'"
-            >
-              {{ sensor | titlecase }}
-            </span>
+          </tb-timewindow>
+          <button
+            *ngIf="timewindow?.history"
+            mat-icon-button
+            class="history-refresh-button"
+            [matTooltip]="'Refresh saved predictions'"
+            matTooltipPosition="above"
+            (click)="refreshHistoryPredictions()"
+          >
+            <mat-icon>refresh</mat-icon>
           </button>
-        </mat-menu>
+        </div>
+        <div class="sensor-selector" *ngIf="availableSensors.length > 0">
+          <button
+            mat-button
+            class="sensor-selector-button"
+            [matTooltip]="'Select sensor: ' + (selectedSensor | titlecase)"
+            matTooltipPosition="above"
+            [matMenuTriggerFor]="sensorMenu"
+          >
+            <mat-icon>sensors</mat-icon>
+            <span class="sensor-name-text">{{
+              selectedSensor | titlecase
+            }}</span>
+          </button>
+          <mat-menu #sensorMenu="matMenu">
+            <button
+              mat-menu-item
+              *ngFor="let sensor of availableSensors"
+              (click)="selectSensor(sensor)"
+              [class.selected]="selectedSensor === sensor"
+            >
+              <mat-icon *ngIf="selectedSensor === sensor">check</mat-icon>
+              <span
+                [style.margin-left]="selectedSensor === sensor ? '0' : '24px'"
+              >
+                {{ sensor | titlecase }}
+              </span>
+            </button>
+          </mat-menu>
+        </div>
       </div>
     </div>
   </div>

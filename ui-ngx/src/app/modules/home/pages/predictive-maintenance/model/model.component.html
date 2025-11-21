@@ -211,7 +211,10 @@
         </button>
         <h3 class="section-title">
           <mat-icon class="section-icon">timeline</mat-icon>
-          Sensor Telemetry (Real-time)
+          Forecast
+          <span class="algorithm-label" *ngIf="forecastAlgorithm">{{
+            forecastAlgorithm
+          }}</span>
         </h3>
       </div>
       <div

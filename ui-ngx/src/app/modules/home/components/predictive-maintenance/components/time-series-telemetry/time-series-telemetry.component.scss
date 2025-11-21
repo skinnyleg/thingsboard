@@ -23,10 +23,21 @@
   flex-direction: column;
 }
 
+.telemetry-header {
+  padding-left: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .telemetry-title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+
 .timewindow-panel {
   padding: 8px 16px;
   background: rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 
   .timewindow-controls {
@@ -37,7 +48,7 @@
     .timewindow-selector {
       flex: 1;
       display: flex;
-      justify-content: flex-start;
+      justify-content: right;
       align-items: center;
       gap: 8px;
 

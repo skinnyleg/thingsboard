@@ -100,6 +100,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
 
   @Input() title = 'Sensor Telemetry';
 
+//
   @Input() forecastData: any; // Forecast data passed from parent component
 
   @Input() forecastMaxSteps: number; // Number of forecast steps
@@ -327,7 +328,7 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
       backgroundColor: 'transparent',
       animation: false,
       title: {
-        text: this.title,
+        text: this.toCapitalizedWords(this.selectedSensor) + ' Data',
         left: 'center',
         textStyle: {
           color: '#fff',
@@ -1213,6 +1214,13 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     }
   }
 
+  toCapitalizedWords(str: string): string {
+    return str
+      .replace(/([A-Z])/g, ' $1') // Insert space before capital letters
+      .replace(/^./, (firstChar) => firstChar.toUpperCase()) // Capitalize first letter
+      .trim();
+  }
+
   onSensorChange(): void {
     // console.log('Sensor changed to:', this.selectedSensor);
 
@@ -1242,6 +1250,9 @@ export class TimeSeriesTelemetryComponent implements OnInit, OnDestroy, AfterVie
     // Update chart with new sensor color, legend, and axis labels
     if (this.chart) {
       this.chart.setOption({
+        title: {
+          text: this.toCapitalizedWords(this.selectedSensor) + ' Data'
+        },
         legend: {
           data: [this.selectedSensor]
         },
