@@ -19,7 +19,6 @@ import { NgModule } from "@angular/core";
 import { SharedModule } from "@shared/shared.module";
 import { PredictiveMaintenanceRoutingModule } from "./predictive-maintenance-routing.module";
 // import { NgApexchartsModule } from "ng-apexcharts";
-import { ForecastChartComponent } from "../../components/predictive-maintenance/components/forecast-chart/forecast-chart.component";
 import { ModelComponent } from "./model/model.component";
 @NgModule({
   declarations: [],
@@ -28,7 +27,6 @@ import { ModelComponent } from "./model/model.component";
     SharedModule,
     PredictiveMaintenanceRoutingModule,
     // NgApexchartsModule,
-    ForecastChartComponent,
     ModelComponent,
   ],
 })

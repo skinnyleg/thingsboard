@@ -46,7 +46,6 @@ import {
   ForecastSensorPrediction
 } from '../../../components/predictive-maintenance/components/anomalies/anomalies.component';
 import { CommonModule } from '@angular/common';
-import { ForecastChartComponent } from '../../../components/predictive-maintenance/components/forecast-chart/forecast-chart.component';
 import {
   TimeSeriesTelemetryComponent
 } from '../../../components/predictive-maintenance/components/time-series-telemetry/time-series-telemetry.component';
@@ -84,7 +83,6 @@ import { distinctUntilChanged, filter, tap } from 'rxjs/operators';
     MatButtonModule,
     MatInputModule,
     FormsModule,
-    ForecastChartComponent,
     TimeSeriesTelemetryComponent,
     AnomaliesComponent,
     MatTooltipModule,
