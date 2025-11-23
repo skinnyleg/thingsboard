@@ -30,6 +30,10 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
 /**
  * WebSocket client service that connects to Python ML service.
  * 
@@ -71,6 +75,9 @@ public class PythonWebSocketClientService {
     private final AtomicInteger commandIdCounter = new AtomicInteger(1);
     private volatile boolean connected = false;
 
+    // Queue for outgoing messages when Python is not connected
+    private final BlockingQueue<PendingPythonRequest> pendingRequests = new LinkedBlockingQueue<>();
+
     @PostConstruct
     public void init() {
         loadActiveJobsFromDatabase();
@@ -107,16 +114,10 @@ public class PythonWebSocketClientService {
      * Request status for all active jobs from Python service
      */
     private void requestStatusForActiveJobs() {
-        if (pythonSession == null || !pythonSession.isOpen()) {
-            log.warn("Cannot request job status - not connected to Python service");
-            return;
-        }
-
         if (activeJobs.isEmpty()) {
             log.debug("No active jobs to request status for");
             return;
         }
-
         try {
             for (String forecastId : activeJobs.keySet()) {
                 requestJobStatus(forecastId);
@@ -146,6 +147,8 @@ public class PythonWebSocketClientService {
                     pythonWebSocketUrl).get(); // Block until connection is established
 
             log.info("Connected to Python WebSocket service");
+            connected = true;
+            flushPendingRequests();
 
             // Request status for all loaded active jobs
             requestStatusForActiveJobs();
@@ -153,6 +156,55 @@ public class PythonWebSocketClientService {
         } catch (Exception e) {
             log.error("Failed to connect to Python WebSocket service", e);
             pythonSession = null;
+            connected = false;
+        }
+    }
+
+    /**
+     * Flush all pending requests in the queue when connection is established
+     */
+    private void flushPendingRequests() {
+        log.info("Flushing pending requests to Python service: {} requests", pendingRequests.size());
+        PendingPythonRequest req;
+        while ((req = pendingRequests.poll()) != null) {
+            try {
+                pythonSession.sendMessage(new TextMessage(req.message));
+                log.info("Sent queued request to Python: {}", req.message);
+                if (req.onSuccess != null) req.onSuccess.run();
+            } catch (Exception e) {
+                log.error("Failed to send queued request to Python", e);
+                if (req.onFailure != null) req.onFailure.run();
+            }
+        }
+    }
+
+    /**
+     * Helper to send or queue a message to Python service
+     */
+    private void sendOrQueueToPython(String message, Runnable onSuccess, Runnable onFailure) {
+        if (pythonSession != null && pythonSession.isOpen()) {
+            try {
+                pythonSession.sendMessage(new TextMessage(message));
+                if (onSuccess != null) onSuccess.run();
+            } catch (Exception e) {
+                log.error("Error sending message to Python service", e);
+                if (onFailure != null) onFailure.run();
+            }
+        } else {
+            log.info("Python not connected, queuing request: {}", message);
+            pendingRequests.offer(new PendingPythonRequest(message, onSuccess, onFailure));
+        }
+    }
+
+    // Helper class for queued requests
+    private static class PendingPythonRequest {
+        final String message;
+        final Runnable onSuccess;
+        final Runnable onFailure;
+        PendingPythonRequest(String message, Runnable onSuccess, Runnable onFailure) {
+            this.message = message;
+            this.onSuccess = onSuccess;
+            this.onFailure = onFailure;
         }
     }
 
@@ -480,12 +532,10 @@ public class PythonWebSocketClientService {
         pythonMessage.put("type", "subscribe_logs");
         pythonMessage.put("forecastId", forecastId);
 
-        if (pythonSession != null && pythonSession.isOpen()) {
-            pythonSession.sendMessage(new TextMessage(pythonMessage.toString()));
-            log.info("Subscribed UI session {} to real-time logs for forecast {}", sessionId, forecastId);
-        } else {
-            sendErrorToUi(sessionId, "Python service not connected");
-        }
+        sendOrQueueToPython(pythonMessage.toString(),
+            () -> log.info("Subscribed UI session {} to real-time logs for forecast {}", sessionId, forecastId),
+            () -> sendErrorToUi(sessionId, "Python service not connected")
+        );
     }
 
     /**
@@ -512,13 +562,10 @@ public class PythonWebSocketClientService {
 
         log.info("[ACTIVATE] Sending to Python: {}", pythonMessage.toString());
 
-        // Send to Python unified WebSocket
-        if (pythonSession != null && pythonSession.isOpen()) {
-            pythonSession.sendMessage(new TextMessage(pythonMessage.toString()));
-            log.info("[ACTIVATE] Successfully sent activate command to Python for forecast {}", forecastId);
-        } else {
-            sendErrorToUi(sessionId, "Python service not connected");
-        }
+        sendOrQueueToPython(pythonMessage.toString(),
+            () -> log.info("[ACTIVATE] Successfully sent activate command to Python for forecast {}", forecastId),
+            () -> sendErrorToUi(sessionId, "Python service not connected")
+        );
     }
 
     /**
