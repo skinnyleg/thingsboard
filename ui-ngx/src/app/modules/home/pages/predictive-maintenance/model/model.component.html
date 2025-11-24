@@ -73,19 +73,23 @@
       matTooltip="Pending"
       >schedule</mat-icon
     >
-    <mat-icon
-      class="status-icon-option pending"
+    <span
+      class="status-progress pending"
       *ngIf="status.toLowerCase() === 'pending' && progressMessage"
-      aria-label="Pending Status"
+      aria-label="Building Progress"
       [matTooltip]="
-        'Pending: ' +
+        'Building: ' +
         progressMessage.step +
         ' (' +
         progressMessage.progress +
         '%)'
       "
-      >hourglass_empty</mat-icon
+      style="display: inline-flex; align-items: center; font-weight: bold; color: #ffa726; gap: 4px;"
     >
+      <!-- <mat-icon style="vertical-align: middle;">hourglass_empty</mat-icon> -->
+      <!-- <span>{{ progressMessage.progress }}%</span> -->
+      {{ progressMessage.progress }}%
+    </span>
     <mat-icon
       class="status-icon-option failed"
       *ngIf="status.toLowerCase() === 'failed'"

@@ -1500,8 +1500,7 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
         // Clear progress and refresh status
         this.progressMessage = null;
         this.activationComplete = true;
-        // this.status = 'active';
-        this.status = 'inactive';
+        this.status = 'active';
         this.anomaliesComponent?.setStreamStatus(true, null);
         // Show the logs tooltip after activation
         // this.displayLogsTooltip();

@@ -21,31 +21,6 @@
     </div>
     <div class="timewindow-panel">
       <div class="timewindow-controls">
-        <div class="timewindow-selector">
-          <tb-timewindow
-            [aggregation]="false"
-            [quickIntervalOnly]="false"
-            [historyOnly]="false"
-            [alwaysDisplayTypePrefix]="true"
-            [timezone]="true"
-            [noMargin]="true"
-            [noPadding]="true"
-            [isEdit]="false"
-            [(ngModel)]="timewindow"
-            (ngModelChange)="onTimewindowChanged($event)"
-          >
-          </tb-timewindow>
-          <button
-            *ngIf="timewindow?.history"
-            mat-icon-button
-            class="history-refresh-button"
-            [matTooltip]="'Refresh saved predictions'"
-            matTooltipPosition="above"
-            (click)="refreshHistoryPredictions()"
-          >
-            <mat-icon>refresh</mat-icon>
-          </button>
-        </div>
         <div class="sensor-selector" *ngIf="availableSensors.length > 0">
           <button
             mat-button
@@ -74,6 +49,31 @@
               </span>
             </button>
           </mat-menu>
+        </div>
+        <div class="timewindow-selector">
+          <tb-timewindow
+            [aggregation]="false"
+            [quickIntervalOnly]="false"
+            [historyOnly]="false"
+            [alwaysDisplayTypePrefix]="true"
+            [timezone]="true"
+            [noMargin]="true"
+            [noPadding]="true"
+            [isEdit]="false"
+            [(ngModel)]="timewindow"
+            (ngModelChange)="onTimewindowChanged($event)"
+          >
+          </tb-timewindow>
+          <button
+            *ngIf="timewindow?.history"
+            mat-icon-button
+            class="history-refresh-button"
+            [matTooltip]="'Refresh saved predictions'"
+            matTooltipPosition="above"
+            (click)="refreshHistoryPredictions()"
+          >
+            <mat-icon>refresh</mat-icon>
+          </button>
         </div>
       </div>
     </div>
