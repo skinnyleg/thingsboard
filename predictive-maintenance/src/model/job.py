@@ -206,6 +206,8 @@ def prediction_job_worker(
             )
             if should_break:
                 break
+            if model_type == "AnomalyPredictor":
+                break
             iteration += 1
             threading.Event().wait(interval)
     except Exception as e:

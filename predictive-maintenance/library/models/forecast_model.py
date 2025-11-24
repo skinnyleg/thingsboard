@@ -80,17 +80,17 @@ class ForecastModel(BaseModel):
         self.last_fetched_date = last_fetched_date
 
         # Create time series algorithm
-        config = TimeSeriesConfig(
-            name=algorithm_name,
-            algorithm_type=AlgorithmType.TIME_SERIES,
-            task_type=TaskType.TIME_SERIES_FORECAST,
-            time_column="timestamp",
-            value_column="value",
-            hyperparameters=self.algorithm_hyperparams.copy(),
-        )
+        # config = TimeSeriesConfig(
+        #     name=algorithm_name,
+        #     algorithm_type=AlgorithmType.TIME_SERIES,
+        #     task_type=TaskType.TIME_SERIES_FORECAST,
+        #     time_column="timestamp",
+        #     value_column="value",
+        #     hyperparameters=self.algorithm_hyperparams.copy(),
+        # )
 
-        algorithm = AlgorithmRegistry.create(config)
-        self.add_algorithm("forecast", algorithm)
+        # algorithm = AlgorithmRegistry.create(config)
+        # self.add_algorithm("forecast", algorithm)
 
     def fetch(self, **kwargs) -> dict[str, pd.DataFrame]:
         """

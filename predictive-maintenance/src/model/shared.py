@@ -33,6 +33,7 @@ def get_data_registry() -> DataRegistry:
         component_keys=settings.component_keys,
     )
 
+
 # const names
 RANDOM_FOREST = "random_forest"
 PROPHET = "prophet"
@@ -43,24 +44,12 @@ FORECAST_MODEL = "ForecastModel"
 
 MODEL_TYPE_MAP = {
     ANOMALY_PREDICTOR: [
-        {
-            "model_name": RANDOM_FOREST,
-            "model_parameters": {}
-        },
-        {
-            "model_name": XGBOOST,
-            "model_parameters": {}
-        }
+        {"model_name": RANDOM_FOREST, "model_parameters": {}},
+        {"model_name": XGBOOST, "model_parameters": {}},
     ],
     FORECAST_MODEL: [
-        {
-            "model_name": LSTM,
-            "model_parameters": {}
-        },
-        {
-            "model_name": XGBOOST,
-            "model_parameters": {}
-        }
+        {"model_name": LSTM, "model_parameters": {}},
+        {"model_name": XGBOOST, "model_parameters": {}},
     ],
 }
 
@@ -111,10 +100,10 @@ def train_and_save_model(
         ValueError: If model_type is not recognized
     """
     # Get model class and defaults from map
-    if model_type not in MODEL_TYPE_MAP:
-        raise ValueError(
-            f"Unknown model_type: {model_type}. Supported types: {list(MODEL_TYPE_MAP.keys())}"
-        )
+    # if model_type not in MODEL_TYPE_MAP:
+    #     raise ValueError(
+    #         f"Unknown model_type: {model_type}. Supported types: {list(MODEL_TYPE_MAP.keys())}"
+    #     )
 
     ModelClass, default_algorithm, default_hyperparams = (
         MODEL_TYPE_MAP_CLASS[model_type]["model_name"],
@@ -136,24 +125,28 @@ def train_and_save_model(
     model_dir = Path(path) / model_id
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    # Initialize model with data registry
-    model = ModelClass(
-        name=model_id,
-        algorithm_name=algorithm,
-        algorithm_hyperparams=hyperparams,
-        data_registry=data_registry,
-        device_id=device_id,
-        additional_info=kwargs,
-        sensors=sensors,
-        group_by_ms_per_sensor=group_by_ms_per_sensor,
-        aggregation_funcs=aggregation_funcs,
-    )
-
     # Train model
     if model_type == "AnomalyPredictor":
+        # Initialize model with data registry
+        model = ModelClass(
+            name=model_id,
+            algorithm_name=algorithm,
+            algorithm_hyperparams=hyperparams,
+            data_registry=data_registry,
+            device_id=device_id,
+            additional_info=kwargs,
+            sensors=sensors,
+            # group_by_ms_per_sensor=group_by_ms_per_sensor,
+            # aggregation_funcs=aggregation_funcs,
+        )
+        print(
+            f"[TRAIN] Fetching data for device_id={device_id} starting from 2014-01-01...",
+            flush=True,
+        )
         telemetry_df, failures_df, maintenance_df, machines_df, errors_df = model.fetch(
             device_id=device_id, start_date=datetime(2014, 1, 1)
         )
+        print(f"[TRAIN] Data fetched. Training model...", flush=True)
         if failures_df.empty:
             return {
                 "status": "failed",
@@ -161,6 +154,9 @@ def train_and_save_model(
                 "model_id": model_id,
                 "model_type": model_type,
             }
+        print(
+            f"[TRAIN] Training AnomalyPredictor model for device_id={device_id}...", flush=True
+        )
         hourly_models, feature_cols, labeled_features_clean = train_model(
             telemetry_df,
             errors_df,
@@ -183,8 +179,21 @@ def train_and_save_model(
             # algorithm=algorithm,
             algorithm="random_forest",
         )
+        print(f"[TRAIN] Model trained. Saving models...", flush=True)
         save_models(hourly_models, model_dir)
     elif model_type == "ForecastModel":
+            # Initialize model with data registry
+        model = ModelClass(
+            name=model_id,
+            algorithm_name=algorithm,
+            algorithm_hyperparams=hyperparams,
+            data_registry=data_registry,
+            device_id=device_id,
+            additional_info=kwargs,
+            sensors=sensors,
+            group_by_ms_per_sensor=group_by_ms_per_sensor,
+            aggregation_funcs=aggregation_funcs,
+        )
         model.train()
         model.save(model_dir)
     return {

@@ -789,11 +789,11 @@ export class ModelComponent extends PageComponent implements Order, OnDestroy {
         //
         console.log(`[ModelComponent] Fetch history of predictions`);
 
-        // this.fetchAnomalyHistoryPredictions();
+        this.fetchAnomalyHistoryPredictions();
 
         console.log(`[ModelComponent] Subscribing to anomaly predictions`);
 
-        // this.subscribeToAnomalyPredictions();
+        this.subscribeToAnomalyPredictions();
         this.subscribeToForecastPredictions();
 
         // Subscribe to real-time job status updates

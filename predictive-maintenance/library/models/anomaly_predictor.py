@@ -213,10 +213,10 @@ class AnomalyPredictor(BaseModel):
         telemetry_df["machineID"] = 1  # from dataset
 
         # fetch telemetry_df
-        # print(f"[PREDICITON JOB] telemetry_df DataFrame", flush=True)
-        # print(telemetry_df, flush=True)
-        # print("dataframe columns", flush=True)
-        # print(telemetry_df.columns, flush=True)
+        print(f"[PREDICITON JOB] telemetry_df DataFrame", flush=True)
+        print(telemetry_df, flush=True)
+        print("dataframe columns", flush=True)
+        print(telemetry_df.columns, flush=True)
 
         failures_df = self.data_registry.fetch_failure_data(
             device_id=device_id,
@@ -226,10 +226,10 @@ class AnomalyPredictor(BaseModel):
         failures_df["machineID"] = 1  # from dataset
 
         # fetch failures_df
-        # print(f"[PREDICITON JOB] failures_df DataFrame", flush=True)
-        # print(failures_df, flush=True)
-        # print("dataframe columns", flush=True)
-        # print(failures_df.columns, flush=True)
+        print(f"[PREDICITON JOB] failures_df DataFrame", flush=True)
+        print(failures_df, flush=True)
+        print("dataframe columns", flush=True)
+        print(failures_df.columns, flush=True)
 
         maintenance_df = self.data_registry.fetch_maintenance_data(
             device_id=device_id,
@@ -240,10 +240,10 @@ class AnomalyPredictor(BaseModel):
         maintenance_df["machineID"] = 1  # from dataset
 
         # fetch failures_df
-        # print(f"[PREDICITON JOB] maintenance_df DataFrame", flush=True)
-        # print(maintenance_df, flush=True)
-        # print("dataframe columns", flush=True)
-        # print(maintenance_df.columns, flush=True)
+        print(f"[PREDICITON JOB] maintenance_df DataFrame", flush=True)
+        print(maintenance_df, flush=True)
+        print("dataframe columns", flush=True)
+        print(maintenance_df.columns, flush=True)
 
         machines_df = self.data_registry.fetch_machines_data(
             device_id=device_id,
@@ -260,10 +260,10 @@ class AnomalyPredictor(BaseModel):
         errors_df["machineID"] = 1  # from dataset
 
         # fetch failures_df
-        # print(f"[PREDICITON JOB] errors_df DataFrame", flush=True)
-        # print(errors_df, flush=True)
-        # print("dataframe columns", flush=True)
-        # print(errors_df.columns, flush=True)
+        print(f"[PREDICITON JOB] errors_df DataFrame", flush=True)
+        print(errors_df, flush=True)
+        print("dataframe columns", flush=True)
+        print(errors_df.columns, flush=True)
 
         return telemetry_df, failures_df, maintenance_df, machines_df, errors_df
 
@@ -654,6 +654,7 @@ def create_24h_mean_features(telemetry, fields=["volt", "rotate", "pressure", "v
 
 
 def create_telemetry_features(telemetry, fields=["volt", "rotate", "pressure", "vibration"]):
+    print("[TRAIN_ANOMALY_MODEL] create_telemetry_features", flush=True)
     telemetry_mean_3h, telemetry_sd_3h = create_3h_mean_features(telemetry, fields)
     telemetry_mean_24h, telemetry_sd_24h = create_24h_mean_features(telemetry, fields)
     telemetry_feat = pd.concat(
@@ -665,8 +666,8 @@ def create_telemetry_features(telemetry, fields=["volt", "rotate", "pressure", "
         ],
         axis=1,
     ).dropna()
-    # print("[TRAIN_ANOMALY_MODEL] create_telemetry_features", flush=True)
-    # print(telemetry_feat.head(), flush=True)
+    print("[TRAIN_ANOMALY_MODEL] create_telemetry_features", flush=True)
+    print(telemetry_feat.head(), flush=True)
     return telemetry_feat
 
 
@@ -1187,24 +1188,24 @@ def load_models(model_path):
 
 
 def preprocess_data(telemetry, errors, maint, failures, machines, components, error_classes):
-    # print(
-    #     f"[PREPROCESS_DATA] telemetry.shape={telemetry.shape} errors.shape={errors.shape} maint.shape={maint.shape} failures.shape={failures.shape}",
-    #     flush=True,
-    # )
+    print(
+        f"[PREPROCESS_DATA] telemetry.shape={telemetry.shape} errors.shape={errors.shape} maint.shape={maint.shape} failures.shape={failures.shape}",
+        flush=True,
+    )
     telemetry["datetime"] = pd.to_datetime(telemetry["datetime"])
     telemetry_feat = create_telemetry_features(telemetry)
     error_count = create_error_count_features(telemetry, errors, error_classes)
-    # print("errors: \n", flush=True)
-    # print(error_count, flush=True)
+    print("errors: \n", flush=True)
+    print(error_count, flush=True)
     comp_rep = create_comp_replacement_features(telemetry, maint, components)
     labeled_features = merge_features(telemetry_feat, error_count, comp_rep, machines, failures)
 
     # Debug: Check failure column after merge
-    # print(f"\n[DEBUG] After merge_features, failure column value_counts:", flush=True)
-    # print(labeled_features["failure"].value_counts(), flush=True)
-    # print(f"\n[DEBUG] Sample of labeled_features with failures:", flush=True)
+    print(f"\n[DEBUG] After merge_features, failure column value_counts:", flush=True)
+    print(labeled_features["failure"].value_counts(), flush=True)
+    print(f"\n[DEBUG] Sample of labeled_features with failures:", flush=True)
     failure_rows = labeled_features[labeled_features["failure"] != "none"]
-    # print(f"  Found {len(failure_rows)} rows with failures", flush=True)
+    print(f"  Found {len(failure_rows)} rows with failures", flush=True)
     # if len(failure_rows) > 0:
     #     print(failure_rows[["datetime", "failure"]].head(10), flush=True)
 
@@ -1223,25 +1224,26 @@ def train_model(
     error_classes,
     algorithm="random_forest",
 ):
+    print("\n[TRAIN_MODEL] Starting training process...", flush=True)
     labeled_features_clean, feature_cols = preprocess_data(
         telemetry, errors, maint, failures, machines, components, error_classes
     )
-    # print(f"Labeled features cleaned: {labeled_features_clean.shape}", flush=True)
+    print(f"Labeled features cleaned: {labeled_features_clean.shape}", flush=True)
 
     # Debug: Check target distribution BEFORE split
-    # print("\n[DEBUG] Target distribution in FULL dataset (before split):", flush=True)
+    print("\n[DEBUG] Target distribution in FULL dataset (before split):", flush=True)
     for hour in [1, 4, 8, 12, 16, 20, 24]:
         target_col = f"target_hour_{hour}_multiclass"
-        # print(f"  {target_col}:", flush=True)
-        # print(f"    {labeled_features_clean[target_col].value_counts().to_dict()}", flush=True)
+        print(f"  {target_col}:", flush=True)
+        print(f"    {labeled_features_clean[target_col].value_counts().to_dict()}", flush=True)
 
     train, val, test, X_train, X_val, X_test = split_data(labeled_features_clean, feature_cols)
 
     # Debug: Check split sizes
-    # print(
-    #     f"\n[DEBUG] Split sizes - train: {len(train)}, val: {len(val)}, test: {len(test)}",
-    #     flush=True,
-    # )
+    print(
+        f"\n[DEBUG] Split sizes - train: {len(train)}, val: {len(val)}, test: {len(test)}",
+        flush=True,
+    )
     hourly_models = create_and_train_hourly_models(
         train, val, test, X_train, X_val, X_test, feature_cols, components, algorithm=algorithm
     )
